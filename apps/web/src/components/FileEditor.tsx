@@ -17,6 +17,8 @@ interface FileEditorProps {
   worktreeId: string;
   filePath: string;
   onDirtyChange: (path: string, dirty: boolean) => void;
+  jumpLine?: number;
+  jumpToken?: number;
 }
 
 function modeFor(language: string): string | CodeMirror.EditorConfiguration['mode'] {
@@ -79,7 +81,13 @@ async function ensureMode(language: string): Promise<void> {
   }
 }
 
-export function FileEditor({ worktreeId, filePath, onDirtyChange }: FileEditorProps): JSX.Element {
+export function FileEditor({
+  worktreeId,
+  filePath,
+  onDirtyChange,
+  jumpLine,
+  jumpToken
+}: FileEditorProps): JSX.Element {
   const { push } = useToast();
   const [content, setContent] = useState('');
   const [original, setOriginal] = useState('');
@@ -179,6 +187,16 @@ export function FileEditor({ worktreeId, filePath, onDirtyChange }: FileEditorPr
       if (editor) editor.getWrapperElement().remove();
     };
   }, [loading, meta?.binary, meta?.language]);
+
+  useEffect(() => {
+    if (!editorReady || !jumpLine) return;
+    const editor = editorRef.current;
+    if (!editor) return;
+    const target = Math.max(0, Math.min(editor.lineCount() - 1, jumpLine - 1));
+    editor.setCursor({ line: target, ch: 0 });
+    editor.scrollIntoView({ line: target, ch: 0 }, 80);
+    editor.focus();
+  }, [editorReady, jumpLine, jumpToken]);
 
   const sizeLabel = useMemo(() => {
     if (!meta) return '';

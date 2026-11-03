@@ -139,6 +139,49 @@ describe('github integration', () => {
   });
 });
 
+describe('code search', () => {
+  it('mencari teks, menghormati case sensitivity, dan menolak regex tidak valid', async () => {
+    const worktree = await api.post('/api/worktrees').send({
+      projectId,
+      branch: 'agent/search-test',
+      baseRef: 'main'
+    });
+    expect(worktree.status).toBe(201);
+    const worktreeId = worktree.body.data.id;
+    const worktreePath = worktree.body.data.path;
+    fs.writeFileSync(path.join(worktreePath, 'search-a.txt'), 'Alpha beta\nsecond line\n');
+    fs.writeFileSync(path.join(worktreePath, 'search-b.txt'), 'beta only\n');
+    execFileSync('git', ['add', '-A'], { cwd: worktreePath });
+    execFileSync('git', ['commit', '-qm', 'search fixtures'], { cwd: worktreePath });
+
+    const found = await api.get(`/api/search?worktreeId=${worktreeId}&q=beta`);
+    expect(found.status).toBe(200);
+    expect(found.body.data.total).toBe(2);
+    expect(found.body.data.files).toHaveLength(2);
+    expect(found.body.data.files.map((file: { path: string }) => file.path).sort()).toEqual([
+      'search-a.txt',
+      'search-b.txt'
+    ]);
+    expect(found.body.data.files[0].matches[0].line).toBeGreaterThan(0);
+    expect(['ripgrep', 'git-grep']).toContain(found.body.meta.engine);
+
+    const caseSensitive = await api.get(`/api/search?worktreeId=${worktreeId}&q=Alpha&caseSensitive=1`);
+    expect(caseSensitive.body.data.total).toBe(1);
+    const caseInsensitive = await api.get(`/api/search?worktreeId=${worktreeId}&q=alpha&caseSensitive=0`);
+    expect(caseInsensitive.body.data.total).toBe(1);
+
+    const limited = await api.get(`/api/search?worktreeId=${worktreeId}&q=beta&maxResults=1`);
+    expect(limited.body.data.total).toBe(1);
+    expect(limited.body.data.truncated).toBe(true);
+
+    const invalid = await api.get(`/api/search?worktreeId=${worktreeId}&q=%5B&regex=1`);
+    expect(invalid.status).toBe(422);
+    expect(invalid.body.error.code).toBe('SEARCH_ERROR');
+
+    await api.delete(`/api/worktrees/${worktreeId}`);
+  });
+});
+
 describe('files', () => {
   it('membaca tree, content, menulis file, dan menolak path traversal', async () => {
     const worktree = await api.post('/api/worktrees').send({

@@ -216,6 +216,17 @@ try {
   await waitText('edited by chrome93');
   console.log('[chrome93] git status + diff OK');
 
+  await clickText('button', 'Cari');
+  await page.waitForSelector('.search-form input', { timeout: 10000 });
+  await page.type('.search-form input', 'edited by chrome93');
+  await page.waitForSelector('.search-match', { timeout: 15000 });
+  await page.click('.search-match');
+  await page.waitForFunction(
+    () => (document.querySelector('.CodeMirror-code')?.innerText ?? '').includes('edited by chrome93'),
+    { timeout: 15000 }
+  );
+  console.log('[chrome93] code search OK');
+
   await clickText('button', '+ Terminal');
   await page.waitForFunction(
     () => {

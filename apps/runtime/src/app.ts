@@ -13,6 +13,7 @@ import { filesRouter } from './modules/files/routes.js';
 import { gitRouter } from './modules/git/routes.js';
 import { githubRouter } from './modules/github/routes.js';
 import { infoRouter } from './modules/info/routes.js';
+import { searchRouter } from './modules/search/routes.js';
 
 export function createApp(): express.Express {
   const app = express();
@@ -51,6 +52,7 @@ export function createApp(): express.Express {
   app.use('/api/git', gitRouter);
   app.use('/api/github', githubRouter);
   app.use('/api/info', infoRouter);
+  app.use('/api/search', searchRouter);
 
   app.use('/api', (_req, res) => {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Endpoint tidak ditemukan.' } });

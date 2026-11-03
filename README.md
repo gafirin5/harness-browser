@@ -17,10 +17,11 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **Source control**: status Git per worktree, daftar perubahan, diff staged/unstaged, stage/unstage, commit lokal, serta pull/push ke remote.
 - **Riwayat sesi agent**: pencarian judul/prompt, filter status, detail, dan rerun.
 - **Pencarian terminal** (`Find` atau `Ctrl+F`) dengan navigasi hasil.
+- **Pencarian kode worktree** (`Ctrl+Shift+F` atau tombol **Cari**): ripgrep dengan fallback `git grep`, filter case-sensitive/regex, dan klik hasil untuk melompat ke baris di editor.
 - **Notifikasi sesi** saat agent selesai/gagal + penanda unread di sidebar dan judul tab.
 - **Info Runtime**: versi, Node, tmux, data directory, agent CLI, dan jumlah data.
 - **Integrasi GitHub read-only**: info repository, pull request, dan issue per worktree; link keluar ke GitHub, caching 60 detik, token opsional.
-- **Command palette** (`Ctrl+Shift+P` atau `Ctrl+K`): terminal, agent, worktree, split, refresh, history, github, info, share.
+- **Command palette** (`Ctrl+Shift+P` atau `Ctrl+K`): terminal, agent, worktree, split, search, refresh, history, github, info, share.
 - **Resume sesi** agent dengan konteks percakapan (OpenCode `--continue`), serta stop sesi berjalan.
 - **Persistensi terminal/agent sejati** setelah runtime restart melalui tmux, dengan tombol Restart untuk shell.
 - Hentikan sesi, tutup terminal, hapus worktree (dengan proteksi sesi aktif).
@@ -33,6 +34,7 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - Node.js 22+ (diuji pada Node 24)
 - Git
 - **tmux 3.2+** (terminal host untuk persistensi sesi)
+- ripgrep (opsional; fallback otomatis ke `git grep`)
 - `node-pty` prebuilt/native build (build tools: python3, make, g++)
 - OpenCode CLI untuk sesi agent (opsional)
 - `cloudflared` untuk quick tunnel (opsional)
@@ -157,7 +159,7 @@ BASE_URL=http://127.0.0.1:7788 \
 node scripts/e2e-chrome93.mjs
 ```
 
-Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `echo chrome93-ok`), file explorer + editor (buka/sunting/simpan `README.md`), git status + diff, stage + commit, command palette, terminal multi-pane (3 pane), buat/rename/hapus file, dialog riwayat sesi, dialog Share, dan pairing URL auto-login.
+Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `echo chrome93-ok`), file explorer + editor (buka/sunting/simpan `README.md`), git status + diff, pencarian kode dan lompat ke baris, stage + commit, command palette, terminal multi-pane (3 pane), pencarian terminal, dialog Info, dialog GitHub, buat/rename file, dialog riwayat sesi, dialog Share, dan pairing URL auto-login.
 
 ## Keamanan
 
@@ -170,12 +172,13 @@ Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `ech
 - File explorer dibatasi pada worktree, menolak path traversal/symlink ke luar worktree, dan mengabaikan `.git`, `node_modules`, `dist`, dan folder build.
 - Commit/push dari UI memakai remote pertama (utamakan `origin`); pull memakai `--ff-only`. Pastikan user.name/user.email dan kredensial Git host sudah benar.
 - Hapus folder hanya diizinkan untuk folder kosong; belum ada recursive delete.
+- Pencarian kode dijalankan tanpa shell, memakai `rg`/`git grep` dengan argumen terpisah, mengikuti `.gitignore`, dan membatasi hasil agar payload tetap kecil.
 - Terminal adalah shell penuh; hanya berikan akses ke pengguna tepercaya.
 
 ## Test
 
 ```bash
-npm test          # 12 test integrasi API
+npm test          # 13 test integrasi API
 npm run verify    # typecheck + test + build + gate Chrome 93
 npm run e2e:chrome93
 ```
@@ -184,7 +187,7 @@ Lihat [`docs/verification-m1.md`](docs/verification-m1.md) untuk hasil verifikas
 
 ## Batasan M1
 
-Belum termasuk: Electron desktop, mobile, cloud relay, Linear, browser/design mode, SSH worktree, multi-user, dan recursive delete. Integrasi GitHub bersifat read-only (belum ada komentar, review, atau merge dari UI).
+Belum termasuk: Electron desktop, mobile, cloud relay, Linear, browser/design mode, SSH worktree, multi-user, dan recursive delete. Integrasi GitHub bersifat read-only (belum ada komentar, review, atau merge dari UI). Pencarian kode mengikuti `.gitignore`; file ignored/untracked tidak ikut dicari saat memakai fallback `git grep`.
 
 ## Branch Lama
 

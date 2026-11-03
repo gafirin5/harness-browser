@@ -20,6 +20,7 @@ import { CommandPalette, type Command } from './components/CommandPalette';
 import { GitHubDialog } from './components/GitHubDialog';
 import { HistoryDialog } from './components/HistoryDialog';
 import { InfoDialog } from './components/InfoDialog';
+import { SearchDialog } from './components/SearchDialog';
 import {
   AddProjectDialog,
   NewSessionDialog,
@@ -60,6 +61,8 @@ export function App(): JSX.Element {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const [githubOpen, setGithubOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [fileJump, setFileJump] = useState<{ path: string; line: number; token: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [terminalVersion, setTerminalVersion] = useState(0);
   const [searchNonce, setSearchNonce] = useState(0);
@@ -212,6 +215,9 @@ export function App(): JSX.Element {
       if (mod && event.shiftKey && event.key.toLowerCase() === 'p') {
         event.preventDefault();
         setPaletteOpen(true);
+      } else if (mod && event.shiftKey && event.key.toLowerCase() === 'f') {
+        event.preventDefault();
+        setSearchOpen(true);
       } else if (mod && !event.shiftKey && event.key.toLowerCase() === 'k' && !editable) {
         event.preventDefault();
         setPaletteOpen(true);
@@ -230,7 +236,23 @@ export function App(): JSX.Element {
     setOpenFiles((current) => (current.some((file) => file.path === filePath) ? current : [...current, { path: filePath, name }]));
     setActiveFilePath(filePath);
     setActiveDiffPath(null);
+    setFileJump(null);
   }, []);
+
+  const openFileAt = useCallback(
+    (filePath: string, line: number) => {
+      setOpenFiles((current) =>
+        current.some((file) => file.path === filePath)
+          ? current
+          : [...current, { path: filePath, name: filePath.split('/').pop() ?? filePath }]
+      );
+      setActiveFilePath(filePath);
+      setActiveDiffPath(null);
+      setFileJump({ path: filePath, line, token: Date.now() });
+      setSearchOpen(false);
+    },
+    []
+  );
 
   const openDiff = useCallback((filePath: string, staged: boolean) => {
     setOpenDiffs((current) => (current.includes(filePath) ? current : [...current, filePath]));
@@ -559,6 +581,12 @@ export function App(): JSX.Element {
       run: () => setHistoryOpen(true)
     },
     {
+      id: 'search',
+      label: 'Cari Kode',
+      hint: 'Pencarian teks/regex di seluruh worktree',
+      run: () => setSearchOpen(true)
+    },
+    {
       id: 'github',
       label: 'GitHub Repository',
       hint: 'Pull request dan issue untuk worktree aktif',
@@ -596,6 +624,9 @@ export function App(): JSX.Element {
         </span>
         <button className="btn tiny" onClick={() => setPaletteOpen(true)} title="Command palette (Ctrl+Shift+P)">
           ⌘K
+        </button>
+        <button className="btn tiny" onClick={() => setSearchOpen(true)} title="Cari kode (Ctrl+Shift+F)">
+          Cari
         </button>
         <button className="btn tiny" onClick={() => setGithubOpen(true)}>
           GitHub
@@ -925,6 +956,8 @@ export function App(): JSX.Element {
                 worktreeId={selectedWorktreeId ?? ''}
                 filePath={activeFilePath}
                 onDirtyChange={markFileDirty}
+                jumpLine={fileJump?.path === activeFilePath ? fileJump.line : undefined}
+                jumpToken={fileJump?.path === activeFilePath ? fileJump.token : undefined}
               />
             ) : activeDiffPath ? (
               <DiffViewer
@@ -1025,6 +1058,13 @@ export function App(): JSX.Element {
       {historyOpen ? <HistoryDialog onClose={() => setHistoryOpen(false)} onRerun={rerunHistory} /> : null}
       {infoOpen ? <InfoDialog onClose={() => setInfoOpen(false)} /> : null}
       {githubOpen ? <GitHubDialog worktreeId={selectedWorktreeId} onClose={() => setGithubOpen(false)} /> : null}
+      {searchOpen ? (
+        <SearchDialog
+          worktreeId={selectedWorktreeId}
+          onClose={() => setSearchOpen(false)}
+          onOpen={openFileAt}
+        />
+      ) : null}
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
 

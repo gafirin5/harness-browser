@@ -11,6 +11,8 @@ import type {
 import { ApiError, apiDelete, apiGet, apiPost } from './lib/api';
 import { Login } from './components/Login';
 import { TerminalPane } from './components/TerminalPane';
+import { FileEditor } from './components/FileEditor';
+import { FileTree } from './components/FileTree';
 import {
   AddProjectDialog,
   NewSessionDialog,
@@ -38,6 +40,9 @@ export function App(): JSX.Element {
   const [terminals, setTerminals] = useState<TerminalInfo[]>([]);
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [activeTerminalId, setActiveTerminalId] = useState<string | null>(null);
+  const [openFiles, setOpenFiles] = useState<Array<{ path: string; name: string }>>([]);
+  const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
+  const [dirtyFiles, setDirtyFiles] = useState<Record<string, boolean>>({});
   const [dialog, setDialog] = useState<DialogState>(null);
   const [busy, setBusy] = useState(false);
   const mutationAt = useRef(0);
@@ -89,6 +94,9 @@ export function App(): JSX.Element {
     setTerminals([]);
     setSessions([]);
     setActiveTerminalId(null);
+    setOpenFiles([]);
+    setActiveFilePath(null);
+    setDirtyFiles({});
     try {
       const response = await apiGet<{ data: Worktree[] }>(`/worktrees?projectId=${encodeURIComponent(project.id)}`);
       setWorktrees(response.data);
@@ -127,6 +135,9 @@ export function App(): JSX.Element {
       setTerminals([]);
       setSessions([]);
       setActiveTerminalId(null);
+      setOpenFiles([]);
+      setActiveFilePath(null);
+      setDirtyFiles({});
       await loadWorktreeData(worktree.id);
     },
     [loadWorktreeData]
@@ -148,6 +159,51 @@ export function App(): JSX.Element {
     return () => window.clearInterval(timer);
   }, [selectedWorktreeId, loadWorktreeData]);
 
+  const openFile = useCallback((filePath: string, name: string) => {
+    setOpenFiles((current) => (current.some((file) => file.path === filePath) ? current : [...current, { path: filePath, name }]));
+    setActiveFilePath(filePath);
+  }, []);
+
+  const closeFile = (filePath: string): void => {
+    if (dirtyFiles[filePath] && !window.confirm(`Tutup ${filePath}? Perubahan belum disimpan.`)) return;
+    setOpenFiles((current) => current.filter((file) => file.path !== filePath));
+    setDirtyFiles((current) => {
+      const next = { ...current };
+      delete next[filePath];
+      return next;
+    });
+    if (activeFilePath === filePath) setActiveFilePath(null);
+  };
+
+  const markFileDirty = useCallback((filePath: string, dirty: boolean) => {
+    setDirtyFiles((current) => {
+      if (Boolean(current[filePath]) === dirty) return current;
+      const next = { ...current };
+      if (dirty) next[filePath] = true;
+      else delete next[filePath];
+      return next;
+    });
+  }, []);
+
+  const rerunSession = async (session: SessionInfo): Promise<void> => {
+    markMutation();
+    try {
+      const response = await apiPost<{ data: SessionInfo }>('/sessions', {
+        worktreeId: session.worktreeId,
+        agent: session.agent,
+        title: `${session.title} (lanjut)`,
+        prompt: session.prompt
+      });
+      setSessions((current) => [response.data, ...current]);
+      setActiveTerminalId(response.data.terminalId);
+      setActiveFilePath(null);
+      await loadWorktreeData(session.worktreeId);
+      push('success', 'Sesi baru dijalankan.');
+    } catch (caught) {
+      toastError(caught, 'Gagal menjalankan ulang sesi.');
+    }
+  };
+
   const createTerminal = async (): Promise<void> => {
     if (!selectedWorktree) return;
     markMutation();
@@ -163,6 +219,7 @@ export function App(): JSX.Element {
       markMutation();
       setTerminals((current) => [...current, response.data]);
       setActiveTerminalId(response.data.id);
+      setActiveFilePath(null);
     } catch (caught) {
       toastError(caught, 'Gagal membuka terminal.');
     } finally {
@@ -340,12 +397,16 @@ export function App(): JSX.Element {
                                     key={session.id}
                                     className={`session-row ${session.terminalId === activeTerminalId ? 'active' : ''}`}
                                     onClick={() => {
+                                      setActiveFilePath(null);
                                       setActiveTerminalId(session.terminalId);
                                     }}
                                     role="button"
                                     tabIndex={0}
                                     onKeyDown={(event) => {
-                                      if (event.key === 'Enter') setActiveTerminalId(session.terminalId);
+                                      if (event.key === 'Enter') {
+                                        setActiveFilePath(null);
+                                        setActiveTerminalId(session.terminalId);
+                                      }
                                     }}
                                   >
                                     <span style={{ color: 'var(--accent-2)' }}>✦</span>
@@ -362,7 +423,18 @@ export function App(): JSX.Element {
                                       >
                                         ■
                                       </button>
-                                    ) : null}
+                                    ) : (
+                                      <button
+                                        className="icon-btn"
+                                        title="Jalankan ulang sesi"
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          void rerunSession(session);
+                                        }}
+                                      >
+                                        ↻
+                                      </button>
+                                    )}
                                   </div>
                                 ))}
                                 {sessions.length === 0 ? <div className="empty">Belum ada sesi agent.</div> : null}
@@ -376,21 +448,32 @@ export function App(): JSX.Element {
                 </div>
               ))
             )}
+            {selectedWorktree ? (
+              <FileTree key={selectedWorktree.id} worktreeId={selectedWorktree.id} onOpenFile={openFile} />
+            ) : null}
           </div>
         </aside>
 
         <section className="content">
           <div className="tabs">
-            {terminals.length === 0 ? <span className="tabs-empty">Tidak ada terminal terbuka</span> : null}
+            {terminals.length === 0 && openFiles.length === 0 ? (
+              <span className="tabs-empty">Tidak ada tab terbuka</span>
+            ) : null}
             {terminals.map((terminal) => (
               <div
                 key={terminal.id}
-                className={`tab ${terminal.id === activeTerminalId ? 'active' : ''}`}
-                onClick={() => setActiveTerminalId(terminal.id)}
+                className={`tab ${!activeFilePath && terminal.id === activeTerminalId ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveFilePath(null);
+                  setActiveTerminalId(terminal.id);
+                }}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter') setActiveTerminalId(terminal.id);
+                  if (event.key === 'Enter') {
+                    setActiveFilePath(null);
+                    setActiveTerminalId(terminal.id);
+                  }
                 }}
               >
                 <span style={{ color: terminal.kind === 'agent' ? 'var(--accent-2)' : 'var(--muted-2)' }}>
@@ -410,10 +493,42 @@ export function App(): JSX.Element {
                 </button>
               </div>
             ))}
+            {openFiles.map((file) => (
+              <div
+                key={`file:${file.path}`}
+                className={`tab ${activeFilePath === file.path ? 'active' : ''}`}
+                onClick={() => setActiveFilePath(file.path)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') setActiveFilePath(file.path);
+                }}
+              >
+                <span style={{ color: 'var(--accent-2)' }}>▤</span>
+                <span className="tab-label">{dirtyFiles[file.path] ? '• ' : ''}{file.name}</span>
+                <button
+                  className="tab-close"
+                  aria-label={`Tutup ${file.name}`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    closeFile(file.path);
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
           </div>
 
           <div className="terminal-area">
-            {activeTerminal ? (
+            {activeFilePath ? (
+              <FileEditor
+                key={`${selectedWorktreeId}:${activeFilePath}`}
+                worktreeId={selectedWorktreeId ?? ''}
+                filePath={activeFilePath}
+                onDirtyChange={markFileDirty}
+              />
+            ) : activeTerminal ? (
               <TerminalPane key={activeTerminal.id} terminalId={activeTerminal.id} />
             ) : (
               <div className="welcome">

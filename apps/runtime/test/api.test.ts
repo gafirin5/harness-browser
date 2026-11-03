@@ -80,6 +80,40 @@ describe('projects & worktrees', () => {
   });
 });
 
+describe('files', () => {
+  it('membaca tree, content, menulis file, dan menolak path traversal', async () => {
+    const worktree = await api.post('/api/worktrees').send({
+      projectId,
+      branch: 'agent/files-test',
+      baseRef: 'main'
+    });
+    expect(worktree.status).toBe(201);
+    const worktreeId = worktree.body.data.id;
+    fs.writeFileSync(path.join(worktree.body.data.path, 'hello.txt'), 'hello dorado\n');
+
+    const tree = await api.get(`/api/files/tree?worktreeId=${worktreeId}`);
+    expect(tree.status).toBe(200);
+    expect(tree.body.data.some((entry: { name: string }) => entry.name === 'hello.txt')).toBe(true);
+
+    const content = await api.get(`/api/files/content?worktreeId=${worktreeId}&path=hello.txt`);
+    expect(content.status).toBe(200);
+    expect(content.body.data.content).toBe('hello dorado\n');
+
+    const saved = await api.put('/api/files/content').send({
+      worktreeId,
+      path: 'hello.txt',
+      content: 'updated by test\n'
+    });
+    expect(saved.status).toBe(200);
+    expect(fs.readFileSync(path.join(worktree.body.data.path, 'hello.txt'), 'utf8')).toBe('updated by test\n');
+
+    const traversal = await api.get(`/api/files/content?worktreeId=${worktreeId}&path=..%2F..%2Fetc%2Fpasswd`);
+    expect(traversal.status).toBe(422);
+
+    await api.delete(`/api/worktrees/${worktreeId}`);
+  });
+});
+
 describe('terminals', () => {
   it('membuat, membaca, dan menutup terminal shell', async () => {
     const worktree = await api.post('/api/worktrees').send({

@@ -11,6 +11,9 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - Daftar branch dan pembuatan **git worktree** paralel.
 - **Terminal PTY** per worktree dengan xterm.js, resize, replay buffer, dan reconnect.
 - **Sesi agent** dengan adapter CLI; M1 mendukung OpenCode.
+- **File explorer** dan editor teks (baca/tulis, maksimal 1 MB, proteksi path/symlink).
+- Tab terpadu untuk terminal dan file; indikator file belum disimpan dan Ctrl+S.
+- **Rerun sesi** agent dengan prompt yang sama, serta stop sesi berjalan.
 - Hentikan sesi, tutup terminal, hapus worktree (dengan proteksi sesi aktif).
 - Quick tunnel Cloudflare + pairing URL.
 - UI gelap ala IDE agent, sidebar project/worktree/session, tab terminal.
@@ -133,7 +136,7 @@ BASE_URL=http://127.0.0.1:7788 \
 node scripts/e2e-chrome93.mjs
 ```
 
-Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `echo chrome93-ok`), dialog Share, dan pairing URL auto-login.
+Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `echo chrome93-ok`), file explorer + editor (buka/sunting/simpan `README.md`), dialog Share, dan pairing URL auto-login.
 
 ## Keamanan
 
@@ -143,12 +146,13 @@ Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `ech
 - Cookie HttpOnly + SameSite=Lax; `Secure` otomatis bila `PUBLIC_BASE_URL` HTTPS.
 - Origin check untuk request mutasi dan WebSocket.
 - Path worktree divalidasi agar tidak keluar dari data directory.
+- File explorer dibatasi pada worktree, menolak path traversal/symlink ke luar worktree, dan mengabaikan `.git`, `node_modules`, `dist`, dan folder build.
 - Terminal adalah shell penuh; hanya berikan akses ke pengguna tepercaya.
 
 ## Test
 
 ```bash
-npm test          # 5 test integrasi API
+npm test          # 6 test integrasi API
 npm run verify    # typecheck + test + build + gate Chrome 93
 npm run e2e:chrome93
 ```

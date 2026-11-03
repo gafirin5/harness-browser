@@ -133,6 +133,30 @@ try {
   );
   console.log('[chrome93] terminal PTY + WebSocket OK');
 
+  await page.waitForSelector('.file-row', { timeout: 15000 });
+  await clickText('.file-row', 'README.md');
+  await page.waitForSelector('.editor-textarea', { timeout: 15000 });
+  const original = await page.$eval('.editor-textarea', (element) => element.value);
+  if (!original.includes('# e2e')) throw new Error('Isi file awal tidak sesuai.');
+  await page.click('.editor-textarea');
+  await page.keyboard.down('Control');
+  await page.keyboard.press('a');
+  await page.keyboard.up('Control');
+  await page.keyboard.type('# edited by chrome93\n');
+  await page.keyboard.down('Control');
+  await page.keyboard.press('s');
+  await page.keyboard.up('Control');
+  await waitText('File disimpan.');
+  const savedFile = await api(
+    `/api/files/content?worktreeId=${createdWorktree.id}&path=README.md`,
+    {},
+    cookie
+  );
+  if (!savedFile.body?.data?.content?.includes('edited by chrome93')) {
+    throw new Error('File tidak tersimpan melalui editor.');
+  }
+  console.log('[chrome93] file explorer + editor OK');
+
   await clickText('button', 'Share');
   await waitText('Share & Pairing');
   await clickText('button', 'Buat Pairing Token');

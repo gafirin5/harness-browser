@@ -9,7 +9,7 @@ Lingkungan: Ubuntu 24.04, Node.js 24.19.0, Chromium 93.0.4577.0, cloudflared 202
 npm test
 ```
 
-Hasil: **5 test lulus** — auth/pairing, project/branch, worktree create/delete, terminal create/list/delete, agent tidak dikenal.
+Hasil: **6 test lulus** — auth/pairing, project/branch, worktree create/delete, terminal create/list/delete, file tree/content/write + path traversal, agent tidak dikenal.
 
 ## Gate Chrome 93
 
@@ -23,8 +23,8 @@ npm run verify
 | Sintaks ES2020 | Lulus — 3 file |
 | API JS terlarang | Lulus |
 | CSS terlarang | Lulus |
-| Bundel JS | **122,0 KB gzip** (batas 150 KB) |
-| Test API | 5 lulus |
+| Bundel JS | **123,5 KB gzip** (batas 150 KB) |
+| Test API | 6 lulus |
 
 ## Smoke Chromium 93
 
@@ -40,9 +40,10 @@ Alur yang diuji:
 1. Login password → sidebar project.
 2. Pilih project dan worktree.
 3. Buat terminal shell, ketik `echo chrome93-ok` lewat WebSocket, verifikasi output di xterm.
-4. Buka dialog Share dan buat pairing token.
-5. Buka pairing URL di incognito context → auto-login.
-6. Nol error konsol/pageerror.
+4. Buka file `README.md` di file explorer, sunting, simpan dengan Ctrl+S, verifikasi isi file.
+5. Buka dialog Share dan buat pairing token.
+6. Buka pairing URL di incognito context → auto-login.
+7. Nol error konsol/pageerror.
 
 WebSocket berjalan melalui Cloudflare Quick Tunnel; terminal tetap interaktif.
 

@@ -18,7 +18,7 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **Riwayat sesi agent**: pencarian judul/prompt, filter status, detail, dan rerun.
 - **Command palette** (`Ctrl+Shift+P` atau `Ctrl+K`): terminal, agent, worktree, split, refresh, history, share.
 - **Resume sesi** agent dengan konteks percakapan (OpenCode `--continue`), serta stop sesi berjalan.
-- **Replay log terminal** setelah runtime restart, dengan tombol Restart untuk shell.
+- **Persistensi terminal/agent sejati** setelah runtime restart melalui tmux, dengan tombol Restart untuk shell.
 - Hentikan sesi, tutup terminal, hapus worktree (dengan proteksi sesi aktif).
 - Quick tunnel Cloudflare + pairing URL.
 - UI gelap ala IDE agent, sidebar project/worktree/session, tab terminal.
@@ -28,6 +28,7 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 
 - Node.js 22+ (diuji pada Node 24)
 - Git
+- **tmux 3.2+** (terminal host untuk persistensi sesi)
 - `node-pty` prebuilt/native build (build tools: python3, make, g++)
 - OpenCode CLI untuk sesi agent (opsional)
 - `cloudflared` untuk quick tunnel (opsional)

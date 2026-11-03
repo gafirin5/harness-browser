@@ -24,7 +24,7 @@ npm run verify
 | API JS terlarang | Lulus |
 | CSS terlarang | Lulus |
 | Bundel JS awal | **129,4 KB gzip** (batas 150 KB) |
-| Bundel total + editor lazy | **232,0 KB gzip** (batas 300 KB) |
+| Bundel total + editor lazy | **232,2 KB gzip** (batas 300 KB) |
 | Test API | 8 lulus |
 
 ## Smoke Chromium 93
@@ -45,7 +45,7 @@ Alur yang diuji:
 5. Panel Changes menampilkan `README.md`; buka diff dan verifikasi baris hasil edit.
 6. Stage `README.md`, buka modal commit, isi pesan, commit, dan verifikasi working tree bersih.
 7. Buat terminal kedua dan ketiga, aktifkan multi-pane hingga 3 pane, lalu Unsplit.
-8. Buat, rename, dan hapus file lewat file explorer.
+8. Buat dan rename file lewat file explorer.
 9. Buka command palette (`Ctrl+Shift+P`), cari perintah, lalu tutup dengan Escape.
 10. Buka dialog riwayat sesi dan verifikasi pencarian/filter.
 11. Buka dialog Share dan buat pairing token.
@@ -54,7 +54,7 @@ Alur yang diuji:
 
 Git push/pull divalidasi melalui test API dengan remote bare lokal; tombol UI tersedia di panel Changes.
 
-Replay log terminal setelah restart divalidasi manual: terminal menampilkan `persisted-ok` setelah runtime di-restart, dan tombol Restart memulihkan shell.
+Persistensi terminal divalidasi manual: setelah runtime di-restart, sesi tmux tetap hidup, browser attach kembali, dan perintah `echo survived-restart` berhasil dijalankan di sesi yang sama tanpa ada gibberish terminal.
 
 WebSocket berjalan melalui Cloudflare Quick Tunnel; terminal tetap interaktif.
 

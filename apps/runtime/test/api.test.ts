@@ -31,6 +31,7 @@ beforeAll(async () => {
 
 afterAll(() => {
   terminalManager.shutdown();
+  terminalManager.killAllSessions();
   db.close();
   fs.rmSync(repoDir, { recursive: true, force: true });
   fs.rmSync(bareDir, { recursive: true, force: true });

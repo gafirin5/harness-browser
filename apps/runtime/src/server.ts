@@ -4,7 +4,7 @@ import { config } from './config.js';
 import { terminalManager } from './modules/terminals/manager.js';
 import { setupTerminalWebSocket } from './ws.js';
 
-terminalManager.markOrphans();
+terminalManager.reconcileOnStartup();
 
 const app = createApp();
 const server = http.createServer(app);

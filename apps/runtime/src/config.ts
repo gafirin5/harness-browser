@@ -44,12 +44,19 @@ interface ExtraAgent {
   name: string;
   command: string;
   args: string[];
+  resumeArgs?: string[];
 }
 
 function parseExtraAgents(raw: string): ExtraAgent[] {
   if (!raw.trim()) return [];
   try {
-    const parsed = JSON.parse(raw) as Array<{ id?: string; name?: string; command?: string; args?: string[] }>;
+    const parsed = JSON.parse(raw) as Array<{
+      id?: string;
+      name?: string;
+      command?: string;
+      args?: string[];
+      resumeArgs?: string[];
+    }>;
     if (!Array.isArray(parsed)) return [];
     return parsed
       .filter((item) => item.id && item.command)
@@ -57,7 +64,8 @@ function parseExtraAgents(raw: string): ExtraAgent[] {
         id: String(item.id),
         name: String(item.name ?? item.id),
         command: String(item.command),
-        args: Array.isArray(item.args) ? item.args.map(String) : []
+        args: Array.isArray(item.args) ? item.args.map(String) : [],
+        ...(Array.isArray(item.resumeArgs) ? { resumeArgs: item.resumeArgs.map(String) } : {})
       }));
   } catch {
     return [];

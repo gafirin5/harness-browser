@@ -9,7 +9,7 @@ Lingkungan: Ubuntu 24.04, Node.js 24.19.0, Chromium 93.0.4577.0, cloudflared 202
 npm test
 ```
 
-Hasil: **7 test lulus** — auth/pairing, project/branch, worktree create/delete, terminal create/list/delete, file tree/content/write + path traversal, git stage/commit/push/pull, riwayat sesi, agent tidak dikenal.
+Hasil: **8 test lulus** — auth/pairing, project/branch, worktree create/delete, terminal create/list/delete, file tree/content/write + path traversal, git stage/commit/push/pull, riwayat sesi, resume sesi dengan mock agent, agent tidak dikenal.
 
 ## Gate Chrome 93
 
@@ -23,9 +23,9 @@ npm run verify
 | Sintaks ES2020 | Lulus — 3 file |
 | API JS terlarang | Lulus |
 | CSS terlarang | Lulus |
-| Bundel JS awal | **129,3 KB gzip** (batas 150 KB) |
-| Bundel total + editor lazy | **231,9 KB gzip** (batas 300 KB) |
-| Test API | 7 lulus |
+| Bundel JS awal | **129,4 KB gzip** (batas 150 KB) |
+| Bundel total + editor lazy | **232,0 KB gzip** (batas 300 KB) |
+| Test API | 8 lulus |
 
 ## Smoke Chromium 93
 
@@ -53,6 +53,8 @@ Alur yang diuji:
 13. Nol error konsol/pageerror.
 
 Git push/pull divalidasi melalui test API dengan remote bare lokal; tombol UI tersedia di panel Changes.
+
+Replay log terminal setelah restart divalidasi manual: terminal menampilkan `persisted-ok` setelah runtime di-restart, dan tombol Restart memulihkan shell.
 
 WebSocket berjalan melalui Cloudflare Quick Tunnel; terminal tetap interaktif.
 

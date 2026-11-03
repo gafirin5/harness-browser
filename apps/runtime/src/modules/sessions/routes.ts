@@ -174,6 +174,44 @@ sessionsRouter.post(
   })
 );
 
+sessionsRouter.post(
+  '/:id/resume',
+  asyncHandler(async (req, res) => {
+    const row = db.prepare('SELECT * FROM sessions WHERE id = ?').get(String(req.params.id ?? '')) as
+      | SessionRow
+      | undefined;
+    if (!row) throw notFound('Sesi tidak ditemukan.');
+    if (row.status === 'running') throw new AppError(422, 'SESSION_RUNNING', 'Sesi masih berjalan.');
+    const worktree = getWorktreeRow(row.worktree_id);
+    if (!worktree) throw notFound('Worktree tidak ditemukan.');
+    const agent = getAgent(row.agent);
+    if (!agent) throw new AppError(422, 'UNKNOWN_AGENT', 'Agent tidak dikenal.');
+    if (!agent.installed) {
+      throw new AppError(422, 'AGENT_NOT_INSTALLED', `Agent ${agent.name} belum terpasang di host ini.`);
+    }
+
+    const terminal = terminalManager.create({
+      worktreeId: worktree.id,
+      title: `${row.title} (lanjut)`,
+      kind: 'agent',
+      command: agent.command,
+      args: buildAgentArgs(agent.resumeArgs ?? agent.args, row.prompt),
+      cols: 120,
+      rows: 34
+    });
+
+    const id = newId();
+    const createdAt = nowIso();
+    db.prepare(
+      `INSERT INTO sessions (id, worktree_id, terminal_id, agent, title, prompt, status, created_at, started_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'running', ?, ?)`
+    ).run(id, worktree.id, terminal.id, agent.id, `${row.title} (lanjut)`, row.prompt, createdAt, createdAt);
+
+    const created = db.prepare('SELECT * FROM sessions WHERE id = ?').get(id) as unknown as SessionRow;
+    res.status(201).json({ data: mapSession(created) });
+  })
+);
+
 sessionsRouter.post('/:id/stop', (req, res) => {
   const row = db.prepare('SELECT * FROM sessions WHERE id = ?').get(String(req.params.id ?? '')) as unknown as SessionRow | undefined;
   if (!row) throw notFound('Sesi tidak ditemukan.');

@@ -8,6 +8,7 @@ interface AgentDefinition {
   name: string;
   command: string;
   args: string[];
+  resumeArgs?: string[];
 }
 
 const builtins: AgentDefinition[] = [
@@ -15,7 +16,8 @@ const builtins: AgentDefinition[] = [
     id: 'opencode',
     name: 'OpenCode',
     command: 'opencode',
-    args: ['--prompt', '{{prompt}}']
+    args: ['--prompt', '{{prompt}}'],
+    resumeArgs: ['--continue', '--prompt', '{{prompt}}']
   }
 ];
 

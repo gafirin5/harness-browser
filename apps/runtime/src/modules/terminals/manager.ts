@@ -185,7 +185,20 @@ class TerminalManager {
   attach(id: string, ws: WebSocket): void {
     const runtime = this.runtimes.get(id);
     if (!runtime) {
-      ws.send(JSON.stringify({ type: 'error', message: 'Terminal tidak aktif di runtime ini.' }));
+      // Runtime baru restart: PTY sudah hilang, tetapi log tetap tersedia.
+      const row = this.getRow(id);
+      if (!row) {
+        ws.send(JSON.stringify({ type: 'error', message: 'Terminal tidak ditemukan.' }));
+        return;
+      }
+      try {
+        const full = fs.readFileSync(path.join(config.logsDir, `${id}.log`));
+        const data = full.subarray(Math.max(0, full.length - MAX_BUFFER)).toString('utf8');
+        if (data) ws.send(JSON.stringify({ type: 'replay', data }));
+      } catch {
+        // log belum ada
+      }
+      ws.send(JSON.stringify({ type: 'exit', code: row.exit_code ?? 0 }));
       return;
     }
     runtime.clients.add(ws);
@@ -234,9 +247,21 @@ class TerminalManager {
     }
     const worktree = getWorktreeRow(row.worktree_id);
     if (!worktree) throw notFound('Worktree tidak ditemukan.');
-    const runtime = this.runtimes.get(id);
+    let runtime = this.runtimes.get(id);
     if (runtime?.pty) throw new AppError(409, 'TERMINAL_RUNNING', 'Terminal masih berjalan.');
-    if (!runtime) throw new AppError(409, 'TERMINAL_DETACHED', 'Runtime terminal hilang; buat terminal baru.');
+    if (!runtime) {
+      runtime = {
+        id,
+        pty: null,
+        chunks: [],
+        bufferSize: 0,
+        clients: new Set(),
+        log: fs.createWriteStream(path.join(config.logsDir, `${id}.log`), { flags: 'a' }),
+        stopping: false,
+        exitCode: null
+      };
+      this.runtimes.set(id, runtime);
+    }
 
     runtime.stopping = false;
     const shell = process.env.SHELL || '/bin/bash';

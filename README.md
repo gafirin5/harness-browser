@@ -17,7 +17,8 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **Source control**: status Git per worktree, daftar perubahan, diff staged/unstaged, stage/unstage, commit lokal, serta pull/push ke remote.
 - **Riwayat sesi agent**: pencarian judul/prompt, filter status, detail, dan rerun.
 - **Command palette** (`Ctrl+Shift+P` atau `Ctrl+K`): terminal, agent, worktree, split, refresh, history, share.
-- **Rerun sesi** agent dengan prompt yang sama, serta stop sesi berjalan.
+- **Resume sesi** agent dengan konteks percakapan (OpenCode `--continue`), serta stop sesi berjalan.
+- **Replay log terminal** setelah runtime restart, dengan tombol Restart untuk shell.
 - Hentikan sesi, tutup terminal, hapus worktree (dengan proteksi sesi aktif).
 - Quick tunnel Cloudflare + pairing URL.
 - UI gelap ala IDE agent, sidebar project/worktree/session, tab terminal.
@@ -158,7 +159,7 @@ Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `ech
 ## Test
 
 ```bash
-npm test          # 7 test integrasi API
+npm test          # 8 test integrasi API
 npm run verify    # typecheck + test + build + gate Chrome 93
 npm run e2e:chrome93
 ```

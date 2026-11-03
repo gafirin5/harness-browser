@@ -229,6 +229,38 @@ describe('session history', () => {
   });
 });
 
+describe('session resume', () => {
+  it('membuat sesi mock dan melanjutkannya dengan args resume', async () => {
+    const worktree = await api.post('/api/worktrees').send({
+      projectId,
+      branch: 'agent/resume-test',
+      baseRef: 'main'
+    });
+    expect(worktree.status).toBe(201);
+    const worktreeId = worktree.body.data.id;
+
+    const session = await api.post('/api/sessions').send({
+      worktreeId,
+      agent: 'mock',
+      title: 'Mock session',
+      prompt: 'jalankan mock'
+    });
+    expect(session.status).toBe(201);
+    expect(session.body.data.status).toBe('running');
+
+    await api.post(`/api/sessions/${session.body.data.id}/stop`);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const resumed = await api.post(`/api/sessions/${session.body.data.id}/resume`);
+    expect(resumed.status).toBe(201);
+    expect(resumed.body.data.id).not.toBe(session.body.data.id);
+    expect(resumed.body.data.terminalId).not.toBe(session.body.data.terminalId);
+
+    await api.post(`/api/sessions/${resumed.body.data.id}/stop`);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await api.delete(`/api/worktrees/${worktreeId}`);
+  });
+});
+
 describe('terminals', () => {
   it('membuat, membaca, dan menutup terminal shell', async () => {
     const worktree = await api.post('/api/worktrees').send({

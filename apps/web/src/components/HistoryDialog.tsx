@@ -71,8 +71,8 @@ export function HistoryDialog({
           <button className="btn" onClick={onClose} disabled={pending}>
             Tutup
           </button>
-          <button className="btn primary" onClick={() => void rerun()} disabled={!selected || pending}>
-            {pending ? 'Menjalankan...' : 'Rerun Sesi'}
+          <button className="btn primary" onClick={() => void rerun()} disabled={!selected || pending || selected.status === 'running'}>
+            {pending ? 'Menjalankan...' : selected?.status === 'running' ? 'Sesi masih berjalan' : 'Rerun Sesi'}
           </button>
         </>
       }

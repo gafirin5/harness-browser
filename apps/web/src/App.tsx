@@ -55,6 +55,7 @@ export function App(): JSX.Element {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [terminalVersion, setTerminalVersion] = useState(0);
   const mutationAt = useRef(0);
   const dataVersion = useRef(0);
   const markMutation = (): void => {
@@ -311,18 +312,13 @@ export function App(): JSX.Element {
   const rerunSession = async (session: SessionInfo): Promise<void> => {
     markMutation();
     try {
-      const response = await apiPost<{ data: SessionInfo }>('/sessions', {
-        worktreeId: session.worktreeId,
-        agent: session.agent,
-        title: `${session.title} (lanjut)`,
-        prompt: session.prompt
-      });
+      const response = await apiPost<{ data: SessionInfo }>(`/sessions/${session.id}/resume`);
       setSessions((current) => [response.data, ...current]);
       setActiveTerminalId(response.data.terminalId);
       setActiveFilePath(null);
       setActiveDiffPath(null);
       await loadWorktreeData(session.worktreeId);
-      push('success', 'Sesi baru dijalankan.');
+      push('success', 'Sesi dilanjutkan.');
     } catch (caught) {
       toastError(caught, 'Gagal menjalankan ulang sesi.');
     }
@@ -348,16 +344,11 @@ export function App(): JSX.Element {
       setWorktrees(worktreeResponse.data);
       await loadWorktreeData(session.worktreeId);
       markMutation();
-      const response = await apiPost<{ data: SessionInfo }>('/sessions', {
-        worktreeId: session.worktreeId,
-        agent: session.agent,
-        title: `${session.title} (lanjut)`,
-        prompt: session.prompt
-      });
+      const response = await apiPost<{ data: SessionInfo }>(`/sessions/${session.id}/resume`);
       setSessions((current) => [response.data, ...current]);
       setActiveTerminalId(response.data.terminalId);
       setHistoryOpen(false);
-      push('success', 'Sesi baru dijalankan.');
+      push('success', 'Sesi dilanjutkan.');
     } catch (caught) {
       toastError(caught, 'Gagal menjalankan ulang sesi.');
     }
@@ -384,6 +375,18 @@ export function App(): JSX.Element {
       toastError(caught, 'Gagal membuka terminal.');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const restartTerminal = async (terminal: TerminalInfo): Promise<void> => {
+    markMutation();
+    try {
+      await apiPost(`/terminals/${terminal.id}/restart`, { cols: terminal.cols || 120, rows: terminal.rows || 32 });
+      setTerminalVersion((value) => value + 1);
+      await loadWorktreeData(terminal.worktreeId);
+      push('success', 'Terminal di-restart.');
+    } catch (caught) {
+      toastError(caught, 'Gagal me-restart terminal.');
     }
   };
 
@@ -848,6 +851,18 @@ export function App(): JSX.Element {
           </div>
 
           <div className="terminal-area">
+            {activeTerminal && activeTerminal.status !== 'running' && !activeFilePath && !activeDiffPath ? (
+              <div className="terminal-state">
+                <span>Terminal berhenti.</span>
+                {activeTerminal.kind === 'shell' ? (
+                  <button className="btn tiny" onClick={() => void restartTerminal(activeTerminal)}>
+                    Restart
+                  </button>
+                ) : (
+                  <span className="muted">Jalankan ulang sesi dari sidebar/history.</span>
+                )}
+              </div>
+            ) : null}
             {activeFilePath ? (
               <FileEditor
                 key={`${selectedWorktreeId}:${activeFilePath}`}
@@ -892,7 +907,7 @@ export function App(): JSX.Element {
                         </div>
                       ) : null}
                       <div className="pane-body">
-                        <TerminalPane key={terminalId} terminalId={terminalId} />
+                        <TerminalPane key={`${terminalId}:${terminalVersion}`} terminalId={terminalId} />
                       </div>
                     </div>
                   );

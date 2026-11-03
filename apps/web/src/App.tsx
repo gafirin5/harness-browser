@@ -47,7 +47,7 @@ export function App(): JSX.Element {
   const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
   const [openDiffs, setOpenDiffs] = useState<string[]>([]);
   const [activeDiffPath, setActiveDiffPath] = useState<string | null>(null);
-  const [splitTerminalId, setSplitTerminalId] = useState<string | null>(null);
+  const [splitTerminalIds, setSplitTerminalIds] = useState<string[]>([]);
   const [dirtyFiles, setDirtyFiles] = useState<Record<string, boolean>>({});
   const [dialog, setDialog] = useState<DialogState>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -105,7 +105,7 @@ export function App(): JSX.Element {
     setActiveFilePath(null);
     setOpenDiffs([]);
     setActiveDiffPath(null);
-    setSplitTerminalId(null);
+    setSplitTerminalIds([]);
     setDirtyFiles({});
     try {
       const response = await apiGet<{ data: Worktree[] }>(`/worktrees?projectId=${encodeURIComponent(project.id)}`);
@@ -149,7 +149,7 @@ export function App(): JSX.Element {
       setActiveFilePath(null);
       setOpenDiffs([]);
       setActiveDiffPath(null);
-      setSplitTerminalId(null);
+      setSplitTerminalIds([]);
       setDirtyFiles({});
       await loadWorktreeData(worktree.id);
     },
@@ -173,12 +173,13 @@ export function App(): JSX.Element {
   }, [selectedWorktreeId, loadWorktreeData]);
 
   useEffect(() => {
-    if (!splitTerminalId) return;
-    if (splitTerminalId === activeTerminalId || !terminals.some((terminal) => terminal.id === splitTerminalId)) {
-      const other = terminals.find((terminal) => terminal.id !== activeTerminalId);
-      setSplitTerminalId(other?.id ?? null);
-    }
-  }, [terminals, activeTerminalId, splitTerminalId]);
+    setSplitTerminalIds((current) => {
+      const next = current.filter(
+        (id) => id !== activeTerminalId && terminals.some((terminal) => terminal.id === id)
+      );
+      return next.length === current.length && next.every((id, index) => id === current[index]) ? current : next;
+    });
+  }, [terminals, activeTerminalId]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -211,20 +212,38 @@ export function App(): JSX.Element {
     if (staged) push('info', 'Menampilkan diff staged.');
   }, [push]);
 
-  const toggleSplit = useCallback(() => {
+  const addSplitPane = useCallback(() => {
     setActiveFilePath(null);
     setActiveDiffPath(null);
-    if (splitTerminalId) {
-      setSplitTerminalId(null);
+    const used = new Set([activeTerminalId, ...splitTerminalIds]);
+    const next = terminals.find((terminal) => !used.has(terminal.id));
+    if (splitTerminalIds.length >= 3) {
+      push('info', 'Maksimal empat pane terminal.');
       return;
     }
-    const other = terminals.find((terminal) => terminal.id !== activeTerminalId);
-    if (!other) {
-      push('info', 'Buat minimal dua terminal untuk memakai split view.');
+    if (!next) {
+      push('info', 'Tidak ada terminal lain. Buat terminal baru terlebih dahulu.');
       return;
     }
-    setSplitTerminalId(other.id);
-  }, [splitTerminalId, terminals, activeTerminalId, push]);
+    setSplitTerminalIds((current) => [...current, next.id]);
+  }, [splitTerminalIds, terminals, activeTerminalId, push]);
+
+  const clearSplit = useCallback(() => {
+    setSplitTerminalIds([]);
+  }, []);
+
+  const removeSplitPane = useCallback((terminalId: string) => {
+    setSplitTerminalIds((current) => current.filter((id) => id !== terminalId));
+  }, []);
+
+  const setPaneAt = useCallback((index: number, terminalId: string) => {
+    if (index === 0) {
+      setActiveTerminalId(terminalId);
+      setSplitTerminalIds((current) => current.filter((id) => id !== terminalId));
+    } else {
+      setSplitTerminalIds((current) => current.map((id, itemIndex) => (itemIndex === index - 1 ? terminalId : id)));
+    }
+  }, []);
 
   const closeDiff = (filePath: string): void => {
     setOpenDiffs((current) => current.filter((item) => item !== filePath));
@@ -248,6 +267,40 @@ export function App(): JSX.Element {
       const next = { ...current };
       if (dirty) next[filePath] = true;
       else delete next[filePath];
+      return next;
+    });
+  }, []);
+
+  const handleFileRenamed = useCallback((from: string, to: string) => {
+    const rebase = (value: string): string =>
+      value === from ? to : value.startsWith(`${from}/`) ? `${to}${value.slice(from.length)}` : value;
+    setOpenFiles((current) =>
+      current.map((file) => {
+        const nextPath = rebase(file.path);
+        return nextPath === file.path ? file : { path: nextPath, name: nextPath.split('/').pop() ?? file.name };
+      })
+    );
+    setOpenDiffs((current) => current.map(rebase));
+    setActiveFilePath((current) => (current ? rebase(current) : current));
+    setActiveDiffPath((current) => (current ? rebase(current) : current));
+    setDirtyFiles((current) => {
+      const next: Record<string, boolean> = {};
+      for (const [key, value] of Object.entries(current)) next[rebase(key)] = value;
+      return next;
+    });
+  }, []);
+
+  const handleFileDeleted = useCallback((deletedPath: string) => {
+    const matches = (value: string): boolean => value === deletedPath || value.startsWith(`${deletedPath}/`);
+    setOpenFiles((current) => current.filter((file) => !matches(file.path)));
+    setOpenDiffs((current) => current.filter((item) => !matches(item)));
+    setActiveFilePath((current) => (current && matches(current) ? null : current));
+    setActiveDiffPath((current) => (current && matches(current) ? null : current));
+    setDirtyFiles((current) => {
+      const next: Record<string, boolean> = {};
+      for (const [key, value] of Object.entries(current)) {
+        if (!matches(key)) next[key] = value;
+      }
       return next;
     });
   }, []);
@@ -302,6 +355,7 @@ export function App(): JSX.Element {
       await apiDelete(`/terminals/${terminal.id}`);
       markMutation();
       setTerminals((current) => current.filter((item) => item.id !== terminal.id));
+      setSplitTerminalIds((current) => current.filter((id) => id !== terminal.id));
       if (activeTerminalId === terminal.id) {
         const remaining = terminals.filter((item) => item.id !== terminal.id);
         setActiveTerminalId(remaining[0]?.id ?? null);
@@ -374,6 +428,10 @@ export function App(): JSX.Element {
 
   const activeTerminal = terminals.find((terminal) => terminal.id === activeTerminalId) ?? null;
 
+  const paneIds = activeTerminalId
+    ? [activeTerminalId, ...splitTerminalIds].filter((id, index, list) => list.indexOf(id) === index)
+    : [];
+
   const commands: Command[] = [
     {
       id: 'project',
@@ -406,11 +464,21 @@ export function App(): JSX.Element {
             run: () => setDialog({ type: 'session', worktree: selectedWorktree })
           },
           {
-            id: 'split',
-            label: 'Toggle Terminal Split',
-            hint: 'Tampilkan dua pane terminal',
-            run: () => toggleSplit()
+            id: 'pane',
+            label: 'Tambah Pane Terminal',
+            hint: 'Tampilkan terminal lain di pane baru',
+            run: () => addSplitPane()
           },
+          ...(splitTerminalIds.length > 0
+            ? [
+                {
+                  id: 'unsplit',
+                  label: 'Unsplit Terminal',
+                  hint: 'Tutup semua pane tambahan',
+                  run: () => clearSplit()
+                }
+              ]
+            : []),
           {
             id: 'refresh',
             label: 'Muat Ulang Worktree',
@@ -587,7 +655,13 @@ export function App(): JSX.Element {
             )}
             {selectedWorktree ? (
               <>
-                <FileTree key={selectedWorktree.id} worktreeId={selectedWorktree.id} onOpenFile={openFile} />
+                <FileTree
+                  key={selectedWorktree.id}
+                  worktreeId={selectedWorktree.id}
+                  onOpenFile={openFile}
+                  onRenamed={handleFileRenamed}
+                  onDeleted={handleFileDeleted}
+                />
                 <ChangesPanel key={`changes:${selectedWorktree.id}`} worktreeId={selectedWorktree.id} onOpenDiff={openDiff} />
               </>
             ) : null}
@@ -607,6 +681,7 @@ export function App(): JSX.Element {
                   setActiveFilePath(null);
                   setActiveDiffPath(null);
                   setActiveTerminalId(terminal.id);
+                  setSplitTerminalIds((current) => current.filter((id) => id !== terminal.id));
                 }}
                 role="button"
                 tabIndex={0}
@@ -615,6 +690,7 @@ export function App(): JSX.Element {
                     setActiveFilePath(null);
                     setActiveDiffPath(null);
                     setActiveTerminalId(terminal.id);
+                    setSplitTerminalIds((current) => current.filter((id) => id !== terminal.id));
                   }
                 }}
               >
@@ -709,28 +785,17 @@ export function App(): JSX.Element {
                 ✦ Agent
               </button>
               <button
-                className={`btn tiny ${splitTerminalId ? 'primary' : ''}`}
-                onClick={toggleSplit}
-                disabled={terminals.length < 2}
-                title={terminals.length < 2 ? 'Buat minimal dua terminal' : 'Toggle split terminal'}
+                className="btn tiny"
+                onClick={addSplitPane}
+                disabled={splitTerminalIds.length >= 3 || terminals.length <= 1 + splitTerminalIds.length}
+                title="Tambah pane terminal"
               >
-                Split
+                + Pane
               </button>
-              {splitTerminalId ? (
-                <select
-                  className="split-select"
-                  value={splitTerminalId}
-                  onChange={(event) => setSplitTerminalId(event.target.value)}
-                  aria-label="Terminal sekunder"
-                >
-                  {terminals
-                    .filter((terminal) => terminal.id !== activeTerminalId)
-                    .map((terminal) => (
-                      <option key={terminal.id} value={terminal.id}>
-                        {terminal.title}
-                      </option>
-                    ))}
-                </select>
+              {splitTerminalIds.length > 0 ? (
+                <button className="btn tiny" onClick={clearSplit} title="Tutup semua pane tambahan">
+                  Unsplit
+                </button>
               ) : null}
             </div>
           </div>
@@ -751,22 +816,41 @@ export function App(): JSX.Element {
                 initialStaged={false}
               />
             ) : activeTerminal ? (
-              splitTerminalId ? (
-                <div className="terminal-panes split">
-                  <div className="terminal-slot">
-                    <TerminalPane key={activeTerminal.id} terminalId={activeTerminal.id} />
-                  </div>
-                  <div className="terminal-slot">
-                    <TerminalPane key={splitTerminalId} terminalId={splitTerminalId} />
-                  </div>
-                </div>
-              ) : (
-                <div className="terminal-panes">
-                  <div className="terminal-slot">
-                    <TerminalPane key={activeTerminal.id} terminalId={activeTerminal.id} />
-                  </div>
-                </div>
-              )
+              <div className={`terminal-panes panes-${paneIds.length}`}>
+                {paneIds.map((terminalId, index) => {
+                  const pane = terminals.find((terminal) => terminal.id === terminalId);
+                  if (!pane) return null;
+                  return (
+                    <div className="terminal-slot" key={terminalId}>
+                      {paneIds.length > 1 ? (
+                        <div className="pane-head">
+                          <span className="pane-title">{pane.title}</span>
+                          <select
+                            className="pane-select"
+                            value={terminalId}
+                            onChange={(event) => setPaneAt(index, event.target.value)}
+                            aria-label={`Terminal pane ${index + 1}`}
+                          >
+                            {terminals.map((option) => (
+                              <option key={option.id} value={option.id} disabled={paneIds.includes(option.id) && option.id !== terminalId}>
+                                {option.title}
+                              </option>
+                            ))}
+                          </select>
+                          {index > 0 ? (
+                            <button className="pane-close" onClick={() => removeSplitPane(terminalId)} title="Tutup pane">
+                              ×
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      <div className="pane-body">
+                        <TerminalPane key={terminalId} terminalId={terminalId} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
               <div className="welcome">
                 <h2>{selectedWorktree ? 'Siap bekerja' : 'Pilih atau buat worktree'}</h2>

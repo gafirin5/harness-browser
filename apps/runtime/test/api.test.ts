@@ -138,6 +138,42 @@ describe('files', () => {
     const emptyCommit = await api.post('/api/git/commit').send({ worktreeId, message: 'ab' });
     expect(emptyCommit.status).toBe(422);
 
+    const created = await api.post('/api/files/create').send({
+      worktreeId,
+      path: 'new-file.txt',
+      type: 'file',
+      content: 'new content\n'
+    });
+    expect(created.status).toBe(201);
+
+    const renamed = await api.post('/api/files/rename').send({
+      worktreeId,
+      from: 'new-file.txt',
+      to: 'renamed.txt'
+    });
+    expect(renamed.status).toBe(200);
+    expect(fs.existsSync(path.join(worktree.body.data.path, 'renamed.txt'))).toBe(true);
+
+    const folder = await api.post('/api/files/create').send({ worktreeId, path: 'empty-folder', type: 'dir' });
+    expect(folder.status).toBe(201);
+
+    const nonEmpty = await api.post('/api/files/create').send({
+      worktreeId,
+      path: 'empty-folder/nested.txt',
+      type: 'file',
+      content: 'nested'
+    });
+    expect(nonEmpty.status).toBe(201);
+    const deleteNonEmpty = await api.delete(`/api/files?worktreeId=${worktreeId}&path=empty-folder`);
+    expect(deleteNonEmpty.status).toBe(422);
+
+    const deleteNested = await api.delete(`/api/files?worktreeId=${worktreeId}&path=empty-folder/nested.txt`);
+    expect(deleteNested.status).toBe(204);
+    const deleteEmptyFolder = await api.delete(`/api/files?worktreeId=${worktreeId}&path=empty-folder`);
+    expect(deleteEmptyFolder.status).toBe(204);
+    const deleteRenamed = await api.delete(`/api/files?worktreeId=${worktreeId}&path=renamed.txt`);
+    expect(deleteRenamed.status).toBe(204);
+
     await api.delete(`/api/worktrees/${worktreeId}`);
   });
 });

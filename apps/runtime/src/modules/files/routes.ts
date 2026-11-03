@@ -21,6 +21,19 @@ const writeSchema = z.object({
   content: z.string().max(MAX_FILE_BYTES)
 });
 
+const createSchema = z.object({
+  worktreeId: z.string().min(1),
+  path: z.string().min(1).max(1000),
+  type: z.enum(['file', 'dir']),
+  content: z.string().max(MAX_FILE_BYTES).optional().default('')
+});
+
+const renameSchema = z.object({
+  worktreeId: z.string().min(1),
+  from: z.string().min(1).max(1000),
+  to: z.string().min(1).max(1000)
+});
+
 function resolveWorktree(worktreeId: string): string {
   const worktree = getWorktreeRow(worktreeId);
   if (!worktree) throw notFound('Worktree tidak ditemukan.');
@@ -182,5 +195,74 @@ filesRouter.put(
     await fs.writeFile(target, body.content, 'utf8');
     const stat = await fs.stat(target);
     res.json({ data: { path: relative, size: stat.size, mtime: stat.mtime.toISOString() } });
+  })
+);
+
+filesRouter.post(
+  '/create',
+  asyncHandler(async (req, res) => {
+    const body = parseWith(createSchema, req.body);
+    const { root, relative, target } = await safeTarget(body.worktreeId, body.path);
+    const parent = path.dirname(target);
+    try {
+      assertWithin(root, await fs.realpath(parent));
+    } catch {
+      throw notFound('Folder induk tidak ditemukan.');
+    }
+    const exists = await fs.stat(target).then(() => true).catch(() => false);
+    if (exists) throw new AppError(409, 'ALREADY_EXISTS', 'File atau folder sudah ada.');
+    if (body.type === 'dir') {
+      await fs.mkdir(target);
+    } else {
+      await fs.writeFile(target, body.content, { encoding: 'utf8', flag: 'wx' });
+    }
+    res.status(201).json({ data: { path: relative, type: body.type } });
+  })
+);
+
+filesRouter.post(
+  '/rename',
+  asyncHandler(async (req, res) => {
+    const body = parseWith(renameSchema, req.body);
+    const source = await safeTarget(body.worktreeId, body.from);
+    const destination = await safeTarget(body.worktreeId, body.to);
+    try {
+      assertWithin(source.root, await fs.realpath(source.target));
+    } catch {
+      throw notFound('File atau folder sumber tidak ditemukan.');
+    }
+    const destinationParent = path.dirname(destination.target);
+    try {
+      assertWithin(destination.root, await fs.realpath(destinationParent));
+    } catch {
+      throw notFound('Folder tujuan tidak ditemukan.');
+    }
+    const exists = await fs.stat(destination.target).then(() => true).catch(() => false);
+    if (exists) throw new AppError(409, 'ALREADY_EXISTS', 'Tujuan rename sudah ada.');
+    await fs.rename(source.target, destination.target);
+    res.json({ data: { from: source.relative, to: destination.relative } });
+  })
+);
+
+filesRouter.delete(
+  '/',
+  asyncHandler(async (req, res) => {
+    const query = parseWith(querySchema, req.query);
+    if (!query.path) throw new AppError(422, 'INVALID_PATH', 'Path wajib diisi.');
+    const { root, target } = await safeTarget(query.worktreeId, query.path);
+    try {
+      assertWithin(root, await fs.realpath(target));
+    } catch {
+      throw notFound('File atau folder tidak ditemukan.');
+    }
+    const stat = await fs.stat(target);
+    if (stat.isDirectory()) {
+      const entries = await fs.readdir(target);
+      if (entries.length > 0) throw new AppError(422, 'DIRECTORY_NOT_EMPTY', 'Folder tidak kosong.');
+      await fs.rmdir(target);
+    } else {
+      await fs.unlink(target);
+    }
+    res.status(204).end();
   })
 );

@@ -60,6 +60,15 @@ const page = await browser.newPage();
 await page.setViewport({ width: 1366, height: 768 });
 
 const consoleErrors = [];
+const dialogValues = [];
+page.on('dialog', async (dialog) => {
+  const value = dialogValues.shift();
+  try {
+    await dialog.accept(value === null ? undefined : value);
+  } catch {
+    // abaikan dialog yang sudah tertutup
+  }
+});
 page.on('console', (message) => {
   if (message.type() !== 'error') return;
   const text = message.text();
@@ -175,17 +184,34 @@ try {
       const terminalTabs = Array.from(document.querySelectorAll('.tab')).filter((tab) =>
         (tab.textContent || '').includes('Terminal')
       );
-      const split = Array.from(document.querySelectorAll('button')).find(
-        (button) => (button.textContent || '').trim() === 'Split'
+      const pane = Array.from(document.querySelectorAll('button')).find(
+        (button) => (button.textContent || '').trim() === '+ Pane'
       );
-      return terminalTabs.length >= 2 && split && !split.disabled;
+      return terminalTabs.length >= 2 && pane && !pane.disabled;
     },
     { timeout: 15000 }
   );
-  await clickText('button', 'Split');
-  await page.waitForSelector('.terminal-panes.split', { timeout: 15000 });
+  await clickText('button', '+ Pane');
+  await page.waitForSelector('.terminal-panes.panes-2', { timeout: 15000 });
   await page.waitForFunction(() => document.querySelectorAll('.terminal-slot').length === 2, { timeout: 15000 });
-  await clickText('button', 'Split');
+
+  await clickText('button', '+ Terminal');
+  await page.waitForFunction(
+    () => {
+      const terminalTabs = Array.from(document.querySelectorAll('.tab')).filter((tab) =>
+        (tab.textContent || '').includes('Terminal')
+      );
+      const pane = Array.from(document.querySelectorAll('button')).find(
+        (button) => (button.textContent || '').trim() === '+ Pane'
+      );
+      return terminalTabs.length >= 3 && pane && !pane.disabled;
+    },
+    { timeout: 15000 }
+  );
+  await clickText('button', '+ Pane');
+  await page.waitForSelector('.terminal-panes.panes-3', { timeout: 15000 });
+  await page.waitForFunction(() => document.querySelectorAll('.terminal-slot').length === 3, { timeout: 15000 });
+  await clickText('button', 'Unsplit');
   console.log('[chrome93] terminal split OK');
 
   const staged = await page.evaluate(() => {
@@ -266,6 +292,41 @@ try {
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => !document.querySelector('.palette'), { timeout: 10000 });
   console.log('[chrome93] command palette OK');
+
+  dialogValues.push('created-by-e2e.txt');
+  await page.evaluate(() => {
+    document.querySelector('button[title="File baru"]')?.click();
+  });
+  await page.waitForFunction(
+    () => document.body.innerText.includes('created-by-e2e.txt'),
+    { timeout: 15000 }
+  );
+  await page.waitForSelector('.editor-textarea', { timeout: 15000 });
+
+  dialogValues.push('renamed-by-e2e.txt');
+  await page.evaluate(() => {
+    const row = Array.from(document.querySelectorAll('.file-row')).find((item) =>
+      (item.textContent || '').includes('created-by-e2e.txt')
+    );
+    row?.querySelector('button[title="Rename"]')?.click();
+  });
+  await page.waitForFunction(
+    () => document.body.innerText.includes('renamed-by-e2e.txt'),
+    { timeout: 15000 }
+  );
+
+  dialogValues.push(null);
+  await page.evaluate(() => {
+    const row = Array.from(document.querySelectorAll('.file-row')).find((item) =>
+      (item.textContent || '').includes('renamed-by-e2e.txt')
+    );
+    row?.querySelector('button[title="Hapus"]')?.click();
+  });
+  await page.waitForFunction(
+    () => !document.body.innerText.includes('renamed-by-e2e.txt'),
+    { timeout: 15000 }
+  );
+  console.log('[chrome93] file create/rename/delete OK');
 
   await clickText('button', 'Share');
   await waitText('Share & Pairing');

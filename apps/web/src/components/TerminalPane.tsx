@@ -1,10 +1,23 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
+import { SearchAddon } from '@xterm/addon-search';
 import { terminalWsUrl } from '../lib/api';
 
-export function TerminalPane({ terminalId }: { terminalId: string }): JSX.Element {
+export function TerminalPane({
+  terminalId,
+  active = true,
+  searchNonce = 0
+}: {
+  terminalId: string;
+  active?: boolean;
+  searchNonce?: number;
+}): JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<SearchAddon | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     const host = hostRef.current;
@@ -43,6 +56,9 @@ export function TerminalPane({ terminalId }: { terminalId: string }): JSX.Elemen
     });
     const fit = new FitAddon();
     terminal.loadAddon(fit);
+    const search = new SearchAddon();
+    terminal.loadAddon(search);
+    searchRef.current = search;
     terminal.open(host);
     fit.fit();
     terminal.focus();
@@ -121,9 +137,88 @@ export function TerminalPane({ terminalId }: { terminalId: string }): JSX.Elemen
       inputDisposable.dispose();
       resizeDisposable.dispose();
       socket?.close();
+      searchRef.current = null;
       terminal.dispose();
     };
   }, [terminalId]);
 
-  return <div className="terminal-host" ref={hostRef} />;
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (!active) return;
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'f') return;
+      event.preventDefault();
+      setSearchOpen(true);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [active]);
+
+  useEffect(() => {
+    if (searchOpen) {
+      const timer = window.setTimeout(() => searchInputRef.current?.focus(), 20);
+      return () => window.clearTimeout(timer);
+    }
+    return undefined;
+  }, [searchOpen]);
+
+  useEffect(() => {
+    if (active && searchNonce > 0) setSearchOpen(true);
+  }, [active, searchNonce]);
+
+  const find = (direction: 'next' | 'previous', incremental = false): void => {
+    if (!query) {
+      searchRef.current?.clearDecorations();
+      return;
+    }
+    const options = { caseSensitive: false, incremental, regex: false };
+    if (direction === 'previous') searchRef.current?.findPrevious(query, options);
+    else searchRef.current?.findNext(query, options);
+  };
+
+  return (
+    <>
+      <div className="terminal-host" ref={hostRef} />
+      {searchOpen ? (
+        <div className="terminal-search">
+          <input
+            ref={searchInputRef}
+            className="input"
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              window.setTimeout(() => find('next', true), 0);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                find(event.shiftKey ? 'previous' : 'next');
+              } else if (event.key === 'Escape') {
+                event.preventDefault();
+                setSearchOpen(false);
+                searchRef.current?.clearDecorations();
+              }
+            }}
+            placeholder="Cari di terminal..."
+            aria-label="Cari di terminal"
+          />
+          <button className="btn tiny" onClick={() => find('previous')} title="Sebelumnya">
+            ↑
+          </button>
+          <button className="btn tiny" onClick={() => find('next')} title="Berikutnya">
+            ↓
+          </button>
+          <button
+            className="btn tiny ghost"
+            onClick={() => {
+              setSearchOpen(false);
+              searchRef.current?.clearDecorations();
+            }}
+            title="Tutup pencarian"
+          >
+            ×
+          </button>
+        </div>
+      ) : null}
+    </>
+  );
 }

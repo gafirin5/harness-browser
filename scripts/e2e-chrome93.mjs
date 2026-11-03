@@ -249,6 +249,18 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('.terminal-slot').length === 3, { timeout: 15000 });
   await clickText('button', 'Unsplit');
   console.log('[chrome93] terminal split OK');
+  await clickText('button', 'Find');
+  await page.waitForSelector('.terminal-search', { timeout: 10000 });
+  await page.type('.terminal-search input', 'chrome93');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('.terminal-search'), { timeout: 10000 });
+  console.log('[chrome93] terminal search OK');
+
+  await clickText('button', 'Info');
+  await waitText('Info Runtime');
+  await page.click('button[aria-label="Tutup"]');
+  await page.waitForFunction(() => !document.body.innerText.includes('Info Runtime'), { timeout: 10000 });
+  console.log('[chrome93] info runtime OK');
 
   const staged = await page.evaluate(() => {
     const row = Array.from(document.querySelectorAll('.change-row')).find((item) =>

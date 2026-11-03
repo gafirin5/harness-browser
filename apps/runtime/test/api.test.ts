@@ -58,6 +58,17 @@ describe('auth', () => {
   });
 });
 
+describe('info', () => {
+  it('menyajikan versi, data dir, tmux, dan jumlah data', async () => {
+    const response = await api.get('/api/info');
+    expect(response.status).toBe(200);
+    expect(response.body.data.version).toBe('0.1.0');
+    expect(typeof response.body.data.dataDir).toBe('string');
+    expect(response.body.data.counts.projects).toBeGreaterThanOrEqual(0);
+    expect(response.body.data.agents.some((agent: { id: string }) => agent.id === 'opencode')).toBe(true);
+  });
+});
+
 describe('projects & worktrees', () => {
   it('menambah project, membaca branch, membuat dan menghapus worktree', async () => {
     const project = await api.post('/api/projects').send({ name: 'Test Repo', path: repoDir });

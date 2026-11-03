@@ -9,7 +9,7 @@ Lingkungan: Ubuntu 24.04, Node.js 24.19.0, Chromium 93.0.4577.0, cloudflared 202
 npm test
 ```
 
-Hasil: **8 test lulus** — auth/pairing, project/branch, worktree create/delete, terminal create/list/delete, file tree/content/write + path traversal, git stage/commit/push/pull, riwayat sesi, resume sesi dengan mock agent, agent tidak dikenal.
+Hasil: **9 test lulus** — auth/pairing, project/branch, worktree create/delete, terminal create/list/delete, file tree/content/write + path traversal, git stage/commit/push/pull, riwayat sesi, resume sesi dengan mock agent, info runtime, agent tidak dikenal.
 
 ## Gate Chrome 93
 
@@ -23,9 +23,9 @@ npm run verify
 | Sintaks ES2020 | Lulus — 3 file |
 | API JS terlarang | Lulus |
 | CSS terlarang | Lulus |
-| Bundel JS awal | **129,4 KB gzip** (batas 150 KB) |
-| Bundel total + editor lazy | **232,2 KB gzip** (batas 300 KB) |
-| Test API | 8 lulus |
+| Bundel JS awal | **134,0 KB gzip** (batas 150 KB) |
+| Bundel total + editor lazy | **236,6 KB gzip** (batas 300 KB) |
+| Test API | 9 lulus |
 
 ## Smoke Chromium 93
 
@@ -45,12 +45,14 @@ Alur yang diuji:
 5. Panel Changes menampilkan `README.md`; buka diff dan verifikasi baris hasil edit.
 6. Stage `README.md`, buka modal commit, isi pesan, commit, dan verifikasi working tree bersih.
 7. Buat terminal kedua dan ketiga, aktifkan multi-pane hingga 3 pane, lalu Unsplit.
-8. Buat dan rename file lewat file explorer.
+8. Buka pencarian terminal dan cari teks, lalu tutup.
+9. Buka dialog Info Runtime dan verifikasi data runtime.
+10. Buat dan rename file lewat file explorer.
 9. Buka command palette (`Ctrl+Shift+P`), cari perintah, lalu tutup dengan Escape.
-10. Buka dialog riwayat sesi dan verifikasi pencarian/filter.
-11. Buka dialog Share dan buat pairing token.
-12. Buka pairing URL di incognito context → auto-login.
-13. Nol error konsol/pageerror.
+11. Buka dialog riwayat sesi dan verifikasi pencarian/filter.
+12. Buka dialog Share dan buat pairing token.
+13. Buka pairing URL di incognito context → auto-login.
+14. Nol error konsol/pageerror.
 
 Git push/pull divalidasi melalui test API dengan remote bare lokal; tombol UI tersedia di panel Changes.
 

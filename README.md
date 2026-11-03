@@ -16,7 +16,10 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **Multi-pane terminal** hingga empat pane, dengan pemilih terminal per pane.
 - **Source control**: status Git per worktree, daftar perubahan, diff staged/unstaged, stage/unstage, commit lokal, serta pull/push ke remote.
 - **Riwayat sesi agent**: pencarian judul/prompt, filter status, detail, dan rerun.
-- **Command palette** (`Ctrl+Shift+P` atau `Ctrl+K`): terminal, agent, worktree, split, refresh, history, share.
+- **Pencarian terminal** (`Find` atau `Ctrl+F`) dengan navigasi hasil.
+- **Notifikasi sesi** saat agent selesai/gagal + penanda unread di sidebar dan judul tab.
+- **Info Runtime**: versi, Node, tmux, data directory, agent CLI, dan jumlah data.
+- **Command palette** (`Ctrl+Shift+P` atau `Ctrl+K`): terminal, agent, worktree, split, refresh, history, info, share.
 - **Resume sesi** agent dengan konteks percakapan (OpenCode `--continue`), serta stop sesi berjalan.
 - **Persistensi terminal/agent sejati** setelah runtime restart melalui tmux, dengan tombol Restart untuk shell.
 - Hentikan sesi, tutup terminal, hapus worktree (dengan proteksi sesi aktif).
@@ -160,7 +163,7 @@ Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `ech
 ## Test
 
 ```bash
-npm test          # 8 test integrasi API
+npm test          # 9 test integrasi API
 npm run verify    # typecheck + test + build + gate Chrome 93
 npm run e2e:chrome93
 ```

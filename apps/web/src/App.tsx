@@ -18,6 +18,7 @@ import { ChangesPanel } from './components/ChangesPanel';
 import { DiffViewer } from './components/DiffViewer';
 import { CommandPalette, type Command } from './components/CommandPalette';
 import { HistoryDialog } from './components/HistoryDialog';
+import { InfoDialog } from './components/InfoDialog';
 import {
   AddProjectDialog,
   NewSessionDialog,
@@ -51,11 +52,15 @@ export function App(): JSX.Element {
   const [activeDiffPath, setActiveDiffPath] = useState<string | null>(null);
   const [splitTerminalIds, setSplitTerminalIds] = useState<string[]>([]);
   const [dirtyFiles, setDirtyFiles] = useState<Record<string, boolean>>({});
+  const [unread, setUnread] = useState<Record<string, boolean>>({});
+  const sessionStatusRef = useRef<Record<string, SessionInfo['status']>>({});
   const [dialog, setDialog] = useState<DialogState>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [terminalVersion, setTerminalVersion] = useState(0);
+  const [searchNonce, setSearchNonce] = useState(0);
   const mutationAt = useRef(0);
   const dataVersion = useRef(0);
   const markMutation = (): void => {
@@ -130,6 +135,17 @@ export function App(): JSX.Element {
         ]);
         if (version !== dataVersion.current) return;
         setTerminals(terminalResponse.data);
+        const nextStatuses: Record<string, SessionInfo['status']> = {};
+        for (const session of sessionResponse.data) {
+          nextStatuses[session.id] = session.status;
+          if (sessionStatusRef.current[session.id] === 'running' && session.status !== 'running') {
+            const label =
+              session.status === 'completed' ? 'selesai' : session.status === 'failed' ? 'gagal' : 'dihentikan';
+            push(session.status === 'failed' ? 'error' : 'success', `Sesi "${session.title}" ${label}.`);
+            setUnread((current) => ({ ...current, [session.id]: true }));
+          }
+        }
+        sessionStatusRef.current = nextStatuses;
         setSessions(sessionResponse.data);
         setActiveTerminalId((current) => {
           if (current && terminalResponse.data.some((terminal) => terminal.id === current)) return current;
@@ -139,7 +155,7 @@ export function App(): JSX.Element {
         if (!silent) toastError(caught, 'Gagal memuat terminal/sesi.');
       }
     },
-    [toastError]
+    [toastError, push]
   );
 
   const selectWorktree = useCallback(
@@ -202,6 +218,11 @@ export function App(): JSX.Element {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  useEffect(() => {
+    const count = Object.keys(unread).length;
+    document.title = count > 0 ? `(${count}) Dorado` : 'Dorado';
+  }, [unread]);
 
   const openFile = useCallback((filePath: string, name: string) => {
     setOpenFiles((current) => (current.some((file) => file.path === filePath) ? current : [...current, { path: filePath, name }]));
@@ -437,6 +458,7 @@ export function App(): JSX.Element {
 
   const stopSession = async (session: SessionInfo): Promise<void> => {
     markMutation();
+    sessionStatusRef.current[session.id] = 'stopped';
     setSessions((current) => current.map((item) => (item.id === session.id ? { ...item, status: 'stopped' } : item)));
     try {
       await apiPost(`/sessions/${session.id}/stop`);
@@ -535,6 +557,12 @@ export function App(): JSX.Element {
       run: () => setHistoryOpen(true)
     },
     {
+      id: 'info',
+      label: 'Info Runtime',
+      hint: 'Data directory, tmux, dan agent CLI',
+      run: () => setInfoOpen(true)
+    },
+    {
       id: 'share',
       label: 'Share / Pairing Token',
       hint: 'Buat URL untuk browser lain',
@@ -560,6 +588,9 @@ export function App(): JSX.Element {
         </span>
         <button className="btn tiny" onClick={() => setPaletteOpen(true)} title="Command palette (Ctrl+Shift+P)">
           ⌘K
+        </button>
+        <button className="btn tiny" onClick={() => setInfoOpen(true)}>
+          Info
         </button>
         <button className="btn tiny" onClick={() => setHistoryOpen(true)}>
           History
@@ -648,11 +679,17 @@ export function App(): JSX.Element {
                                 {sessions.map((session) => (
                                   <div
                                     key={session.id}
-                                    className={`session-row ${session.terminalId === activeTerminalId ? 'active' : ''}`}
+                                    className={`session-row ${session.terminalId === activeTerminalId ? 'active' : ''} ${unread[session.id] ? 'unread' : ''}`}
                                     onClick={() => {
                                       setActiveFilePath(null);
                                       setActiveDiffPath(null);
                                       setActiveTerminalId(session.terminalId);
+                                      setUnread((current) => {
+                                        if (!current[session.id]) return current;
+                                        const next = { ...current };
+                                        delete next[session.id];
+                                        return next;
+                                      });
                                     }}
                                     role="button"
                                     tabIndex={0}
@@ -665,7 +702,7 @@ export function App(): JSX.Element {
                                     }}
                                   >
                                     <span style={{ color: 'var(--accent-2)' }}>✦</span>
-                                    <span className="name">{session.title}</span>
+                                    <span className="name">{session.title}{unread[session.id] ? <span className="unread-dot" /> : null}</span>
                                     <StatusBadge status={session.status} />
                                     {session.status === 'running' ? (
                                       <button
@@ -847,6 +884,14 @@ export function App(): JSX.Element {
                   Unsplit
                 </button>
               ) : null}
+              <button
+                className="btn tiny"
+                onClick={() => setSearchNonce((value) => value + 1)}
+                disabled={!activeTerminal}
+                title="Cari di terminal"
+              >
+                Find
+              </button>
             </div>
           </div>
 
@@ -907,7 +952,7 @@ export function App(): JSX.Element {
                         </div>
                       ) : null}
                       <div className="pane-body">
-                        <TerminalPane key={`${terminalId}:${terminalVersion}`} terminalId={terminalId} />
+                        <TerminalPane key={`${terminalId}:${terminalVersion}`} terminalId={terminalId} active={index === 0} searchNonce={index === 0 ? searchNonce : 0} />
                       </div>
                     </div>
                   );
@@ -967,6 +1012,7 @@ export function App(): JSX.Element {
       ) : null}
 
       {historyOpen ? <HistoryDialog onClose={() => setHistoryOpen(false)} onRerun={rerunHistory} /> : null}
+      {infoOpen ? <InfoDialog onClose={() => setInfoOpen(false)} /> : null}
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
 

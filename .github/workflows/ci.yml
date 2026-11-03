@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: orca
+          POSTGRES_PASSWORD: orca
+          POSTGRES_DB: orca_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U orca -d orca_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://orca:orca@127.0.0.1:5432/orca_test
+      LOG_LEVEL: silent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run verify
+
+  ui-smoke:
+    runs-on: ubuntu-latest
+    needs: verify
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: orca
+          POSTGRES_PASSWORD: orca
+          POSTGRES_DB: orca
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U orca -d orca"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: production
+      PORT: 3001
+      PUBLIC_BASE_URL: http://localhost:3001
+      BASE_URL: http://localhost:3001
+      DATABASE_URL: postgres://orca:orca@127.0.0.1:5432/orca
+      SESSION_SECRET: ci-session-secret-0123456789abcdef0123456789abcdef
+      APP_ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      COOKIE_SECURE: 'false'
+      ADMIN_EMAIL: admin@orca.local
+      ADMIN_PASSWORD: admin12345
+      ADMIN_NAME: CI Admin
+      LOG_LEVEL: warn
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Resolve Chrome
+        run: |
+          if command -v google-chrome-stable >/dev/null; then
+            echo "CHROME_BIN=$(command -v google-chrome-stable)" >> "$GITHUB_ENV"
+          elif command -v google-chrome >/dev/null; then
+            echo "CHROME_BIN=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          else
+            echo "Chrome tidak ditemukan pada runner."
+            exit 1
+          fi
+      - run: npm ci
+      - run: npm run build
+      - run: npm run migrate:prod
+      - run: npm run seed:admin:prod
+      - name: Start API
+        run: |
+          nohup node apps/api/dist/server.js > /tmp/orca-api.log 2>&1 &
+          for _ in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:3001/api/health >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/orca-api.log
+          exit 1
+      - run: node scripts/seed-e2e.mjs
+      - run: node scripts/e2e-smoke.mjs

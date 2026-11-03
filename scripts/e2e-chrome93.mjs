@@ -157,6 +157,37 @@ try {
   }
   console.log('[chrome93] file explorer + editor OK');
 
+  await page.waitForFunction(
+    () =>
+      Array.from(document.querySelectorAll('.change-row')).some((row) =>
+        (row.textContent || '').includes('README.md')
+      ),
+    { timeout: 15000 }
+  );
+  await clickText('.change-row', 'README.md');
+  await page.waitForSelector('.diff-view', { timeout: 15000 });
+  await waitText('edited by chrome93');
+  console.log('[chrome93] git status + diff OK');
+
+  await clickText('button', '+ Terminal');
+  await page.waitForFunction(
+    () => {
+      const terminalTabs = Array.from(document.querySelectorAll('.tab')).filter((tab) =>
+        (tab.textContent || '').includes('Terminal')
+      );
+      const split = Array.from(document.querySelectorAll('button')).find(
+        (button) => (button.textContent || '').trim() === 'Split'
+      );
+      return terminalTabs.length >= 2 && split && !split.disabled;
+    },
+    { timeout: 15000 }
+  );
+  await clickText('button', 'Split');
+  await page.waitForSelector('.terminal-panes.split', { timeout: 15000 });
+  await page.waitForFunction(() => document.querySelectorAll('.terminal-slot').length === 2, { timeout: 15000 });
+  await clickText('button', 'Split');
+  console.log('[chrome93] terminal split OK');
+
   await clickText('button', 'Share');
   await waitText('Share & Pairing');
   await clickText('button', 'Buat Pairing Token');

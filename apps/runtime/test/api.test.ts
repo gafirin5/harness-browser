@@ -110,6 +110,14 @@ describe('files', () => {
     const traversal = await api.get(`/api/files/content?worktreeId=${worktreeId}&path=..%2F..%2Fetc%2Fpasswd`);
     expect(traversal.status).toBe(422);
 
+    const status = await api.get(`/api/git/status?worktreeId=${worktreeId}`);
+    expect(status.status).toBe(200);
+    expect(status.body.data.files.some((file: { path: string }) => file.path === 'hello.txt')).toBe(true);
+
+    const diff = await api.get(`/api/git/diff?worktreeId=${worktreeId}&path=hello.txt`);
+    expect(diff.status).toBe(200);
+    expect(diff.body.data.diff).toContain('+updated by test');
+
     await api.delete(`/api/worktrees/${worktreeId}`);
   });
 });

@@ -13,6 +13,8 @@ import { Login } from './components/Login';
 import { TerminalPane } from './components/TerminalPane';
 import { FileEditor } from './components/FileEditor';
 import { FileTree } from './components/FileTree';
+import { ChangesPanel } from './components/ChangesPanel';
+import { DiffViewer } from './components/DiffViewer';
 import {
   AddProjectDialog,
   NewSessionDialog,
@@ -42,6 +44,9 @@ export function App(): JSX.Element {
   const [activeTerminalId, setActiveTerminalId] = useState<string | null>(null);
   const [openFiles, setOpenFiles] = useState<Array<{ path: string; name: string }>>([]);
   const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
+  const [openDiffs, setOpenDiffs] = useState<string[]>([]);
+  const [activeDiffPath, setActiveDiffPath] = useState<string | null>(null);
+  const [splitTerminalId, setSplitTerminalId] = useState<string | null>(null);
   const [dirtyFiles, setDirtyFiles] = useState<Record<string, boolean>>({});
   const [dialog, setDialog] = useState<DialogState>(null);
   const [busy, setBusy] = useState(false);
@@ -96,6 +101,9 @@ export function App(): JSX.Element {
     setActiveTerminalId(null);
     setOpenFiles([]);
     setActiveFilePath(null);
+    setOpenDiffs([]);
+    setActiveDiffPath(null);
+    setSplitTerminalId(null);
     setDirtyFiles({});
     try {
       const response = await apiGet<{ data: Worktree[] }>(`/worktrees?projectId=${encodeURIComponent(project.id)}`);
@@ -137,6 +145,9 @@ export function App(): JSX.Element {
       setActiveTerminalId(null);
       setOpenFiles([]);
       setActiveFilePath(null);
+      setOpenDiffs([]);
+      setActiveDiffPath(null);
+      setSplitTerminalId(null);
       setDirtyFiles({});
       await loadWorktreeData(worktree.id);
     },
@@ -159,10 +170,46 @@ export function App(): JSX.Element {
     return () => window.clearInterval(timer);
   }, [selectedWorktreeId, loadWorktreeData]);
 
+  useEffect(() => {
+    if (!splitTerminalId) return;
+    if (splitTerminalId === activeTerminalId || !terminals.some((terminal) => terminal.id === splitTerminalId)) {
+      const other = terminals.find((terminal) => terminal.id !== activeTerminalId);
+      setSplitTerminalId(other?.id ?? null);
+    }
+  }, [terminals, activeTerminalId, splitTerminalId]);
+
   const openFile = useCallback((filePath: string, name: string) => {
     setOpenFiles((current) => (current.some((file) => file.path === filePath) ? current : [...current, { path: filePath, name }]));
     setActiveFilePath(filePath);
+    setActiveDiffPath(null);
   }, []);
+
+  const openDiff = useCallback((filePath: string, staged: boolean) => {
+    setOpenDiffs((current) => (current.includes(filePath) ? current : [...current, filePath]));
+    setActiveDiffPath(filePath);
+    setActiveFilePath(null);
+    if (staged) push('info', 'Menampilkan diff staged.');
+  }, [push]);
+
+  const toggleSplit = useCallback(() => {
+    setActiveFilePath(null);
+    setActiveDiffPath(null);
+    if (splitTerminalId) {
+      setSplitTerminalId(null);
+      return;
+    }
+    const other = terminals.find((terminal) => terminal.id !== activeTerminalId);
+    if (!other) {
+      push('info', 'Buat minimal dua terminal untuk memakai split view.');
+      return;
+    }
+    setSplitTerminalId(other.id);
+  }, [splitTerminalId, terminals, activeTerminalId, push]);
+
+  const closeDiff = (filePath: string): void => {
+    setOpenDiffs((current) => current.filter((item) => item !== filePath));
+    if (activeDiffPath === filePath) setActiveDiffPath(null);
+  };
 
   const closeFile = (filePath: string): void => {
     if (dirtyFiles[filePath] && !window.confirm(`Tutup ${filePath}? Perubahan belum disimpan.`)) return;
@@ -197,6 +244,7 @@ export function App(): JSX.Element {
       setSessions((current) => [response.data, ...current]);
       setActiveTerminalId(response.data.terminalId);
       setActiveFilePath(null);
+      setActiveDiffPath(null);
       await loadWorktreeData(session.worktreeId);
       push('success', 'Sesi baru dijalankan.');
     } catch (caught) {
@@ -220,6 +268,7 @@ export function App(): JSX.Element {
       setTerminals((current) => [...current, response.data]);
       setActiveTerminalId(response.data.id);
       setActiveFilePath(null);
+      setActiveDiffPath(null);
     } catch (caught) {
       toastError(caught, 'Gagal membuka terminal.');
     } finally {
@@ -408,6 +457,7 @@ export function App(): JSX.Element {
                                     className={`session-row ${session.terminalId === activeTerminalId ? 'active' : ''}`}
                                     onClick={() => {
                                       setActiveFilePath(null);
+                                      setActiveDiffPath(null);
                                       setActiveTerminalId(session.terminalId);
                                     }}
                                     role="button"
@@ -415,6 +465,7 @@ export function App(): JSX.Element {
                                     onKeyDown={(event) => {
                                       if (event.key === 'Enter') {
                                         setActiveFilePath(null);
+                                        setActiveDiffPath(null);
                                         setActiveTerminalId(session.terminalId);
                                       }
                                     }}
@@ -459,22 +510,26 @@ export function App(): JSX.Element {
               ))
             )}
             {selectedWorktree ? (
-              <FileTree key={selectedWorktree.id} worktreeId={selectedWorktree.id} onOpenFile={openFile} />
+              <>
+                <FileTree key={selectedWorktree.id} worktreeId={selectedWorktree.id} onOpenFile={openFile} />
+                <ChangesPanel key={`changes:${selectedWorktree.id}`} worktreeId={selectedWorktree.id} onOpenDiff={openDiff} />
+              </>
             ) : null}
           </div>
         </aside>
 
         <section className="content">
           <div className="tabs">
-            {terminals.length === 0 && openFiles.length === 0 ? (
+            {terminals.length === 0 && openFiles.length === 0 && openDiffs.length === 0 ? (
               <span className="tabs-empty">Tidak ada tab terbuka</span>
             ) : null}
             {terminals.map((terminal) => (
               <div
                 key={terminal.id}
-                className={`tab ${!activeFilePath && terminal.id === activeTerminalId ? 'active' : ''}`}
+                className={`tab ${!activeFilePath && !activeDiffPath && terminal.id === activeTerminalId ? 'active' : ''}`}
                 onClick={() => {
                   setActiveFilePath(null);
+                  setActiveDiffPath(null);
                   setActiveTerminalId(terminal.id);
                 }}
                 role="button"
@@ -482,6 +537,7 @@ export function App(): JSX.Element {
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') {
                     setActiveFilePath(null);
+                    setActiveDiffPath(null);
                     setActiveTerminalId(terminal.id);
                   }
                 }}
@@ -507,11 +563,17 @@ export function App(): JSX.Element {
               <div
                 key={`file:${file.path}`}
                 className={`tab ${activeFilePath === file.path ? 'active' : ''}`}
-                onClick={() => setActiveFilePath(file.path)}
+                onClick={() => {
+                  setActiveFilePath(file.path);
+                  setActiveDiffPath(null);
+                }}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter') setActiveFilePath(file.path);
+                  if (event.key === 'Enter') {
+                    setActiveFilePath(file.path);
+                    setActiveDiffPath(null);
+                  }
                 }}
               >
                 <span style={{ color: 'var(--accent-2)' }}>▤</span>
@@ -528,6 +590,73 @@ export function App(): JSX.Element {
                 </button>
               </div>
             ))}
+            {openDiffs.map((diffPath) => (
+              <div
+                key={`diff:${diffPath}`}
+                className={`tab ${activeDiffPath === diffPath ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveDiffPath(diffPath);
+                  setActiveFilePath(null);
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    setActiveDiffPath(diffPath);
+                    setActiveFilePath(null);
+                  }
+                }}
+              >
+                <span style={{ color: 'var(--danger)' }}>±</span>
+                <span className="tab-label">{diffPath.split('/').pop()}</span>
+                <button
+                  className="tab-close"
+                  aria-label={`Tutup diff ${diffPath}`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    closeDiff(diffPath);
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            <div className="tabs-actions">
+              <button className="btn tiny" onClick={() => void createTerminal()} disabled={busy || !selectedWorktree}>
+                + Terminal
+              </button>
+              <button
+                className="btn tiny primary"
+                onClick={() => selectedWorktree && setDialog({ type: 'session', worktree: selectedWorktree })}
+                disabled={!selectedWorktree}
+              >
+                ✦ Agent
+              </button>
+              <button
+                className={`btn tiny ${splitTerminalId ? 'primary' : ''}`}
+                onClick={toggleSplit}
+                disabled={terminals.length < 2}
+                title={terminals.length < 2 ? 'Buat minimal dua terminal' : 'Toggle split terminal'}
+              >
+                Split
+              </button>
+              {splitTerminalId ? (
+                <select
+                  className="split-select"
+                  value={splitTerminalId}
+                  onChange={(event) => setSplitTerminalId(event.target.value)}
+                  aria-label="Terminal sekunder"
+                >
+                  {terminals
+                    .filter((terminal) => terminal.id !== activeTerminalId)
+                    .map((terminal) => (
+                      <option key={terminal.id} value={terminal.id}>
+                        {terminal.title}
+                      </option>
+                    ))}
+                </select>
+              ) : null}
+            </div>
           </div>
 
           <div className="terminal-area">
@@ -538,8 +667,30 @@ export function App(): JSX.Element {
                 filePath={activeFilePath}
                 onDirtyChange={markFileDirty}
               />
+            ) : activeDiffPath ? (
+              <DiffViewer
+                key={`${selectedWorktreeId}:${activeDiffPath}`}
+                worktreeId={selectedWorktreeId ?? ''}
+                filePath={activeDiffPath}
+                initialStaged={false}
+              />
             ) : activeTerminal ? (
-              <TerminalPane key={activeTerminal.id} terminalId={activeTerminal.id} />
+              splitTerminalId ? (
+                <div className="terminal-panes split">
+                  <div className="terminal-slot">
+                    <TerminalPane key={activeTerminal.id} terminalId={activeTerminal.id} />
+                  </div>
+                  <div className="terminal-slot">
+                    <TerminalPane key={splitTerminalId} terminalId={splitTerminalId} />
+                  </div>
+                </div>
+              ) : (
+                <div className="terminal-panes">
+                  <div className="terminal-slot">
+                    <TerminalPane key={activeTerminal.id} terminalId={activeTerminal.id} />
+                  </div>
+                </div>
+              )
             ) : (
               <div className="welcome">
                 <h2>{selectedWorktree ? 'Siap bekerja' : 'Pilih atau buat worktree'}</h2>
@@ -582,7 +733,7 @@ export function App(): JSX.Element {
         </section>
       </div>
 
-      {selectedWorktree ? (
+      {selectedWorktree && !activeFilePath && !activeDiffPath ? (
         <div style={{ position: 'fixed', right: 18, bottom: 38, display: 'flex', gap: 8 }}>
           <button className="btn" onClick={() => void createTerminal()} disabled={busy}>
             + Terminal

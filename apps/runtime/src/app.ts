@@ -10,6 +10,7 @@ import { worktreesRouter } from './modules/worktrees/routes.js';
 import { terminalsRouter } from './modules/terminals/routes.js';
 import { agentsRouter, sessionsRouter } from './modules/sessions/routes.js';
 import { filesRouter } from './modules/files/routes.js';
+import { gitRouter } from './modules/git/routes.js';
 
 export function createApp(): express.Express {
   const app = express();
@@ -45,6 +46,7 @@ export function createApp(): express.Express {
   app.use('/api/sessions', sessionsRouter);
   app.use('/api/agents', agentsRouter);
   app.use('/api/files', filesRouter);
+  app.use('/api/git', gitRouter);
 
   app.use('/api', (_req, res) => {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Endpoint tidak ditemukan.' } });

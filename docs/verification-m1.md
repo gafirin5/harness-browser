@@ -23,7 +23,7 @@ npm run verify
 | Sintaks ES2020 | Lulus — 3 file |
 | API JS terlarang | Lulus |
 | CSS terlarang | Lulus |
-| Bundel JS | **123,6 KB gzip** (batas 150 KB) |
+| Bundel JS | **124,8 KB gzip** (batas 150 KB) |
 | Test API | 6 lulus |
 
 ## Smoke Chromium 93
@@ -41,9 +41,11 @@ Alur yang diuji:
 2. Pilih project dan worktree.
 3. Buat terminal shell, ketik `echo chrome93-ok` lewat WebSocket, verifikasi output di xterm.
 4. Buka file `README.md` di file explorer, sunting, simpan dengan Ctrl+S, verifikasi isi file.
-5. Buka dialog Share dan buat pairing token.
-6. Buka pairing URL di incognito context → auto-login.
-7. Nol error konsol/pageerror.
+5. Panel Changes menampilkan `README.md`; buka diff dan verifikasi baris hasil edit.
+6. Buat terminal kedua dan aktifkan split view dua pane.
+7. Buka dialog Share dan buat pairing token.
+8. Buka pairing URL di incognito context → auto-login.
+9. Nol error konsol/pageerror.
 
 WebSocket berjalan melalui Cloudflare Quick Tunnel; terminal tetap interaktif.
 

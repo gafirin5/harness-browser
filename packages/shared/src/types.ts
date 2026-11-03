@@ -1,119 +1,70 @@
-import type { AgentStatus, LogLevel, ProviderType, TaskStatus } from './constants.js';
-
-export interface User {
-  id: number;
-  email: string;
+export interface Project {
+  id: string;
   name: string;
-  role: 'ADMIN';
-  isActive: boolean;
-  lastLoginAt: string | null;
+  path: string;
   createdAt: string;
 }
 
-export interface Provider {
-  id: number;
-  name: string;
-  providerType: ProviderType;
-  baseUrl: string;
-  defaultModel: string;
-  costPer1kTokens: string;
-  isActive: boolean;
-  hasApiKey: boolean;
-  apiKeyLast4: string | null;
+export interface Worktree {
+  id: string;
+  projectId: string;
+  branch: string;
+  path: string;
+  baseRef: string;
+  status: 'ready' | 'missing';
   createdAt: string;
-  updatedAt: string;
 }
 
-export interface Agent {
-  id: number;
-  code: string;
-  name: string;
-  endpointUrl: string;
-  providerId: number;
-  providerName: string | null;
-  providerActive: boolean | null;
-  status: AgentStatus;
-  maxConcurrency: number;
-  activeTasksCount: number;
-  isActive: boolean;
-  lastHeartbeatAt: string | null;
-  lastError: string | null;
+export type TerminalKind = 'shell' | 'agent';
+export type TerminalStatus = 'running' | 'exited' | 'stopped';
+
+export interface TerminalInfo {
+  id: string;
+  worktreeId: string;
+  title: string;
+  kind: TerminalKind;
+  status: TerminalStatus;
+  cols: number;
+  rows: number;
+  exitCode: number | null;
   createdAt: string;
-  updatedAt: string;
 }
 
-export interface Task {
-  id: number;
-  code: string;
+export type SessionStatus = 'running' | 'completed' | 'failed' | 'stopped';
+
+export interface SessionInfo {
+  id: string;
+  worktreeId: string;
+  terminalId: string;
+  agent: string;
   title: string;
   prompt: string;
-  priority: 1 | 2 | 3;
-  status: TaskStatus;
-  tokenUsed: number;
-  costPer1kSnapshot: string;
-  costUsd: string;
-  cancelReason: string | null;
-  errorMessage: string | null;
-  result: string | null;
-  retryOfTaskId: number | null;
-  agentId: number;
-  agentCode: string | null;
-  agentName: string | null;
-  agentActive: boolean | null;
-  providerId: number;
-  providerName: string | null;
-  providerActive: boolean | null;
+  status: SessionStatus;
+  exitCode: number | null;
+  createdAt: string;
   startedAt: string | null;
-  finishedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
+  endedAt: string | null;
 }
 
-export interface TaskLog {
-  id: number;
-  taskId: number;
-  userId: number | null;
-  actorType: 'USER' | 'SYSTEM' | 'AGENT';
-  fromStatus: TaskStatus | null;
-  toStatus: TaskStatus;
-  logLevel: LogLevel;
-  message: string;
-  createdAt: string;
+export interface AgentInfo {
+  id: string;
+  name: string;
+  command: string;
+  args: string[];
+  installed: boolean;
 }
 
-export interface DashboardAlert {
-  type: 'AGENT_OFFLINE' | 'TASK_FAILED';
-  id: number;
+export interface PairingTokenInfo {
+  id: string;
   label: string;
-  since: string;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
 }
 
-export interface DashboardSummary {
-  agentsActive: number;
-  tasksRunning: number;
-  tasksFailedToday: number;
-  costTodayUsd: string;
-  alerts: DashboardAlert[];
-  recentLogs: Array<{
-    id: number;
-    taskId: number;
-    taskCode: string;
-    logLevel: LogLevel;
-    message: string;
-    createdAt: string;
-  }>;
-}
-
-export interface PaginationMeta {
-  page: number;
-  pageSize: number;
-  total: number;
-  totalPages: number;
-}
-
-export interface Paginated<T> {
-  data: T[];
-  meta: PaginationMeta;
+export interface UserInfo {
+  id: number;
+  name: string;
 }
 
 export interface ApiErrorBody {

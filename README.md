@@ -1,165 +1,164 @@
-# Orca — Legacy-Compatible Agent Orchestrator
+# Dorado
 
-Aplikasi web desktop-first untuk mengatur penugasan AI agent, perutean provider LLM, antrean task, dan pemantauan log eksekusi. Frontend dibangun agar berjalan pada **Google Chrome 93.0.4577.107 (64-bit)** tanpa sintaks ES2022+ atau CSS modern yang tidak didukung.
+Dorado adalah **agent workspace berbasis web** yang terinspirasi Orca: kelola project Git, buat worktree paralel, buka terminal PTY, dan jalankan agent CLI — semuanya dari browser. Fokus M1 adalah web + runtime + quick tunnel, dengan target kompatibilitas **Chromium 93**.
 
-## Fitur MVP
+Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yang disalin.
 
-- Autentikasi Admin dengan sesi server-side, lockout 5 percobaan, dan expiry 8 jam idle.
-- Dashboard orkestrasi: kartu ringkasan, peringatan agent OFFLINE/task FAILED, aktivitas terbaru.
-- Manajemen provider LLM: endpoint, model, API key terenkripsi AES-256-GCM, tarif token.
-- Manajemen agent pekerja: kode unik, endpoint, provider default, batas konkurensi, heartbeat 30 s.
-- Orkestrasi task: antrean berprioritas, dispatcher, callback agent, log append-only, cancel, retry.
-- Realtime SSE dengan fallback polling 2 detik.
-- Perhitungan biaya `token_used / 1000 × snapshot tarif` dengan pembulatan half-up 4 desimal.
+## Fitur M1
 
-## Stack
+- Login admin (password) dan **pairing token** untuk akses browser lain.
+- Tambah project dari path repository Git lokal.
+- Daftar branch dan pembuatan **git worktree** paralel.
+- **Terminal PTY** per worktree dengan xterm.js, resize, replay buffer, dan reconnect.
+- **Sesi agent** dengan adapter CLI; M1 mendukung OpenCode.
+- Hentikan sesi, tutup terminal, hapus worktree (dengan proteksi sesi aktif).
+- Quick tunnel Cloudflare + pairing URL.
+- UI gelap ala IDE agent, sidebar project/worktree/session, tab terminal.
+- Gate Chrome 93: ES2020, CSS terlarang, ukuran bundle, smoke Chromium 93.
 
-| Layer | Teknologi |
-|-------|-----------|
-| Backend | Node.js 20+, Express 4, TypeScript, PostgreSQL 14+ |
-| Frontend | React 18, Vite 5, Tailwind CSS 3.4, TypeScript |
-| Test | Vitest + Supertest, Puppeteer smoke test |
-| Deploy | Satu proses Node + reverse proxy opsional |
+## Prasyarat
 
-## Persyaratan
-
-- Node.js 20 atau lebih baru
-- PostgreSQL 14 atau lebih baru
-- Chrome 93 untuk verifikasi kompatibilitas (opsional saat pengembangan)
+- Node.js 22+ (diuji pada Node 24)
+- Git
+- `node-pty` prebuilt/native build (build tools: python3, make, g++)
+- OpenCode CLI untuk sesi agent (opsional)
+- `cloudflared` untuk quick tunnel (opsional)
 
 ## Mulai Cepat
 
 ```bash
-# 1. Instal dependensi
 npm install
-
-# 2. Siapkan database (termasuk database test)
-#    Alternatif: `docker compose up -d` (PostgreSQL 16 + orca_test otomatis)
-createdb -O orca orca
-createdb -O orca orca_test
 cp .env.example .env
-# sesuaikan DATABASE_URL dan secret di .env
+# ganti ADMIN_PASSWORD dan SESSION_SECRET
 
-# 3. Migrasi + admin awal
-npm run migrate
-npm run seed:admin
+npm run build
+npm start
+```
 
-# 4. Jalankan API (port 3001) dan frontend (port 5173)
+Buka `http://127.0.0.1:7788`.
+
+Default `.env.example`:
+
+```
+ADMIN_PASSWORD=dorado
+PORT=7788
+DATA_DIR=./data
+```
+
+Data runtime (SQLite, log terminal, worktree) disimpan di `DATA_DIR`. Untuk production, gunakan path di luar repository, misalnya `/var/lib/dorado`.
+
+## Mode Pengembangan
+
+```bash
 npm run dev
 ```
 
-Buka `http://localhost:5173`. Kredensial default dari `.env.example`:
+- Runtime: `http://127.0.0.1:7788`
+- Vite: `http://127.0.0.1:5174` (proxy `/api` dan `/ws` ke runtime)
+
+## Alur Dasar
+
+1. Login dengan password admin.
+2. **+** di sidebar → tambahkan path repo Git.
+3. **+ Worktree** → tentukan branch baru dan base ref.
+4. **+ Terminal** → shell interaktif di worktree.
+5. **Jalankan Agent** → pilih OpenCode, isi prompt, agent berjalan di PTY worktree.
+6. **Share** → buat pairing token/URL untuk browser lain.
+
+## Quick Tunnel
+
+```bash
+npm run tunnel
+```
+
+Script mencetak URL `https://<acak>.trycloudflare.com` dan menulis `.dorado-tunnel.json`. Setelah URL didapat, restart runtime dengan origin tersebut:
+
+```bash
+PUBLIC_BASE_URL=https://<acak>.trycloudflare.com node apps/runtime/dist/server.js
+```
+
+Pairing URL yang dibuat setelah restart akan memakai domain tunnel. WebSocket juga berjalan melalui tunnel, sehingga terminal tetap interaktif.
+
+> Tunnel publik memberi akses shell ke host ini. Gunakan pairing token, jangan bagikan URL sembarangan, dan hentikan tunnel setelah selesai.
+
+## Arsitektur
+
+```text
+Browser (React + xterm.js)
+   │ REST + WebSocket
+   ▼
+Runtime (Node + Express + ws)
+   ├── node:sqlite         projects, worktrees, terminals, sessions, tokens
+   ├── git CLI             worktree/branch
+   ├── node-pty            shell dan agent
+   └── static web build
+```
+
+Struktur:
 
 ```
-email:    admin@orca.local
-password: admin12345
+apps/runtime/   API, SQLite, git, PTY, session, WebSocket
+apps/web/       React + xterm UI
+packages/shared tipe dan skema zod
+scripts/        tunnel, gate Chrome 93, E2E
 ```
 
-> Ganti `ADMIN_PASSWORD`, `SESSION_SECRET`, dan `APP_ENCRYPTION_KEY` sebelum produksi.
+### Protokol Terminal
 
-## Build Produksi
+`WS /ws/terminals/:id`
+
+```json
+{ "type": "input", "data": "ls\r" }
+{ "type": "resize", "cols": 120, "rows": 32 }
+{ "type": "ping" }
+```
+
+Server mengirim `replay`, `output`, `exit`, `error`. Output juga ditulis ke `DATA_DIR/logs/<terminal-id>.log` dan disimpan di ring buffer 2 MB untuk replay.
+
+## Chrome 93
 
 ```bash
 npm run build
-npm run migrate:prod
-NODE_ENV=production PUBLIC_BASE_URL=https://orca.example.com npm run start
+node scripts/check-syntax.mjs apps/web/dist
+node scripts/scan-js.mjs apps/web/dist
+node scripts/scan-css.mjs apps/web/dist
+node scripts/check-bundle.mjs apps/web/dist
 ```
 
-`migrate:prod` dan `seed:admin:prod` menjalankan artefak JavaScript hasil build, sehingga tidak membutuhkan `tsx` di server produksi.
-
-API melayani file statis dari `apps/web/dist` dan seluruh endpoint `/api`. Migrasi dijalankan terpisah sebelum restart:
+Smoke test dengan Chromium 93:
 
 ```bash
-npm run migrate
+PUPPETEER93_DIR=/tmp/puppeteer93 \
+BASE_URL=http://127.0.0.1:7788 \
+node scripts/e2e-chrome93.mjs
 ```
 
-## Perintah
+Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `echo chrome93-ok`), dialog Share, dan pairing URL auto-login.
 
-| Perintah | Fungsi |
-|----------|--------|
-| `npm run dev` | Build shared package, lalu jalankan API + Vite |
-| `npm run build` | Build shared, API, dan frontend |
-| `npm run migrate` | Jalankan migrasi SQL |
-| `npm run seed:admin` | Buat akun Admin awal |
-| `npm test` | Test integrasi API (PostgreSQL `orca_test`) |
-| `npm run test:e2e` | Smoke test UI dengan Chrome modern |
-| `npm run test:chrome93` | Smoke test UI dengan Chromium 93 |
-| `npm run test:realtime` | Ukur latensi pembaruan SSE (target ≤ 2 s) |
-| `npm run test:fallback` | Simulasikan SSE putus dan verifikasi polling 2 s |
-| `npm run seed:perf` | Seed 10.000 task + 100.000 log untuk uji performa |
-| `npm run seed:e2e` | Siapkan provider/agent + mock agent untuk CI |
-| `npm run backup` | Backup PostgreSQL harian ke `BACKUP_DIR` |
-| `npm run typecheck` | Typecheck seluruh workspace |
-| `npm run verify` | Typecheck, test, build, scan JS/CSS, cek ukuran bundel |
-| `node scripts/e2e-smoke.mjs` | Smoke test UI dengan Chrome modern |
-| `node scripts/mock-agent.mjs` | Worker agent tiruan untuk pengembangan |
+## Keamanan
 
-## Mock Agent
+- Runtime bind ke `127.0.0.1` secara default; gunakan tunnel/reverse proxy untuk akses remote.
+- Password admin dari environment, dibandingkan dengan timing-safe hash.
+- Pairing token 32 byte, disimpan sebagai SHA-256, dapat dicabut, dan memiliki masa berlaku.
+- Cookie HttpOnly + SameSite=Lax; `Secure` otomatis bila `PUBLIC_BASE_URL` HTTPS.
+- Origin check untuk request mutasi dan WebSocket.
+- Path worktree divalidasi agar tidak keluar dari data directory.
+- Terminal adalah shell penuh; hanya berikan akses ke pengguna tepercaya.
 
-Setelah mendaftarkan agent melalui UI, salin token yang ditampilkan sekali, lalu:
+## Test
 
 ```bash
-AGENT_TOKEN=orca_agt_... PORT=9101 MOCK_DELAY_MS=1200 node scripts/mock-agent.mjs
+npm test          # 5 test integrasi API
+npm run verify    # typecheck + test + build + gate Chrome 93
+npm run e2e:chrome93
 ```
 
-Mock agent merespons `/health`, menerima `/tasks`, mengirim callback `COMPLETED` dengan 2.500 token, dan menerima `/tasks/:code/cancel`.
+Lihat [`docs/verification-m1.md`](docs/verification-m1.md) untuk hasil verifikasi terakhir.
 
-## Kompatibilitas Chrome 93
+## Batasan M1
 
-Target build:
+Belum termasuk: Electron desktop, mobile, cloud relay, GitHub/Linear, editor kode, diff review, browser/design mode, SSH worktree, multi-user, terminal splits, dan persistensi PTY setelah runtime restart.
 
-- JavaScript `es2020` / `chrome93` (Vite + esbuild).
-- CSS diproses untuk Blink 93; tanpa `@layer`, `:has()`, `@container`, `dvh/svh`, `oklch()`, `color-mix()`, atau CSS nesting.
-- Tanpa API `structuredClone`, `Array.findLast`, `Promise.withResolvers`, `AbortSignal.timeout`, `crypto.randomUUID`, dan sejenisnya.
+## Branch Lama
 
-Gate otomatis:
-
-```bash
-npm run build
-node scripts/check-syntax.mjs apps/web/dist   # parse ES2020
-node scripts/scan-js.mjs apps/web/dist        # API JS terlarang
-node scripts/scan-css.mjs apps/web/dist       # aturan CSS terlarang
-node scripts/check-contrast.mjs               # WCAG AA token warna
-node scripts/check-bundle.mjs apps/web/dist   # <= 150 KB gzip
-```
-
-Smoke test UI memakai Chrome yang tersedia:
-
-```bash
-CHROME_BIN=/path/to/chrome BASE_URL=http://localhost:3001 node scripts/e2e-smoke.mjs
-```
-
-Untuk Chromium 93 (diuji pada 93.0.4577.0, engine branch 4577 yang sama dengan 93.0.4577.107):
-
-```bash
-# puppeteer@10.2 + Chromium 93 tersedia di direktori ini
-PUPPETEER93_DIR=/tmp/puppeteer93 BASE_URL=http://localhost:3001 node scripts/e2e-chrome93.mjs
-
-# pengukuran latensi SSE (target <= 2 detik)
-USE_CHROME93=1 BASE_URL=http://localhost:3001 node scripts/e2e-realtime.mjs
-```
-
-Bila binary Chrome 93 tidak tersedia, gate statis tetap membuktikan tidak ada sintaks/CSS terlarang, tetapi verifikasi runtime harus dilakukan manual pada build 93.0.4577.107.
-
-## Dokumentasi
-
-- [`docs/agent-protocol.md`](docs/agent-protocol.md) — kontrak HTTP worker agent.
-- [`docs/deployment.md`](docs/deployment.md) — systemd, Nginx, backup, dan restore.
-- [`docs/verification.md`](docs/verification.md) — hasil test, kompatibilitas Chrome 93, performa, dan backup/restore.
-
-## Struktur
-
-```
-apps/api       API, dispatcher, heartbeat, SSE, migrasi
-apps/web       React SPA
-packages/shared  Tipe, skema zod, rumus biaya, konstanta status
-scripts        Gate kompatibilitas, mock agent, E2E, backup
-docs           Protokol agent dan operasional
-```
-
-## Batasan MVP
-
-- Satu peran pengguna (`ADMIN`).
-- Worker agent memanggil provider LLM sendiri; orchestrator adalah control plane.
-- Tidak ada eksekusi kode di browser, multi-tenant, pembayaran, atau DAG workflow.
-- Arsip otomatis setelah 1 tahun belum termasuk MVP; data disimpan dan di-backup.
+Aplikasi PRD sebelumnya disimpan di branch `legacy/prd-orchestrator` (commit `snapshot: legacy PRD orchestrator before Dorado rebuild`). Branch aktif `dorado` berisi implementasi baru.

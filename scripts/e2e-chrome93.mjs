@@ -1,20 +1,56 @@
 #!/usr/bin/env node
 /**
- * Smoke test dengan Chromium 93 (engine branch 4577).
- *
- * Prasyarat:
- *   PUPPETEER93_DIR=/tmp/puppeteer93   (berisi paket puppeteer@10.2 + Chromium 93)
- *   BASE_URL=http://localhost:3001     (jalankan build produksi lebih dulu)
+ * Smoke test Chrome 93: login, project/worktree, terminal PTY, pairing.
+ * Pemakaian: BASE_URL=http://127.0.0.1:7788 node scripts/e2e-chrome93.mjs
  */
 import { createRequire } from 'node:module';
+import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 
-const base = process.env.BASE_URL ?? 'http://localhost:3001';
-const puppeteerDir = process.env.PUPPETEER93_DIR ?? '/tmp/puppeteer93';
-const email = process.env.E2E_EMAIL ?? 'admin@orca.local';
-const password = process.env.E2E_PASSWORD ?? 'admin12345';
-
-const requireFrom = createRequire(`${puppeteerDir}/`);
+const base = process.env.BASE_URL ?? 'http://127.0.0.1:7788';
+const password = process.env.DORADO_PASSWORD ?? 'dorado';
+const dir = process.env.PUPPETEER93_DIR ?? '/tmp/puppeteer93';
+const requireFrom = createRequire(`${dir}/`);
 const puppeteer = requireFrom('puppeteer');
+
+const repoDir = fs.mkdtempSync('/tmp/dorado-e2e-');
+execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: repoDir });
+execFileSync('git', ['config', 'user.email', 'e2e@dorado.local'], { cwd: repoDir });
+execFileSync('git', ['config', 'user.name', 'E2E'], { cwd: repoDir });
+fs.writeFileSync(path.join(repoDir, 'README.md'), '# e2e\n');
+execFileSync('git', ['add', '-A'], { cwd: repoDir });
+execFileSync('git', ['commit', '-qm', 'init'], { cwd: repoDir });
+
+async function api(pathname, options = {}, cookie = '') {
+  const response = await fetch(`${base}${pathname}`, {
+    ...options,
+    headers: {
+      ...(options.body ? { 'content-type': 'application/json' } : {}),
+      ...(cookie ? { cookie } : {}),
+      ...(options.headers ?? {})
+    }
+  });
+  const text = await response.text();
+  return { status: response.status, body: text ? JSON.parse(text) : null, headers: response.headers };
+}
+
+const login = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ password }) });
+if (login.status !== 200) throw new Error(`Login API gagal: ${login.status}`);
+const cookie = (login.headers.get('set-cookie') ?? '').split(';')[0];
+
+const project = await api(
+  '/api/projects',
+  { method: 'POST', body: JSON.stringify({ name: `E2E ${Date.now()}`, path: repoDir }) },
+  cookie
+);
+if (project.status !== 201) throw new Error(`Seed project gagal: ${JSON.stringify(project.body)}`);
+const worktree = await api(
+  '/api/worktrees',
+  { method: 'POST', body: JSON.stringify({ projectId: project.body.data.id, branch: 'agent/e2e', baseRef: 'main' }) },
+  cookie
+);
+if (worktree.status !== 201) throw new Error(`Seed worktree gagal: ${JSON.stringify(worktree.body)}`);
 
 const browser = await puppeteer.launch({
   headless: true,
@@ -22,128 +58,106 @@ const browser = await puppeteer.launch({
 });
 const page = await browser.newPage();
 await page.setViewport({ width: 1366, height: 768 });
-await browser.defaultBrowserContext().overridePermissions(base, ['clipboard-read', 'clipboard-write']);
-
-// Simulasikan konteks non-secure (mis. http://192.168.x.x) di mana
-// navigator.clipboard tidak tersedia, sehingga jalur document.execCommand() diuji.
-await page.evaluateOnNewDocument(() => {
-  try {
-    Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
-  } catch {
-    // abaikan
-  }
-});
 
 const consoleErrors = [];
-let expectingValidationError = false;
 page.on('console', (message) => {
   if (message.type() !== 'error') return;
   const text = message.text();
   if (text.includes('status of 401') || text.includes('status of 404')) return;
-  if (expectingValidationError && text.includes('status of 422')) return;
   consoleErrors.push(text);
 });
 page.on('pageerror', (error) => consoleErrors.push(`pageerror: ${error.message}`));
+page.on('response', async (response) => {
+  if (!response.url().includes('/api/terminals')) return;
+  let body = '';
+  try {
+    body = await response.text();
+  } catch {
+    body = '';
+  }
+  console.log(`[chrome93] terminal API ${response.status()} ${body.slice(0, 160)}`);
+});
 
-const waitText = async (text, timeout = 10_000) => {
+const waitText = async (text, timeout = 15000) => {
   await page.waitForFunction(
     (needle) => document.body.innerText.toLowerCase().includes(needle),
     { timeout },
     text.toLowerCase()
   );
 };
-
 const clickText = async (selector, text) => {
-  const clicked = await page.evaluate(
+  const ok = await page.evaluate(
     (sel, needle) => {
-      const elements = Array.from(document.querySelectorAll(sel));
-      const match = elements.find((element) => (element.textContent || '').trim().includes(needle));
-      if (!match) return false;
-      match.click();
+      const nodes = Array.from(document.querySelectorAll(sel));
+      const node = nodes.find((item) => (item.textContent || '').trim().includes(needle));
+      if (!node) return false;
+      node.click();
       return true;
     },
     selector,
     text
   );
-  if (!clicked) throw new Error(`Elemen ${selector} dengan teks "${text}" tidak ditemukan.`);
+  if (!ok) throw new Error(`Tidak menemukan ${selector} dengan teks ${text}`);
 };
 
+let createdProject = project.body.data;
+let createdWorktree = worktree.body.data;
+
 try {
-  await page.goto(`${base}/login`, { waitUntil: 'networkidle2' });
-  await page.waitForSelector('input[name="email"]');
-  await page.type('input[name="email"]', email);
-  await page.type('input[name="password"]', password);
+  await page.goto(base, { waitUntil: 'networkidle2' });
+  await page.waitForSelector('input[type="password"]');
+  await page.type('input[type="password"]', password);
   await page.click('button[type="submit"]');
-  await page.waitForFunction(() => location.pathname === '/', { timeout: 10_000 });
-  await waitText('Dashboard Orkestrasi');
-  await waitText('Agent Aktif');
-  console.log('[chrome93] login + dashboard OK');
+  await waitText('Projects');
+  await waitText(createdProject.name);
+  console.log('[chrome93] login + sidebar OK');
 
-  await page.goto(`${base}/providers`, { waitUntil: 'networkidle2' });
-  await waitText('Manajemen Provider LLM');
-  await clickText('button', 'Tambah Provider');
-  await page.waitForSelector('input[name="provider-name"]');
-  await page.click('button[aria-label="Tutup dialog"]');
-  console.log('[chrome93] halaman provider OK');
+  await clickText('.project-row', createdProject.name);
+  await page.waitForFunction((name) => document.body.innerText.includes(name), { timeout: 15000 }, createdWorktree.branch);
+  await clickText('.worktree-row', createdWorktree.branch);
+  await page.waitForSelector('.terminal-area');
+  console.log('[chrome93] project + worktree OK');
 
-  await page.goto(`${base}/agents`, { waitUntil: 'networkidle2' });
-  await waitText('Manajemen Agent Pekerja');
-  await clickText('button', 'Daftarkan Agent');
-  await page.waitForSelector('input[name="agent-code"]');
-  await page.click('button[aria-label="Tutup dialog"]');
-  console.log('[chrome93] halaman agent OK');
-
-  await page.goto(`${base}/tasks`, { waitUntil: 'networkidle2' });
-  await waitText('Task & Log Eksekusi');
-  await clickText('button', 'Buat Task Baru');
-  await page.waitForSelector('input[name="task-title"]');
+  await clickText('button', '+ Terminal');
+  await page.waitForSelector('.xterm', { timeout: 15000 });
   await page.waitForFunction(
-    () => document.querySelectorAll('select[name="task-agent"] option').length > 1,
-    { timeout: 15_000 }
+    () => ((document.querySelector('.xterm-rows')?.innerText ?? '').trim().length > 0),
+    { timeout: 15000 }
   );
+  await page.focus('.xterm-helper-textarea');
+  await page.keyboard.type('echo chrome93-ok');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(
+    () => document.querySelector('.xterm-rows')?.innerText.includes('chrome93-ok'),
+    { timeout: 10000 }
+  );
+  console.log('[chrome93] terminal PTY + WebSocket OK');
 
-  const agentValue = await page.$eval('select[name="task-agent"]', (element) => element.value);
-  if (!agentValue) {
-    const firstAgent = await page.$eval('select[name="task-agent"]', (element) => {
-      const option = element.querySelectorAll('option')[1];
-      return option ? option.value : '';
-    });
-    if (!firstAgent) throw new Error('Tidak ada agent aktif untuk diuji.');
-    await page.select('select[name="task-agent"]', firstAgent);
-  }
+  await clickText('button', 'Share');
+  await waitText('Share & Pairing');
+  await clickText('button', 'Buat Pairing Token');
+  await waitText('Pairing URL baru');
+  await page.click('button[aria-label="Tutup"]');
+  console.log('[chrome93] share/pairing dialog OK');
 
-  const title = `Chrome93 smoke ${new Date().toISOString()}`;
-  await page.type('input[name="task-title"]', title);
-  await page.type('textarea[name="task-prompt"]', 'abc');
-  expectingValidationError = true;
-  await page.click('button[type="submit"][form="task-form"]');
-  await waitText('Prompt instruksi minimal terdiri dari 10 karakter.');
+  const tokens = await api('/api/pairing', { method: 'POST', body: JSON.stringify({ label: 'E2E browser' }) }, cookie);
+  if (tokens.status !== 201) throw new Error('Gagal membuat token pairing');
+  const pairUrl = tokens.body.data.pairUrl.replace(/^https?:\/\/[^/]+/, base);
 
-  const promptSelector = 'textarea[name="task-prompt"]';
-  await page.click(promptSelector, { clickCount: 3 });
-  await page.type(promptSelector, 'Instruksi pengujian kompatibilitas Chrome 93 untuk antrean task.');
-  await page.click('button[type="submit"][form="task-form"]');
-  await page.waitForFunction(() => !document.querySelector('#task-form'), { timeout: 10_000 });
-  expectingValidationError = false;
-  await waitText('Task berhasil masuk antrean.');
-  await waitText(title);
-  console.log('[chrome93] buat task + validasi OK');
-
-  await clickText('a.btn-ghost', 'Detail');
-  await page.waitForFunction(() => /^\/tasks\/\d+$/.test(location.pathname), { timeout: 10_000 });
-  await waitText('Log Eksekusi');
-  await clickText('button', 'Salin Log');
-  await waitText('Log berhasil disalin ke clipboard.');
-  console.log('[chrome93] detail task + salin log OK');
-
-  await page.goto(`${base}/settings`, { waitUntil: 'networkidle2' });
-  await waitText('Pengaturan Keamanan');
-  await clickText('button', 'Keluar');
-  await page.waitForFunction(() => location.pathname === '/login', { timeout: 10_000 });
-  console.log('[chrome93] pengaturan + logout OK');
+  const context = await browser.createIncognitoBrowserContext();
+  const pairPage = await context.newPage();
+  await pairPage.setViewport({ width: 1366, height: 768 });
+  await pairPage.goto(pairUrl, { waitUntil: 'networkidle2' });
+  await pairPage.waitForFunction(
+    (name) => document.body.innerText.includes(name),
+    { timeout: 15000 },
+    createdProject.name
+  );
+  console.log('[chrome93] pairing URL auto-login OK');
+  await context.close();
 
   if (consoleErrors.length > 0) {
-    console.error('[chrome93] Error konsol terdeteksi:');
+    console.error('[chrome93] Error konsol:');
     for (const error of consoleErrors) console.error(` - ${error}`);
     process.exitCode = 1;
   } else {
@@ -151,15 +165,16 @@ try {
   }
 } catch (error) {
   console.error('[chrome93] GAGAL:', error.message);
-  try {
-    console.error('[chrome93] URL:', page.url());
-    console.error('[chrome93] Body:', (await page.evaluate(() => document.body.innerText)).slice(0, 800));
-    await page.screenshot({ path: '/tmp/orca-chrome93.png', fullPage: true });
-    console.error('[chrome93] Screenshot: /tmp/orca-chrome93.png');
-  } catch (diagnosticError) {
-    console.error('[chrome93] diagnostik gagal:', diagnosticError.message);
-  }
+  await page.screenshot({ path: '/tmp/dorado-chrome93.png', fullPage: true }).catch(() => {});
+  console.error('[chrome93] Screenshot: /tmp/dorado-chrome93.png');
   process.exitCode = 1;
 } finally {
   await browser.close();
+  const terminals = await api(`/api/terminals?worktreeId=${createdWorktree.id}`, {}, cookie).catch(() => null);
+  for (const terminal of terminals?.body?.data ?? []) {
+    await api(`/api/terminals/${terminal.id}`, { method: 'DELETE' }, cookie).catch(() => {});
+  }
+  await api(`/api/worktrees/${createdWorktree.id}`, { method: 'DELETE' }, cookie).catch(() => {});
+  await api(`/api/projects/${createdProject.id}`, { method: 'DELETE' }, cookie).catch(() => {});
+  fs.rmSync(repoDir, { recursive: true, force: true });
 }

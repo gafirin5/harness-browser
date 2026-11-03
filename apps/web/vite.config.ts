@@ -4,12 +4,10 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 5173,
+    port: 5174,
     proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:3001',
-        changeOrigin: false
-      }
+      '/api': { target: 'http://127.0.0.1:7788', changeOrigin: false },
+      '/ws': { target: 'ws://127.0.0.1:7788', ws: true }
     }
   },
   build: {
@@ -20,7 +18,8 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom']
+          vendor: ['react', 'react-dom'],
+          xterm: ['@xterm/xterm', '@xterm/addon-fit']
         }
       }
     }

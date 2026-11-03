@@ -11,6 +11,7 @@ import { terminalsRouter } from './modules/terminals/routes.js';
 import { agentsRouter, sessionsRouter } from './modules/sessions/routes.js';
 import { filesRouter } from './modules/files/routes.js';
 import { gitRouter } from './modules/git/routes.js';
+import { githubRouter } from './modules/github/routes.js';
 import { infoRouter } from './modules/info/routes.js';
 
 export function createApp(): express.Express {
@@ -48,6 +49,7 @@ export function createApp(): express.Express {
   app.use('/api/agents', agentsRouter);
   app.use('/api/files', filesRouter);
   app.use('/api/git', gitRouter);
+  app.use('/api/github', githubRouter);
   app.use('/api/info', infoRouter);
 
   app.use('/api', (_req, res) => {

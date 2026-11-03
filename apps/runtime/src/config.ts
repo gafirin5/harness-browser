@@ -18,7 +18,8 @@ const envSchema = z.object({
     .union([z.string(), z.boolean()])
     .optional()
     .transform((value) => (value === undefined ? undefined : typeof value === 'boolean' ? value : ['1', 'true', 'yes', 'on'].includes(value.toLowerCase()))),
-  DORADO_AGENTS: z.string().default('')
+  DORADO_AGENTS: z.string().default(''),
+  GITHUB_TOKEN: z.string().default('')
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -92,5 +93,6 @@ export const config = {
     'http://localhost:5174',
     'http://127.0.0.1:5174'
   ],
-  extraAgents: parseExtraAgents(env.DORADO_AGENTS)
+  extraAgents: parseExtraAgents(env.DORADO_AGENTS),
+  githubToken: env.GITHUB_TOKEN
 } as const;

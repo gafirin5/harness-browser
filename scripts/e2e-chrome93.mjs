@@ -34,6 +34,8 @@ execFileSync('git', ['config', 'user.name', 'E2E'], { cwd: repoDir });
 fs.writeFileSync(path.join(repoDir, 'README.md'), '# e2e\n');
 execFileSync('git', ['add', '-A'], { cwd: repoDir });
 execFileSync('git', ['commit', '-qm', 'init'], { cwd: repoDir });
+// Remote lokal non-GitHub agar dialog GitHub diuji pada state "bukan GitHub".
+execFileSync('git', ['remote', 'add', 'origin', `${repoDir}/.git`], { cwd: repoDir });
 
 async function api(pathname, options = {}, cookie = '') {
   const response = await fetch(`${base}${pathname}`, {
@@ -261,6 +263,14 @@ try {
   await page.click('button[aria-label="Tutup"]');
   await page.waitForFunction(() => !document.body.innerText.includes('Info Runtime'), { timeout: 10000 });
   console.log('[chrome93] info runtime OK');
+
+  await clickText('button', 'GitHub');
+  await waitText('Remote bukan repository GitHub');
+  await page.click('button[aria-label="Tutup"]');
+  await page.waitForFunction(() => !document.body.innerText.includes('Remote bukan repository GitHub'), {
+    timeout: 10000
+  });
+  console.log('[chrome93] github dialog OK');
 
   const staged = await page.evaluate(() => {
     const row = Array.from(document.querySelectorAll('.change-row')).find((item) =>

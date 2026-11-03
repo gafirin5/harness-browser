@@ -19,7 +19,8 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **Pencarian terminal** (`Find` atau `Ctrl+F`) dengan navigasi hasil.
 - **Notifikasi sesi** saat agent selesai/gagal + penanda unread di sidebar dan judul tab.
 - **Info Runtime**: versi, Node, tmux, data directory, agent CLI, dan jumlah data.
-- **Command palette** (`Ctrl+Shift+P` atau `Ctrl+K`): terminal, agent, worktree, split, refresh, history, info, share.
+- **Integrasi GitHub read-only**: info repository, pull request, dan issue per worktree; link keluar ke GitHub, caching 60 detik, token opsional.
+- **Command palette** (`Ctrl+Shift+P` atau `Ctrl+K`): terminal, agent, worktree, split, refresh, history, github, info, share.
 - **Resume sesi** agent dengan konteks percakapan (OpenCode `--continue`), serta stop sesi berjalan.
 - **Persistensi terminal/agent sejati** setelah runtime restart melalui tmux, dengan tombol Restart untuk shell.
 - Hentikan sesi, tutup terminal, hapus worktree (dengan proteksi sesi aktif).
@@ -93,6 +94,17 @@ Pairing URL yang dibuat setelah restart akan memakai domain tunnel. WebSocket ju
 
 > Tunnel publik memberi akses shell ke host ini. Gunakan pairing token, jangan bagikan URL sembarangan, dan hentikan tunnel setelah selesai.
 
+## Integrasi GitHub
+
+Worktree harus memiliki remote `origin` (atau remote pertama) yang mengarah ke `github.com`, baik format SSH (`git@github.com:owner/repo.git`) maupun HTTPS. Buka tombol **GitHub** di topbar atau lewat command palette.
+
+```bash
+# Opsional: menaikkan rate limit dan mengakses repository private
+GITHUB_TOKEN=ghp_xxx
+```
+
+Tanpa token, hanya repository publik yang dapat dibaca dan rate limit GitHub lebih rendah. Integrasi ini read-only: pull request dan issue ditampilkan, lalu dibuka di GitHub untuk aksi lanjutan. Hasil API di-cache 60 detik di memori.
+
 ## Arsitektur
 
 ```text
@@ -163,7 +175,7 @@ Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `ech
 ## Test
 
 ```bash
-npm test          # 9 test integrasi API
+npm test          # 12 test integrasi API
 npm run verify    # typecheck + test + build + gate Chrome 93
 npm run e2e:chrome93
 ```
@@ -172,7 +184,7 @@ Lihat [`docs/verification-m1.md`](docs/verification-m1.md) untuk hasil verifikas
 
 ## Batasan M1
 
-Belum termasuk: Electron desktop, mobile, cloud relay, GitHub/Linear, editor kode, diff review, browser/design mode, SSH worktree, multi-user, terminal splits, dan persistensi PTY setelah runtime restart.
+Belum termasuk: Electron desktop, mobile, cloud relay, Linear, browser/design mode, SSH worktree, multi-user, dan recursive delete. Integrasi GitHub bersifat read-only (belum ada komentar, review, atau merge dari UI).
 
 ## Branch Lama
 

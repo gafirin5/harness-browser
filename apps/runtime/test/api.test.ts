@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { db } from '../src/db/index.js';
+import { parseGitHubRemote } from '../src/modules/github/routes.js';
 import { terminalManager } from '../src/modules/terminals/manager.js';
 
 const app = createApp();
@@ -69,6 +70,24 @@ describe('info', () => {
   });
 });
 
+describe('github remote parsing', () => {
+  it('mengenali format SSH, git://, dan HTTPS', () => {
+    expect(parseGitHubRemote('git@github.com:acme/widgets.git')).toEqual({ owner: 'acme', repo: 'widgets' });
+    expect(parseGitHubRemote('ssh://git@github.com/acme/widgets')).toEqual({ owner: 'acme', repo: 'widgets' });
+    expect(parseGitHubRemote('git://github.com/acme/widgets.git')).toEqual({ owner: 'acme', repo: 'widgets' });
+    expect(parseGitHubRemote('https://github.com/acme/widgets.git')).toEqual({ owner: 'acme', repo: 'widgets' });
+    expect(parseGitHubRemote('https://github.com/acme/widgets')).toEqual({ owner: 'acme', repo: 'widgets' });
+    expect(parseGitHubRemote('https://github.com/acme/widgets/tree/main')).toEqual({ owner: 'acme', repo: 'widgets' });
+  });
+
+  it('menolak remote non-GitHub dan format tidak valid', () => {
+    expect(parseGitHubRemote('/tmp/dorado-unit-bare')).toBeNull();
+    expect(parseGitHubRemote('https://gitlab.com/acme/widgets.git')).toBeNull();
+    expect(parseGitHubRemote('https://github.com/acme')).toBeNull();
+    expect(parseGitHubRemote('')).toBeNull();
+  });
+});
+
 describe('projects & worktrees', () => {
   it('menambah project, membaca branch, membuat dan menghapus worktree', async () => {
     const project = await api.post('/api/projects').send({ name: 'Test Repo', path: repoDir });
@@ -94,6 +113,29 @@ describe('projects & worktrees', () => {
     const removed = await api.delete(`/api/worktrees/${worktree.body.data.id}`);
     expect(removed.status).toBe(204);
     expect(fs.existsSync(worktree.body.data.path)).toBe(false);
+  });
+});
+
+describe('github integration', () => {
+  it('melaporkan connected:false untuk remote non-GitHub tanpa panggilan jaringan', async () => {
+    const worktree = await api.post('/api/worktrees').send({
+      projectId,
+      branch: 'agent/github-test',
+      baseRef: 'main'
+    });
+    expect(worktree.status).toBe(201);
+    const worktreeId = worktree.body.data.id;
+
+    const info = await api.get(`/api/github/info?worktreeId=${worktreeId}`);
+    expect(info.status).toBe(200);
+    expect(info.body.data.connected).toBe(false);
+    expect(info.body.data.reason).toContain('bukan repository GitHub');
+
+    const pulls = await api.get(`/api/github/pulls?worktreeId=${worktreeId}`);
+    expect(pulls.status).toBe(422);
+    expect(pulls.body.error.code).toBe('NOT_GITHUB');
+
+    await api.delete(`/api/worktrees/${worktreeId}`);
   });
 });
 

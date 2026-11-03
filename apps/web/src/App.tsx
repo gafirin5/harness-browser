@@ -17,6 +17,7 @@ import { FileTree } from './components/FileTree';
 import { ChangesPanel } from './components/ChangesPanel';
 import { DiffViewer } from './components/DiffViewer';
 import { CommandPalette, type Command } from './components/CommandPalette';
+import { GitHubDialog } from './components/GitHubDialog';
 import { HistoryDialog } from './components/HistoryDialog';
 import { InfoDialog } from './components/InfoDialog';
 import {
@@ -58,6 +59,7 @@ export function App(): JSX.Element {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [githubOpen, setGithubOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [terminalVersion, setTerminalVersion] = useState(0);
   const [searchNonce, setSearchNonce] = useState(0);
@@ -557,6 +559,12 @@ export function App(): JSX.Element {
       run: () => setHistoryOpen(true)
     },
     {
+      id: 'github',
+      label: 'GitHub Repository',
+      hint: 'Pull request dan issue untuk worktree aktif',
+      run: () => setGithubOpen(true)
+    },
+    {
       id: 'info',
       label: 'Info Runtime',
       hint: 'Data directory, tmux, dan agent CLI',
@@ -588,6 +596,9 @@ export function App(): JSX.Element {
         </span>
         <button className="btn tiny" onClick={() => setPaletteOpen(true)} title="Command palette (Ctrl+Shift+P)">
           ⌘K
+        </button>
+        <button className="btn tiny" onClick={() => setGithubOpen(true)}>
+          GitHub
         </button>
         <button className="btn tiny" onClick={() => setInfoOpen(true)}>
           Info
@@ -1013,6 +1024,7 @@ export function App(): JSX.Element {
 
       {historyOpen ? <HistoryDialog onClose={() => setHistoryOpen(false)} onRerun={rerunHistory} /> : null}
       {infoOpen ? <InfoDialog onClose={() => setInfoOpen(false)} /> : null}
+      {githubOpen ? <GitHubDialog worktreeId={selectedWorktreeId} onClose={() => setGithubOpen(false)} /> : null}
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
 

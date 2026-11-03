@@ -1430,6 +1430,178 @@ button:disabled {
   }
 }
 
+/* ---------- github ---------- */
+
+.gh-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 7px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.gh-head-main {
+  min-width: 0;
+}
+
+.gh-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.gh-desc {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.gh-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 6px;
+  color: var(--muted-2);
+  font-size: 10.5px;
+}
+
+.gh-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.gh-tab-buttons {
+  display: flex;
+  gap: 4px;
+  border: 1px solid var(--border-soft);
+  border-radius: 7px;
+  padding: 3px;
+}
+
+.gh-tab {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 5px 12px;
+  border-radius: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.gh-tab:hover {
+  color: var(--text);
+}
+
+.gh-tab.active {
+  background: var(--panel-3);
+  color: var(--text);
+}
+
+.gh-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.gh-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--border-soft);
+  border-radius: 7px;
+  padding: 8px 10px;
+  color: var(--text);
+  text-decoration: none;
+  background: transparent;
+}
+
+.gh-item:hover {
+  background: var(--panel-2);
+  border-color: var(--border);
+}
+
+.gh-item-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.gh-number {
+  color: var(--muted-2);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.gh-item-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gh-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 10.5px;
+}
+
+.gh-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.gh-label {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 9.5px;
+  line-height: 1.5;
+}
+
+.gh-empty {
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gh-empty-title {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.gh-empty p {
+  margin: 0;
+  font-size: 11.5px;
+}
+
+@media (max-width: 760px) {
+  .gh-head,
+  .gh-tabs {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
 .clipboard-helper {
   position: fixed;
   top: -1000px;

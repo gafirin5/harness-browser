@@ -9,7 +9,7 @@ Lingkungan: Ubuntu 24.04, Node.js 24.19.0, Chromium 93.0.4577.0, cloudflared 202
 npm test
 ```
 
-Hasil: **9 test lulus** — auth/pairing, project/branch, worktree create/delete, terminal create/list/delete, file tree/content/write + path traversal, git stage/commit/push/pull, riwayat sesi, resume sesi dengan mock agent, info runtime, agent tidak dikenal.
+Hasil: **12 test lulus** — auth/pairing, project/branch, worktree create/delete, terminal create/list/delete, file tree/content/write + path traversal, git stage/commit/push/pull, riwayat sesi, resume sesi dengan mock agent, info runtime, parsing remote GitHub (SSH/HTTPS/git), integrasi GitHub dengan remote non-GitHub (`connected:false`, `NOT_GITHUB`), dan agent tidak dikenal.
 
 ## Gate Chrome 93
 
@@ -23,9 +23,9 @@ npm run verify
 | Sintaks ES2020 | Lulus — 3 file |
 | API JS terlarang | Lulus |
 | CSS terlarang | Lulus |
-| Bundel JS awal | **134,0 KB gzip** (batas 150 KB) |
-| Bundel total + editor lazy | **236,6 KB gzip** (batas 300 KB) |
-| Test API | 9 lulus |
+| Bundel JS awal | **135,2 KB gzip** (batas 150 KB) |
+| Bundel total + editor lazy | **237,8 KB gzip** (batas 300 KB) |
+| Test API | 12 lulus |
 
 ## Smoke Chromium 93
 
@@ -47,12 +47,13 @@ Alur yang diuji:
 7. Buat terminal kedua dan ketiga, aktifkan multi-pane hingga 3 pane, lalu Unsplit.
 8. Buka pencarian terminal dan cari teks, lalu tutup.
 9. Buka dialog Info Runtime dan verifikasi data runtime.
-10. Buat dan rename file lewat file explorer.
-9. Buka command palette (`Ctrl+Shift+P`), cari perintah, lalu tutup dengan Escape.
-11. Buka dialog riwayat sesi dan verifikasi pencarian/filter.
-12. Buka dialog Share dan buat pairing token.
-13. Buka pairing URL di incognito context → auto-login.
-14. Nol error konsol/pageerror.
+10. Buka dialog GitHub pada worktree dengan remote non-GitHub dan verifikasi state "Remote bukan repository GitHub".
+11. Buat dan rename file lewat file explorer.
+12. Buka command palette (`Ctrl+Shift+P`), cari perintah, lalu tutup dengan Escape.
+13. Buka dialog riwayat sesi dan verifikasi pencarian/filter.
+14. Buka dialog Share dan buat pairing token.
+15. Buka pairing URL di incognito context → auto-login.
+16. Nol error konsol/pageerror.
 
 Git push/pull divalidasi melalui test API dengan remote bare lokal; tombol UI tersedia di panel Changes.
 
@@ -62,8 +63,9 @@ WebSocket berjalan melalui Cloudflare Quick Tunnel; terminal tetap interaktif.
 
 ## Batasan yang Diketahui
 
-- PTY tidak bertahan setelah runtime restart; terminal/sesi lama ditandai exited/failed.
+- Sesi tmux tidak bertahan setelah host reboot (hanya runtime restart).
 - Log terminal berupa file append-only tanpa rotasi otomatis.
-- Belum ada Electron, mobile, cloud relay, editor, diff review, GitHub/Linear, SSH, atau terminal split.
+- Integrasi GitHub read-only; belum ada komentar, review, atau merge dari UI, dan bergantung pada rate limit/token GitHub.
+- Belum ada Electron, mobile, cloud relay, Linear, browser/design mode, SSH worktree, atau multi-user.
 - Quick tunnel bersifat sementara dan URL berubah saat proses dijalankan ulang.
 - Pairing token memberi akses shell penuh; cabut token yang tidak dipakai.

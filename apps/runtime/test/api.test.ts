@@ -9,6 +9,7 @@ import { terminalManager } from '../src/modules/terminals/manager.js';
 
 const app = createApp();
 const repoDir = fs.mkdtempSync('/tmp/dorado-unit-repo-');
+const bareDir = fs.mkdtempSync('/tmp/dorado-unit-bare-');
 let api: ReturnType<typeof request.agent>;
 let projectId = '';
 
@@ -19,6 +20,9 @@ beforeAll(async () => {
   fs.writeFileSync(path.join(repoDir, 'README.md'), '# test\n');
   execFileSync('git', ['add', '-A'], { cwd: repoDir });
   execFileSync('git', ['commit', '-qm', 'init'], { cwd: repoDir });
+  execFileSync('git', ['init', '--bare', '-q', bareDir]);
+  execFileSync('git', ['remote', 'add', 'origin', bareDir], { cwd: repoDir });
+  execFileSync('git', ['push', '-u', 'origin', 'main'], { cwd: repoDir, stdio: 'ignore' });
 
   api = request.agent(app);
   const login = await api.post('/api/auth/login').send({ password: 'test-password' });
@@ -29,6 +33,7 @@ afterAll(() => {
   terminalManager.shutdown();
   db.close();
   fs.rmSync(repoDir, { recursive: true, force: true });
+  fs.rmSync(bareDir, { recursive: true, force: true });
 });
 
 describe('auth', () => {
@@ -135,6 +140,16 @@ describe('files', () => {
     const clean = await api.get(`/api/git/status?worktreeId=${worktreeId}`);
     expect(clean.body.data.clean).toBe(true);
 
+    const pushed = await api.post('/api/git/push').send({ worktreeId });
+    expect(pushed.status).toBe(200);
+    const bareHead = execFileSync('git', ['--git-dir', bareDir, 'rev-parse', '--verify', 'agent/files-test'], {
+      encoding: 'utf8'
+    }).trim();
+    expect(bareHead).toMatch(/^[a-f0-9]{40}$/);
+
+    const pulled = await api.post('/api/git/pull').send({ worktreeId });
+    expect(pulled.status).toBe(200);
+
     const emptyCommit = await api.post('/api/git/commit').send({ worktreeId, message: 'ab' });
     expect(emptyCommit.status).toBe(422);
 
@@ -173,6 +188,42 @@ describe('files', () => {
     expect(deleteEmptyFolder.status).toBe(204);
     const deleteRenamed = await api.delete(`/api/files?worktreeId=${worktreeId}&path=renamed.txt`);
     expect(deleteRenamed.status).toBe(204);
+
+    await api.delete(`/api/worktrees/${worktreeId}`);
+  });
+});
+
+describe('session history', () => {
+  it('mencari sesi berdasarkan judul/prompt dan filter status', async () => {
+    const worktree = await api.post('/api/worktrees').send({
+      projectId,
+      branch: 'agent/history-test',
+      baseRef: 'main'
+    });
+    expect(worktree.status).toBe(201);
+    const worktreeId = worktree.body.data.id;
+    const now = new Date().toISOString();
+    db.prepare(
+      `INSERT INTO sessions (id, worktree_id, terminal_id, agent, title, prompt, status, created_at, started_at, ended_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run('hist-1', worktreeId, 'term-1', 'opencode', 'Deploy staging', 'deploy the app to staging', 'completed', now, now, now);
+    db.prepare(
+      `INSERT INTO sessions (id, worktree_id, terminal_id, agent, title, prompt, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run('hist-2', worktreeId, 'term-2', 'opencode', 'Fix bug', 'fix the failing test', 'failed', now);
+
+    const byQuery = await api.get('/api/sessions/history?q=deploy');
+    expect(byQuery.status).toBe(200);
+    expect(byQuery.body.data).toHaveLength(1);
+    expect(byQuery.body.data[0].title).toBe('Deploy staging');
+    expect(byQuery.body.data[0].projectName).toBe('Test Repo');
+
+    const byStatus = await api.get('/api/sessions/history?status=failed');
+    expect(byStatus.body.data).toHaveLength(1);
+    expect(byStatus.body.data[0].title).toBe('Fix bug');
+
+    const none = await api.get('/api/sessions/history?q=tidak-ada');
+    expect(none.body.data).toHaveLength(0);
 
     await api.delete(`/api/worktrees/${worktreeId}`);
   });

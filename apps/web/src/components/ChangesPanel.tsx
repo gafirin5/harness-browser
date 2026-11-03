@@ -77,6 +77,19 @@ export function ChangesPanel({
     }
   };
 
+  const sync = async (action: 'pull' | 'push'): Promise<void> => {
+    setBusy(true);
+    try {
+      const response = await apiPost<{ data: { output: string } }>(`/git/${action}`, { worktreeId });
+      push('success', `${action === 'pull' ? 'Pull' : 'Push'}: ${response.data.output.slice(0, 180)}`);
+      await load();
+    } catch (caught) {
+      push('error', caught instanceof ApiError ? caught.message : `Gagal ${action}.`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const commit = async (): Promise<void> => {
     setCommitError(null);
     setBusy(true);
@@ -127,6 +140,14 @@ export function ChangesPanel({
               disabled={busy || stagedCount === 0}
             >
               Commit{stagedCount > 0 ? ` (${stagedCount})` : ''}
+            </button>
+          </div>
+          <div className="change-actions">
+            <button className="btn tiny" onClick={() => void sync('pull')} disabled={busy}>
+              ↓ Pull
+            </button>
+            <button className="btn tiny" onClick={() => void sync('push')} disabled={busy}>
+              ↑ Push
             </button>
           </div>
           {status.clean ? (

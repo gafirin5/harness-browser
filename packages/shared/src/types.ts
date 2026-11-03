@@ -46,6 +46,12 @@ export interface SessionInfo {
   endedAt: string | null;
 }
 
+export interface SessionHistoryItem extends SessionInfo {
+  projectId: string;
+  projectName: string;
+  worktreeBranch: string;
+}
+
 export interface AgentInfo {
   id: string;
   name: string;

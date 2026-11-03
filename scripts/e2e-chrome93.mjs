@@ -308,6 +308,16 @@ try {
   );
   console.log('[chrome93] git stage + commit OK');
 
+  await page.waitForFunction(
+    () => {
+      const button = Array.from(document.querySelectorAll('.change-actions button')).find((item) =>
+        (item.textContent || '').includes('Push')
+      );
+      return button && !button.disabled;
+    },
+    { timeout: 15000 }
+  );
+
   await page.keyboard.down('Control');
   await page.keyboard.down('Shift');
   await page.keyboard.press('p');
@@ -354,6 +364,12 @@ try {
   );
   console.log('[chrome93] file create/rename/delete OK');
 
+  await clickText('button', 'History');
+  await waitText('Riwayat Sesi Agent');
+  await page.click('button[aria-label="Tutup"]');
+  await page.waitForFunction(() => !document.body.innerText.includes('Riwayat Sesi Agent'), { timeout: 10000 });
+  console.log('[chrome93] session history dialog OK');
+
   await clickText('button', 'Share');
   await waitText('Share & Pairing');
   await clickText('button', 'Buat Pairing Token');
@@ -386,6 +402,7 @@ try {
   }
 } catch (error) {
   console.error('[chrome93] GAGAL:', error.message);
+  try { console.error('[chrome93] BODY:', (await page.evaluate(() => document.body.innerText)).slice(-700)); } catch {}
   await page.screenshot({ path: '/tmp/dorado-chrome93.png', fullPage: true }).catch(() => {});
   console.error('[chrome93] Screenshot: /tmp/dorado-chrome93.png');
   process.exitCode = 1;

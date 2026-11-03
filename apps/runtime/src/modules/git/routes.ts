@@ -20,6 +20,8 @@ const stageSchema = z.object({
   path: z.string().max(1000).optional()
 });
 
+const syncSchema = z.object({ worktreeId: z.string().min(1) });
+
 const commitSchema = z.object({
   worktreeId: z.string().min(1),
   message: z.string().trim().min(3, 'Pesan commit minimal 3 karakter.').max(2000, 'Pesan commit maksimal 2.000 karakter.')
@@ -185,5 +187,54 @@ gitRouter.post(
     const log = await gitRaw(cwd, ['log', '-1', '--format=%H%n%s']);
     const [hash = '', summary = ''] = log.stdout.trim().split('\n');
     res.json({ data: { hash, summary } });
+  })
+);
+
+
+gitRouter.post(
+  '/pull',
+  asyncHandler(async (req, res) => {
+    const body = parseWith(syncSchema, req.body);
+    const cwd = resolveWorktree(body.worktreeId);
+    const result = await gitRaw(cwd, ['pull', '--ff-only'], 120_000);
+    if (result.code !== 0) {
+      throw new AppError(422, 'GIT_ERROR', (result.stderr || result.stdout || 'Pull gagal.').trim().slice(0, 1200));
+    }
+    res.json({ data: { output: result.stdout.trim() || 'Already up to date.' } });
+  })
+);
+
+gitRouter.post(
+  '/push',
+  asyncHandler(async (req, res) => {
+    const body = parseWith(syncSchema, req.body);
+    const cwd = resolveWorktree(body.worktreeId);
+    const remotes = (await gitRaw(cwd, ['remote'])).stdout
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (remotes.length === 0) {
+      throw new AppError(422, 'NO_REMOTE', 'Repository belum memiliki remote.');
+    }
+    const remote = remotes.includes('origin') ? 'origin' : remotes[0]!;
+    const result = await gitRaw(cwd, ['push', '-u', remote, 'HEAD'], 120_000);
+    if (result.code !== 0) {
+      throw new AppError(422, 'GIT_ERROR', (result.stderr || result.stdout || 'Push gagal.').trim().slice(0, 1200));
+    }
+    res.json({ data: { output: result.stderr.trim() || result.stdout.trim() || 'Pushed.' } });
+  })
+);
+
+gitRouter.get(
+  '/remote',
+  asyncHandler(async (req, res) => {
+    const query = parseWith(statusQuery, req.query);
+    const cwd = resolveWorktree(query.worktreeId);
+    const result = await gitRaw(cwd, ['remote', '-v']);
+    const lines = result.stdout
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    res.json({ data: { remotes: lines } });
   })
 );

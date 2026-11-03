@@ -3,6 +3,7 @@ import type {
   AgentInfo,
   PairingTokenInfo,
   Project,
+  SessionHistoryItem,
   SessionInfo,
   TerminalInfo,
   UserInfo,
@@ -16,6 +17,7 @@ import { FileTree } from './components/FileTree';
 import { ChangesPanel } from './components/ChangesPanel';
 import { DiffViewer } from './components/DiffViewer';
 import { CommandPalette, type Command } from './components/CommandPalette';
+import { HistoryDialog } from './components/HistoryDialog';
 import {
   AddProjectDialog,
   NewSessionDialog,
@@ -51,6 +53,7 @@ export function App(): JSX.Element {
   const [dirtyFiles, setDirtyFiles] = useState<Record<string, boolean>>({});
   const [dialog, setDialog] = useState<DialogState>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const mutationAt = useRef(0);
   const dataVersion = useRef(0);
@@ -325,6 +328,41 @@ export function App(): JSX.Element {
     }
   };
 
+  const rerunHistory = async (session: SessionHistoryItem): Promise<void> => {
+    const project = projects.find((item) => item.id === session.projectId);
+    if (!project) {
+      push('error', 'Project untuk sesi ini sudah tidak ada.');
+      return;
+    }
+    try {
+      dataVersion.current += 1;
+      setSelectedProjectId(project.id);
+      setSelectedWorktreeId(session.worktreeId);
+      setTerminals([]);
+      setSessions([]);
+      setActiveTerminalId(null);
+      setActiveFilePath(null);
+      setActiveDiffPath(null);
+      setSplitTerminalIds([]);
+      const worktreeResponse = await apiGet<{ data: Worktree[] }>(`/worktrees?projectId=${encodeURIComponent(project.id)}`);
+      setWorktrees(worktreeResponse.data);
+      await loadWorktreeData(session.worktreeId);
+      markMutation();
+      const response = await apiPost<{ data: SessionInfo }>('/sessions', {
+        worktreeId: session.worktreeId,
+        agent: session.agent,
+        title: `${session.title} (lanjut)`,
+        prompt: session.prompt
+      });
+      setSessions((current) => [response.data, ...current]);
+      setActiveTerminalId(response.data.terminalId);
+      setHistoryOpen(false);
+      push('success', 'Sesi baru dijalankan.');
+    } catch (caught) {
+      toastError(caught, 'Gagal menjalankan ulang sesi.');
+    }
+  };
+
   const createTerminal = async (): Promise<void> => {
     if (!selectedWorktree) return;
     markMutation();
@@ -488,6 +526,12 @@ export function App(): JSX.Element {
         ]
       : []),
     {
+      id: 'history',
+      label: 'Riwayat Sesi Agent',
+      hint: 'Cari dan jalankan ulang sesi sebelumnya',
+      run: () => setHistoryOpen(true)
+    },
+    {
       id: 'share',
       label: 'Share / Pairing Token',
       hint: 'Buat URL untuk browser lain',
@@ -513,6 +557,9 @@ export function App(): JSX.Element {
         </span>
         <button className="btn tiny" onClick={() => setPaletteOpen(true)} title="Command palette (Ctrl+Shift+P)">
           ⌘K
+        </button>
+        <button className="btn tiny" onClick={() => setHistoryOpen(true)}>
+          History
         </button>
         <button className="btn tiny" onClick={() => setDialog({ type: 'share' })}>
           Share
@@ -903,6 +950,8 @@ export function App(): JSX.Element {
           </button>
         </div>
       ) : null}
+
+      {historyOpen ? <HistoryDialog onClose={() => setHistoryOpen(false)} onRerun={rerunHistory} /> : null}
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
 

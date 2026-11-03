@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { sessionCreateSchema, type SessionInfo } from '@dorado/shared';
+import { z } from 'zod';
+import { sessionCreateSchema, type SessionHistoryItem, type SessionInfo } from '@dorado/shared';
 import { db, newId, nowIso } from '../../db/index.js';
 import { AppError, asyncHandler, notFound } from '../../lib/errors.js';
 import { parseWith } from '../../lib/validation.js';
@@ -38,6 +39,31 @@ function mapSession(row: SessionRow): SessionInfo {
   };
 }
 
+const historyQuerySchema = z.object({
+  q: z.string().max(200).optional().default(''),
+  status: z.enum(['running', 'completed', 'failed', 'stopped']).optional(),
+  agent: z.string().max(60).optional(),
+  projectId: z.string().max(40).optional(),
+  worktreeId: z.string().max(40).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  page_size: z.coerce.number().int().min(1).max(100).default(20)
+});
+
+interface HistoryRow extends SessionRow {
+  project_id: string;
+  project_name: string;
+  worktree_branch: string;
+}
+
+function mapHistory(row: HistoryRow): SessionHistoryItem {
+  return {
+    ...mapSession(row),
+    projectId: row.project_id,
+    projectName: row.project_name,
+    worktreeBranch: row.worktree_branch
+  };
+}
+
 export const agentsRouter = Router();
 agentsRouter.use(csrfGuard, requireAuth);
 agentsRouter.get('/', (_req, res) => {
@@ -46,6 +72,63 @@ agentsRouter.get('/', (_req, res) => {
 
 export const sessionsRouter = Router();
 sessionsRouter.use(csrfGuard, requireAuth);
+
+sessionsRouter.get('/history', (req, res) => {
+  const query = parseWith(historyQuerySchema, req.query);
+  const where: string[] = ['1=1'];
+  const params: Array<string | number | null> = [];
+  if (query.q) {
+    const pattern = `%${query.q.toLowerCase()}%`;
+    where.push('(lower(s.title) LIKE ? OR lower(s.prompt) LIKE ?)');
+    params.push(pattern, pattern);
+  }
+  if (query.status) {
+    where.push('s.status = ?');
+    params.push(query.status);
+  }
+  if (query.agent) {
+    where.push('s.agent = ?');
+    params.push(query.agent);
+  }
+  if (query.projectId) {
+    where.push('w.project_id = ?');
+    params.push(query.projectId);
+  }
+  if (query.worktreeId) {
+    where.push('s.worktree_id = ?');
+    params.push(query.worktreeId);
+  }
+  const whereSql = where.join(' AND ');
+  const countRow = db
+    .prepare(
+      `SELECT count(*) AS total FROM sessions s
+       JOIN worktrees w ON w.id = s.worktree_id
+       JOIN projects p ON p.id = w.project_id
+       WHERE ${whereSql}`
+    )
+    .get(...params) as { total: number } | undefined;
+  const rows = db
+    .prepare(
+      `SELECT s.*, w.project_id, w.branch AS worktree_branch, p.name AS project_name
+       FROM sessions s
+       JOIN worktrees w ON w.id = s.worktree_id
+       JOIN projects p ON p.id = w.project_id
+       WHERE ${whereSql}
+       ORDER BY s.created_at DESC
+       LIMIT ? OFFSET ?`
+    )
+    .all(...params, query.page_size, (query.page - 1) * query.page_size) as unknown as HistoryRow[];
+  const total = countRow?.total ?? 0;
+  res.json({
+    data: rows.map(mapHistory),
+    meta: {
+      page: query.page,
+      pageSize: query.page_size,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / query.page_size))
+    }
+  });
+});
 
 sessionsRouter.get('/', (req, res) => {
   const worktreeId = typeof req.query.worktreeId === 'string' ? req.query.worktreeId : null;

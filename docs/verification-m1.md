@@ -9,7 +9,7 @@ Lingkungan: Ubuntu 24.04, Node.js 24.19.0, Chromium 93.0.4577.0, cloudflared 202
 npm test
 ```
 
-Hasil: **6 test lulus** — auth/pairing, project/branch, worktree create/delete, terminal create/list/delete, file tree/content/write + path traversal, agent tidak dikenal.
+Hasil: **7 test lulus** — auth/pairing, project/branch, worktree create/delete, terminal create/list/delete, file tree/content/write + path traversal, git stage/commit/push/pull, riwayat sesi, agent tidak dikenal.
 
 ## Gate Chrome 93
 
@@ -23,9 +23,9 @@ npm run verify
 | Sintaks ES2020 | Lulus — 3 file |
 | API JS terlarang | Lulus |
 | CSS terlarang | Lulus |
-| Bundel JS awal | **128,3 KB gzip** (batas 150 KB) |
-| Bundel total + editor lazy | **231,1 KB gzip** (batas 300 KB) |
-| Test API | 6 lulus |
+| Bundel JS awal | **129,3 KB gzip** (batas 150 KB) |
+| Bundel total + editor lazy | **231,9 KB gzip** (batas 300 KB) |
+| Test API | 7 lulus |
 
 ## Smoke Chromium 93
 
@@ -47,9 +47,12 @@ Alur yang diuji:
 7. Buat terminal kedua dan ketiga, aktifkan multi-pane hingga 3 pane, lalu Unsplit.
 8. Buat, rename, dan hapus file lewat file explorer.
 9. Buka command palette (`Ctrl+Shift+P`), cari perintah, lalu tutup dengan Escape.
-10. Buka dialog Share dan buat pairing token.
-11. Buka pairing URL di incognito context → auto-login.
-12. Nol error konsol/pageerror.
+10. Buka dialog riwayat sesi dan verifikasi pencarian/filter.
+11. Buka dialog Share dan buat pairing token.
+12. Buka pairing URL di incognito context → auto-login.
+13. Nol error konsol/pageerror.
+
+Git push/pull divalidasi melalui test API dengan remote bare lokal; tombol UI tersedia di panel Changes.
 
 WebSocket berjalan melalui Cloudflare Quick Tunnel; terminal tetap interaktif.
 

@@ -14,8 +14,9 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **File explorer** dengan buat/rename/hapus, plus editor CodeMirror 5: line numbers, syntax highlighting, lazy-loaded (maksimal 1 MB, proteksi path/symlink).
 - Tab terpadu untuk terminal, file, dan diff; indikator file belum disimpan dan Ctrl+S.
 - **Multi-pane terminal** hingga empat pane, dengan pemilih terminal per pane.
-- **Source control**: status Git per worktree, daftar perubahan, diff staged/unstaged, stage/unstage, dan commit lokal.
-- **Command palette** (`Ctrl+Shift+P` atau `Ctrl+K`): terminal, agent, worktree, split, refresh, share.
+- **Source control**: status Git per worktree, daftar perubahan, diff staged/unstaged, stage/unstage, commit lokal, serta pull/push ke remote.
+- **Riwayat sesi agent**: pencarian judul/prompt, filter status, detail, dan rerun.
+- **Command palette** (`Ctrl+Shift+P` atau `Ctrl+K`): terminal, agent, worktree, split, refresh, history, share.
 - **Rerun sesi** agent dengan prompt yang sama, serta stop sesi berjalan.
 - Hentikan sesi, tutup terminal, hapus worktree (dengan proteksi sesi aktif).
 - Quick tunnel Cloudflare + pairing URL.
@@ -139,7 +140,7 @@ BASE_URL=http://127.0.0.1:7788 \
 node scripts/e2e-chrome93.mjs
 ```
 
-Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `echo chrome93-ok`), file explorer + editor (buka/sunting/simpan `README.md`), git status + diff, stage + commit, command palette, terminal multi-pane (3 pane), buat/rename/hapus file, dialog Share, dan pairing URL auto-login.
+Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `echo chrome93-ok`), file explorer + editor (buka/sunting/simpan `README.md`), git status + diff, stage + commit, command palette, terminal multi-pane (3 pane), buat/rename/hapus file, dialog riwayat sesi, dialog Share, dan pairing URL auto-login.
 
 ## Keamanan
 
@@ -150,14 +151,14 @@ Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `ech
 - Origin check untuk request mutasi dan WebSocket.
 - Path worktree divalidasi agar tidak keluar dari data directory.
 - File explorer dibatasi pada worktree, menolak path traversal/symlink ke luar worktree, dan mengabaikan `.git`, `node_modules`, `dist`, dan folder build.
-- Commit dari UI hanya commit lokal (belum push); pastikan konfigurasi user.name/user.email Git di host sudah benar.
+- Commit/push dari UI memakai remote pertama (utamakan `origin`); pull memakai `--ff-only`. Pastikan user.name/user.email dan kredensial Git host sudah benar.
 - Hapus folder hanya diizinkan untuk folder kosong; belum ada recursive delete.
 - Terminal adalah shell penuh; hanya berikan akses ke pengguna tepercaya.
 
 ## Test
 
 ```bash
-npm test          # 6 test integrasi API
+npm test          # 7 test integrasi API
 npm run verify    # typecheck + test + build + gate Chrome 93
 npm run e2e:chrome93
 ```

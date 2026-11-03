@@ -11,12 +11,12 @@ export interface GitCommandResult {
 }
 
 /** Menjalankan git dan mengembalikan output juga saat exit code != 0 (mis. diff). */
-export async function gitRaw(cwd: string, args: string[]): Promise<GitCommandResult> {
+export async function gitRaw(cwd: string, args: string[], timeoutMs = 30_000): Promise<GitCommandResult> {
   try {
     const result = await execFileAsync('git', args, {
       cwd,
       maxBuffer: 20 * 1024 * 1024,
-      timeout: 30_000,
+      timeout: timeoutMs,
       env: { ...process.env, GIT_TERMINAL_PROMPT: '0' }
     });
     return { stdout: result.stdout, stderr: result.stderr, code: 0 };

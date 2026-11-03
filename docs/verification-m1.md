@@ -23,7 +23,8 @@ npm run verify
 | Sintaks ES2020 | Lulus — 3 file |
 | API JS terlarang | Lulus |
 | CSS terlarang | Lulus |
-| Bundel JS | **127,0 KB gzip** (batas 150 KB) |
+| Bundel JS awal | **128,3 KB gzip** (batas 150 KB) |
+| Bundel total + editor lazy | **231,1 KB gzip** (batas 300 KB) |
 | Test API | 6 lulus |
 
 ## Smoke Chromium 93
@@ -40,7 +41,7 @@ Alur yang diuji:
 1. Login password → sidebar project.
 2. Pilih project dan worktree.
 3. Buat terminal shell, ketik `echo chrome93-ok` lewat WebSocket, verifikasi output di xterm.
-4. Buka file `README.md` di file explorer, sunting, simpan dengan Ctrl+S, verifikasi isi file.
+4. Buka file `README.md` di CodeMirror, sunting, simpan dengan Ctrl+S, verifikasi isi file.
 5. Panel Changes menampilkan `README.md`; buka diff dan verifikasi baris hasil edit.
 6. Stage `README.md`, buka modal commit, isi pesan, commit, dan verifikasi working tree bersih.
 7. Buat terminal kedua dan ketiga, aktifkan multi-pane hingga 3 pane, lalu Unsplit.

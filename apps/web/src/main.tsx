@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import '@xterm/xterm/css/xterm.css';
+import 'codemirror/lib/codemirror.css';
 import './styles/index.css';
 import { App } from './App';
 import { ToastProvider } from './components/ui';

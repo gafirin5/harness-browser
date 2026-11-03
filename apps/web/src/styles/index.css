@@ -1003,6 +1003,98 @@ button:disabled {
   tab-size: 2;
 }
 
+.editor-cm {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.editor-cm .CodeMirror {
+  height: 100%;
+  background: var(--terminal);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.cm-s-dorado .CodeMirror-gutters {
+  background: var(--terminal);
+  border-right: 1px solid var(--border-soft);
+}
+
+.cm-s-dorado .CodeMirror-linenumber {
+  color: var(--muted-2);
+}
+
+.cm-s-dorado .CodeMirror-cursor {
+  border-left: 1px solid var(--accent);
+}
+
+.cm-s-dorado .CodeMirror-selected {
+  background: rgba(240, 180, 92, 0.2);
+}
+
+.cm-s-dorado .CodeMirror-activeline-background {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.cm-s-dorado .cm-keyword {
+  color: #c792ea;
+}
+
+.cm-s-dorado .cm-atom,
+.cm-s-dorado .cm-number {
+  color: var(--accent);
+}
+
+.cm-s-dorado .cm-string,
+.cm-s-dorado .cm-string-2 {
+  color: #9ad48d;
+}
+
+.cm-s-dorado .cm-comment {
+  color: var(--muted-2);
+  font-style: italic;
+}
+
+.cm-s-dorado .cm-def,
+.cm-s-dorado .cm-variable-2 {
+  color: var(--accent-2);
+}
+
+.cm-s-dorado .cm-property,
+.cm-s-dorado .cm-builtin,
+.cm-s-dorado .cm-type {
+  color: #8dc4ff;
+}
+
+.cm-s-dorado .cm-tag {
+  color: #ef7272;
+}
+
+.cm-s-dorado .cm-attribute {
+  color: var(--accent);
+}
+
+.cm-s-dorado .cm-meta {
+  color: var(--muted);
+}
+
+.cm-s-dorado .cm-link {
+  color: #8dc4ff;
+  text-decoration: underline;
+}
+
+.cm-s-dorado .cm-header {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.cm-s-dorado .cm-quote {
+  color: #9ad48d;
+}
+
 .changes {
   padding: 0 4px;
 }

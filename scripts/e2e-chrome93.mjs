@@ -122,9 +122,35 @@ try {
   console.log('[chrome93] login + sidebar OK');
 
   await clickText('.project-row', createdProject.name);
-  await page.waitForFunction((name) => document.body.innerText.includes(name), { timeout: 15000 }, createdWorktree.branch);
+  await page.waitForFunction(
+    (name) => Array.from(document.querySelectorAll('.worktree-row')).some((row) => (row.textContent || '').includes(name)),
+    { timeout: 15000 },
+    createdWorktree.branch
+  );
   await clickText('.worktree-row', createdWorktree.branch);
-  await page.waitForSelector('.terminal-area');
+  try {
+    await page.waitForFunction(
+      (name) => document.querySelector('.worktree-row.active')?.textContent?.includes(name),
+      { timeout: 5000 },
+      createdWorktree.branch
+    );
+  } catch {
+    await clickText('.worktree-row', createdWorktree.branch);
+    await page.waitForFunction(
+      (name) => document.querySelector('.worktree-row.active')?.textContent?.includes(name),
+      { timeout: 10000 },
+      createdWorktree.branch
+    );
+  }
+  await page.waitForFunction(
+    () => {
+      const button = Array.from(document.querySelectorAll('button')).find(
+        (item) => (item.textContent || '').trim() === '+ Terminal'
+      );
+      return button && !button.disabled;
+    },
+    { timeout: 10000 }
+  );
   console.log('[chrome93] project + worktree OK');
 
   await clickText('button', '+ Terminal');
@@ -144,10 +170,10 @@ try {
 
   await page.waitForSelector('.file-row', { timeout: 15000 });
   await clickText('.file-row', 'README.md');
-  await page.waitForSelector('.editor-textarea', { timeout: 15000 });
-  const original = await page.$eval('.editor-textarea', (element) => element.value);
+  await page.waitForSelector('.CodeMirror', { timeout: 15000 });
+  const original = await page.evaluate(() => document.querySelector('.CodeMirror-code')?.innerText ?? '');
   if (!original.includes('# e2e')) throw new Error('Isi file awal tidak sesuai.');
-  await page.click('.editor-textarea');
+  await page.click('.CodeMirror');
   await page.keyboard.down('Control');
   await page.keyboard.press('a');
   await page.keyboard.up('Control');
@@ -301,7 +327,7 @@ try {
     () => document.body.innerText.includes('created-by-e2e.txt'),
     { timeout: 15000 }
   );
-  await page.waitForSelector('.editor-textarea', { timeout: 15000 });
+  await page.waitForSelector('.CodeMirror', { timeout: 15000 });
 
   dialogValues.push('renamed-by-e2e.txt');
   await page.evaluate(() => {

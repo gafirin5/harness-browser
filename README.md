@@ -11,7 +11,7 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - Daftar branch dan pembuatan **git worktree** paralel.
 - **Terminal PTY** per worktree dengan xterm.js, resize, replay buffer, dan reconnect.
 - **Sesi agent** dengan adapter CLI; M1 mendukung OpenCode.
-- **File explorer** dengan buat/rename/hapus, plus editor teks (maksimal 1 MB, proteksi path/symlink).
+- **File explorer** dengan buat/rename/hapus, plus editor CodeMirror 5: line numbers, syntax highlighting, lazy-loaded (maksimal 1 MB, proteksi path/symlink).
 - Tab terpadu untuk terminal, file, dan diff; indikator file belum disimpan dan Ctrl+S.
 - **Multi-pane terminal** hingga empat pane, dengan pemilih terminal per pane.
 - **Source control**: status Git per worktree, daftar perubahan, diff staged/unstaged, stage/unstage, dan commit lokal.

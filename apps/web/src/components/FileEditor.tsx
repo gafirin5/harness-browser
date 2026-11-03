@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type CodeMirror from 'codemirror';
 import { ApiError, apiGet, request } from '../lib/api';
 import { useToast } from './ui';
 
@@ -18,6 +19,66 @@ interface FileEditorProps {
   onDirtyChange: (path: string, dirty: boolean) => void;
 }
 
+function modeFor(language: string): string | CodeMirror.EditorConfiguration['mode'] {
+  switch (language) {
+    case 'typescript':
+      return { name: 'javascript', typescript: true };
+    case 'javascript':
+      return 'javascript';
+    case 'json':
+      return { name: 'javascript', json: true };
+    case 'markdown':
+      return 'markdown';
+    case 'css':
+      return 'css';
+    case 'html':
+      return { name: 'xml', htmlMode: true };
+    case 'shell':
+      return 'shell';
+    case 'python':
+      return 'python';
+    case 'sql':
+      return 'sql';
+    case 'yaml':
+      return 'yaml';
+    default:
+      return null;
+  }
+}
+
+async function ensureMode(language: string): Promise<void> {
+  switch (language) {
+    case 'typescript':
+    case 'javascript':
+    case 'json':
+      await import('codemirror/mode/javascript/javascript.js');
+      break;
+    case 'css':
+      await import('codemirror/mode/css/css.js');
+      break;
+    case 'html':
+      await import('codemirror/mode/xml/xml.js');
+      break;
+    case 'markdown':
+      await import('codemirror/mode/markdown/markdown.js');
+      break;
+    case 'shell':
+      await import('codemirror/mode/shell/shell.js');
+      break;
+    case 'python':
+      await import('codemirror/mode/python/python.js');
+      break;
+    case 'sql':
+      await import('codemirror/mode/sql/sql.js');
+      break;
+    case 'yaml':
+      await import('codemirror/mode/yaml/yaml.js');
+      break;
+    default:
+      break;
+  }
+}
+
 export function FileEditor({ worktreeId, filePath, onDirtyChange }: FileEditorProps): JSX.Element {
   const { push } = useToast();
   const [content, setContent] = useState('');
@@ -25,8 +86,14 @@ export function FileEditor({ worktreeId, filePath, onDirtyChange }: FileEditorPr
   const [meta, setMeta] = useState<{ binary: boolean; size: number; language: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [editorReady, setEditorReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hostRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<CodeMirror.Editor | null>(null);
+  const contentRef = useRef('');
+  const saveRef = useRef<() => void>(() => undefined);
 
+  contentRef.current = content;
   const dirty = content !== original;
 
   useEffect(() => {
@@ -56,6 +123,7 @@ export function FileEditor({ worktreeId, filePath, onDirtyChange }: FileEditorPr
   }, [worktreeId, filePath]);
 
   const save = async (): Promise<void> => {
+    if (!dirty || saving) return;
     setSaving(true);
     setError(null);
     try {
@@ -71,17 +139,46 @@ export function FileEditor({ worktreeId, filePath, onDirtyChange }: FileEditorPr
       setSaving(false);
     }
   };
+  saveRef.current = () => void save();
 
   useEffect(() => {
-    const onKey = (event: KeyboardEvent): void => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
-        event.preventDefault();
-        if (dirty && !saving) void save();
-      }
+    if (loading || meta?.binary || !hostRef.current) return undefined;
+    let disposed = false;
+    let editor: CodeMirror.Editor | null = null;
+    const language = meta?.language ?? 'text';
+
+    void (async () => {
+      await ensureMode(language);
+      const module = await import('codemirror');
+      if (disposed || !hostRef.current) return;
+      const CodeMirrorEditor = module.default;
+      editor = CodeMirrorEditor(hostRef.current, {
+        value: contentRef.current,
+        mode: modeFor(language),
+        theme: 'dorado',
+        lineNumbers: true,
+        lineWrapping: false,
+        indentUnit: 2,
+        tabSize: 2,
+        viewportMargin: 30,
+        extraKeys: {
+          'Ctrl-S': () => saveRef.current(),
+          'Cmd-S': () => saveRef.current()
+        }
+      });
+      editor.on('change', () => setContent(editor?.getValue() ?? ''));
+      editorRef.current = editor;
+      setEditorReady(true);
+      window.setTimeout(() => editor?.refresh(), 30);
+    })();
+
+    return () => {
+      disposed = true;
+      editorRef.current = null;
+      setEditorReady(false);
+      if (editor) editor.getWrapperElement().remove();
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  });
+  }, [loading, meta?.binary, meta?.language]);
 
   const sizeLabel = useMemo(() => {
     if (!meta) return '';
@@ -112,14 +209,10 @@ export function FileEditor({ worktreeId, filePath, onDirtyChange }: FileEditorPr
       ) : meta?.binary ? (
         <div className="empty">File biner tidak dapat ditampilkan di editor teks.</div>
       ) : (
-        <textarea
-          className="editor-textarea"
-          value={content}
-          onChange={(event) => setContent(event.target.value)}
-          spellCheck={false}
-          wrap="off"
-          aria-label={`Editor ${filePath}`}
-        />
+        <>
+          <div className="editor-cm" ref={hostRef} />
+          {!editorReady ? <div className="empty">Menyiapkan editor...</div> : null}
+        </>
       )}
     </div>
   );

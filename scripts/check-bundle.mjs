@@ -4,16 +4,35 @@ import path from 'node:path';
 import { gzipSync } from 'node:zlib';
 
 const root = process.argv[2] ?? 'dist';
-const limit = 150 * 1024;
+const INITIAL_LIMIT = 150 * 1024;
+const TOTAL_LIMIT = 300 * 1024;
+
+const html = await readFile(path.join(root, 'index.html'), 'utf8').catch(() => '');
+const initialRefs = new Set(
+  Array.from(html.matchAll(/(?:src|href)="(\/assets\/[^"]+\.js)"/g)).map((match) => match[1].replace(/^\//, ''))
+);
+
 const files = await collect(root);
+const rows = [];
+let initialTotal = 0;
 let total = 0;
+
 for (const file of files) {
+  const relative = path.relative(root, file).replaceAll('\\', '/');
   const compressed = gzipSync(await readFile(file), { level: 9 }).length;
+  const initial = initialRefs.has(relative) || (initialRefs.size === 0);
+  if (initial) initialTotal += compressed;
   total += compressed;
-  console.log(`${String(compressed).padStart(8)} B  ${path.relative(root, file)}`);
+  rows.push({ relative, compressed, initial });
 }
-console.log(`[check-bundle] total ${(total / 1024).toFixed(1)} KB gzip (batas 150 KB)`);
-if (total > limit) process.exit(1);
+
+rows.sort((a, b) => b.compressed - a.compressed);
+for (const row of rows) {
+  console.log(`${row.initial ? 'initial' : 'lazy   '} ${String(row.compressed).padStart(8)} B  ${row.relative}`);
+}
+console.log(`[check-bundle] initial ${(initialTotal / 1024).toFixed(1)} KB gzip (batas 150 KB)`);
+console.log(`[check-bundle] total   ${(total / 1024).toFixed(1)} KB gzip termasuk chunk lazy (batas 300 KB)`);
+if (initialTotal > INITIAL_LIMIT || total > TOTAL_LIMIT) process.exit(1);
 
 async function collect(dir) {
   const entries = await readdir(dir, { withFileTypes: true });

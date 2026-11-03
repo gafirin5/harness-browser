@@ -23,7 +23,7 @@ npm run verify
 | Sintaks ES2020 | Lulus — 3 file |
 | API JS terlarang | Lulus |
 | CSS terlarang | Lulus |
-| Bundel JS | **123,5 KB gzip** (batas 150 KB) |
+| Bundel JS | **123,6 KB gzip** (batas 150 KB) |
 | Test API | 6 lulus |
 
 ## Smoke Chromium 93

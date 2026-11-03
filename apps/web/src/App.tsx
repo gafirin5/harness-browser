@@ -246,7 +246,15 @@ export function App(): JSX.Element {
     markMutation();
     if (!window.confirm(`Hapus worktree ${worktree.branch}? Branch Git tidak dihapus.`)) return;
     try {
-      await apiDelete(`/worktrees/${worktree.id}`);
+      try {
+        await apiDelete(`/worktrees/${worktree.id}`);
+      } catch (caught) {
+        if (caught instanceof ApiError && caught.code === 'GIT_ERROR' && window.confirm('Worktree memiliki perubahan yang belum di-commit. Hapus paksa? Data di worktree akan hilang.')) {
+          await apiDelete(`/worktrees/${worktree.id}?force=1`);
+        } else {
+          throw caught;
+        }
+      }
       markMutation();
       setWorktrees((current) => current.filter((item) => item.id !== worktree.id));
       if (selectedWorktreeId === worktree.id) {
@@ -254,6 +262,8 @@ export function App(): JSX.Element {
         setTerminals([]);
         setSessions([]);
         setActiveTerminalId(null);
+        setOpenFiles([]);
+        setActiveFilePath(null);
       }
       push('success', 'Worktree dihapus.');
     } catch (caught) {

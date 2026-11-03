@@ -198,7 +198,7 @@ try {
   for (const terminal of terminals?.body?.data ?? []) {
     await api(`/api/terminals/${terminal.id}`, { method: 'DELETE' }, cookie).catch(() => {});
   }
-  await api(`/api/worktrees/${createdWorktree.id}`, { method: 'DELETE' }, cookie).catch(() => {});
+  await api(`/api/worktrees/${createdWorktree.id}?force=1`, { method: 'DELETE' }, cookie).catch(() => {});
   await api(`/api/projects/${createdProject.id}`, { method: 'DELETE' }, cookie).catch(() => {});
   fs.rmSync(repoDir, { recursive: true, force: true });
 }

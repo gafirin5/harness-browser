@@ -15,6 +15,16 @@ const diffQuery = z.object({
   staged: z.enum(['0', '1']).optional().default('0')
 });
 
+const stageSchema = z.object({
+  worktreeId: z.string().min(1),
+  path: z.string().max(1000).optional()
+});
+
+const commitSchema = z.object({
+  worktreeId: z.string().min(1),
+  message: z.string().trim().min(3, 'Pesan commit minimal 3 karakter.').max(2000, 'Pesan commit maksimal 2.000 karakter.')
+});
+
 interface ChangedFile {
   path: string;
   status: string;
@@ -131,5 +141,49 @@ gitRouter.get(
         truncated
       }
     });
+  })
+);
+
+gitRouter.post(
+  '/stage',
+  asyncHandler(async (req, res) => {
+    const body = parseWith(stageSchema, req.body);
+    const cwd = resolveWorktree(body.worktreeId);
+    const args = body.path ? ['add', '--', safeRelative(body.path)] : ['add', '-A'];
+    const result = await gitRaw(cwd, args);
+    if (result.code !== 0) throw new AppError(422, 'GIT_ERROR', result.stderr.trim().slice(0, 800) || 'Gagal stage.');
+    res.json({ data: { ok: true } });
+  })
+);
+
+gitRouter.post(
+  '/unstage',
+  asyncHandler(async (req, res) => {
+    const body = parseWith(stageSchema, req.body);
+    const cwd = resolveWorktree(body.worktreeId);
+    const relative = body.path ? safeRelative(body.path) : null;
+    const args = relative ? ['restore', '--staged', '--', relative] : ['restore', '--staged', ':'];
+    let result = await gitRaw(cwd, args);
+    if (result.code !== 0 && relative) {
+      result = await gitRaw(cwd, ['rm', '--cached', '--', relative]);
+    }
+    if (result.code !== 0) throw new AppError(422, 'GIT_ERROR', result.stderr.trim().slice(0, 800) || 'Gagal unstage.');
+    res.json({ data: { ok: true } });
+  })
+);
+
+gitRouter.post(
+  '/commit',
+  asyncHandler(async (req, res) => {
+    const body = parseWith(commitSchema, req.body);
+    const cwd = resolveWorktree(body.worktreeId);
+    const result = await gitRaw(cwd, ['commit', '-m', body.message]);
+    if (result.code !== 0) {
+      const message = result.stderr.trim() || result.stdout.trim() || 'Commit gagal.';
+      throw new AppError(422, 'GIT_ERROR', message.slice(0, 800));
+    }
+    const log = await gitRaw(cwd, ['log', '-1', '--format=%H%n%s']);
+    const [hash = '', summary = ''] = log.stdout.trim().split('\n');
+    res.json({ data: { hash, summary } });
   })
 );

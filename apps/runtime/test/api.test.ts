@@ -118,6 +118,26 @@ describe('files', () => {
     expect(diff.status).toBe(200);
     expect(diff.body.data.diff).toContain('+updated by test');
 
+    const staged = await api.post('/api/git/stage').send({ worktreeId, path: 'hello.txt' });
+    expect(staged.status).toBe(200);
+    const afterStage = await api.get(`/api/git/status?worktreeId=${worktreeId}`);
+    expect(afterStage.body.data.files.find((file: { path: string }) => file.path === 'hello.txt').staged).toBe(true);
+
+    const unstaged = await api.post('/api/git/unstage').send({ worktreeId, path: 'hello.txt' });
+    expect(unstaged.status).toBe(200);
+    const afterUnstage = await api.get(`/api/git/status?worktreeId=${worktreeId}`);
+    expect(afterUnstage.body.data.files.find((file: { path: string }) => file.path === 'hello.txt').staged).toBe(false);
+
+    await api.post('/api/git/stage').send({ worktreeId, path: 'hello.txt' });
+    const commit = await api.post('/api/git/commit').send({ worktreeId, message: 'test: tambah hello' });
+    expect(commit.status).toBe(200);
+    expect(commit.body.data.hash).toMatch(/^[a-f0-9]{40}$/);
+    const clean = await api.get(`/api/git/status?worktreeId=${worktreeId}`);
+    expect(clean.body.data.clean).toBe(true);
+
+    const emptyCommit = await api.post('/api/git/commit').send({ worktreeId, message: 'ab' });
+    expect(emptyCommit.status).toBe(422);
+
     await api.delete(`/api/worktrees/${worktreeId}`);
   });
 });

@@ -15,6 +15,7 @@ import { FileEditor } from './components/FileEditor';
 import { FileTree } from './components/FileTree';
 import { ChangesPanel } from './components/ChangesPanel';
 import { DiffViewer } from './components/DiffViewer';
+import { CommandPalette, type Command } from './components/CommandPalette';
 import {
   AddProjectDialog,
   NewSessionDialog,
@@ -49,6 +50,7 @@ export function App(): JSX.Element {
   const [splitTerminalId, setSplitTerminalId] = useState<string | null>(null);
   const [dirtyFiles, setDirtyFiles] = useState<Record<string, boolean>>({});
   const [dialog, setDialog] = useState<DialogState>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const mutationAt = useRef(0);
   const dataVersion = useRef(0);
@@ -177,6 +179,24 @@ export function App(): JSX.Element {
       setSplitTerminalId(other?.id ?? null);
     }
   }, [terminals, activeTerminalId, splitTerminalId]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      const target = event.target;
+      const editable =
+        target instanceof Element && target.closest('input, textarea, select, [contenteditable="true"], .xterm');
+      const mod = event.ctrlKey || event.metaKey;
+      if (mod && event.shiftKey && event.key.toLowerCase() === 'p') {
+        event.preventDefault();
+        setPaletteOpen(true);
+      } else if (mod && !event.shiftKey && event.key.toLowerCase() === 'k' && !editable) {
+        event.preventDefault();
+        setPaletteOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const openFile = useCallback((filePath: string, name: string) => {
     setOpenFiles((current) => (current.some((file) => file.path === filePath) ? current : [...current, { path: filePath, name }]));
@@ -354,6 +374,59 @@ export function App(): JSX.Element {
 
   const activeTerminal = terminals.find((terminal) => terminal.id === activeTerminalId) ?? null;
 
+  const commands: Command[] = [
+    {
+      id: 'project',
+      label: 'Tambah Project',
+      hint: 'Daftarkan repository Git lokal',
+      run: () => setDialog({ type: 'project' })
+    },
+    ...(selectedProject
+      ? [
+          {
+            id: 'worktree',
+            label: 'Worktree Baru',
+            hint: `Buat worktree untuk ${selectedProject.name}`,
+            run: () => setDialog({ type: 'worktree', project: selectedProject })
+          }
+        ]
+      : []),
+    ...(selectedWorktree
+      ? [
+          {
+            id: 'terminal',
+            label: 'Terminal Baru',
+            hint: 'Shell interaktif di worktree aktif',
+            run: () => void createTerminal()
+          },
+          {
+            id: 'agent',
+            label: 'Jalankan Agent',
+            hint: 'OpenCode di worktree aktif',
+            run: () => setDialog({ type: 'session', worktree: selectedWorktree })
+          },
+          {
+            id: 'split',
+            label: 'Toggle Terminal Split',
+            hint: 'Tampilkan dua pane terminal',
+            run: () => toggleSplit()
+          },
+          {
+            id: 'refresh',
+            label: 'Muat Ulang Worktree',
+            hint: 'Segarkan terminal dan sesi',
+            run: () => void loadWorktreeData(selectedWorktree.id)
+          }
+        ]
+      : []),
+    {
+      id: 'share',
+      label: 'Share / Pairing Token',
+      hint: 'Buat URL untuk browser lain',
+      run: () => setDialog({ type: 'share' })
+    }
+  ];
+
   return (
     <div className="app">
       <header className="topbar">
@@ -370,6 +443,9 @@ export function App(): JSX.Element {
           <span className={`dot ${agents.some((agent) => agent.installed) ? '' : 'off'}`} />
           {agents.filter((agent) => agent.installed).length} agent siap
         </span>
+        <button className="btn tiny" onClick={() => setPaletteOpen(true)} title="Command palette (Ctrl+Shift+P)">
+          ⌘K
+        </button>
         <button className="btn tiny" onClick={() => setDialog({ type: 'share' })}>
           Share
         </button>
@@ -743,6 +819,8 @@ export function App(): JSX.Element {
           </button>
         </div>
       ) : null}
+
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
 
       {dialog?.type === 'project' ? (
         <AddProjectDialog

@@ -14,7 +14,8 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **File explorer** dan editor teks (baca/tulis, maksimal 1 MB, proteksi path/symlink).
 - Tab terpadu untuk terminal, file, dan diff; indikator file belum disimpan dan Ctrl+S.
 - **Terminal split** dua pane untuk membandingkan/menjalankan dua terminal sekaligus.
-- **Source control**: status Git per worktree, daftar perubahan, diff staged/unstaged.
+- **Source control**: status Git per worktree, daftar perubahan, diff staged/unstaged, stage/unstage, dan commit lokal.
+- **Command palette** (`Ctrl+Shift+P` atau `Ctrl+K`): terminal, agent, worktree, split, refresh, share.
 - **Rerun sesi** agent dengan prompt yang sama, serta stop sesi berjalan.
 - Hentikan sesi, tutup terminal, hapus worktree (dengan proteksi sesi aktif).
 - Quick tunnel Cloudflare + pairing URL.
@@ -138,7 +139,7 @@ BASE_URL=http://127.0.0.1:7788 \
 node scripts/e2e-chrome93.mjs
 ```
 
-Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `echo chrome93-ok`), file explorer + editor (buka/sunting/simpan `README.md`), git status + diff, terminal split, dialog Share, dan pairing URL auto-login.
+Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `echo chrome93-ok`), file explorer + editor (buka/sunting/simpan `README.md`), git status + diff, stage + commit, command palette, terminal split, dialog Share, dan pairing URL auto-login.
 
 ## Keamanan
 
@@ -149,6 +150,7 @@ Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `ech
 - Origin check untuk request mutasi dan WebSocket.
 - Path worktree divalidasi agar tidak keluar dari data directory.
 - File explorer dibatasi pada worktree, menolak path traversal/symlink ke luar worktree, dan mengabaikan `.git`, `node_modules`, `dist`, dan folder build.
+- Commit dari UI hanya commit lokal (belum push); pastikan konfigurasi user.name/user.email Git di host sudah benar.
 - Terminal adalah shell penuh; hanya berikan akses ke pengguna tepercaya.
 
 ## Test

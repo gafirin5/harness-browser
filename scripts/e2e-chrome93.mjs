@@ -188,6 +188,85 @@ try {
   await clickText('button', 'Split');
   console.log('[chrome93] terminal split OK');
 
+  const staged = await page.evaluate(() => {
+    const row = Array.from(document.querySelectorAll('.change-row')).find((item) =>
+      (item.textContent || '').includes('README.md')
+    );
+    const button = row?.querySelector('.change-action');
+    if (!button) return false;
+    button.click();
+    return true;
+  });
+  if (!staged) throw new Error('Tombol stage README.md tidak ditemukan.');
+  const stagedStatus = await (async () => {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const response = await api(`/api/git/status?worktreeId=${createdWorktree.id}`, {}, cookie);
+      const file = response.body?.data?.files?.find((item) => item.path === 'README.md');
+      if (file?.staged) return response.body.data;
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    }
+    throw new Error('README.md tidak masuk staged setelah klik tombol stage.');
+  })();
+  console.log(`[chrome93] staged files: ${stagedStatus.files.length}`);
+
+  await page.waitForFunction(
+    () => {
+      const button = Array.from(document.querySelectorAll('.change-actions button')).find((item) =>
+        (item.textContent || '').includes('Commit')
+      );
+      return button && !button.disabled;
+    },
+    { timeout: 15000 }
+  );
+  await clickText('button', 'Commit');
+  await page.waitForSelector('.modal textarea', { timeout: 10000 });
+  await page.$eval(
+    '.modal textarea',
+    (element, value) => {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set;
+      setter?.call(element, value);
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+    },
+    'chrome93: edit readme'
+  );
+  await page.waitForFunction(
+    () => {
+      const button = Array.from(document.querySelectorAll('.modal .btn.primary')).find((item) =>
+        (item.textContent || '').includes('Commit')
+      );
+      return button && !button.disabled;
+    },
+    { timeout: 10000 }
+  );
+  const committed = await page.evaluate(() => {
+    const button = Array.from(document.querySelectorAll('.modal .btn.primary')).find((item) =>
+      (item.textContent || '').includes('Commit')
+    );
+    if (!button) return false;
+    button.click();
+    return true;
+  });
+  if (!committed) throw new Error('Tombol commit modal tidak ditemukan.');
+  await page.waitForFunction(
+    () => {
+      const rows = Array.from(document.querySelectorAll('.change-row'));
+      return rows.length === 0 && document.body.innerText.toLowerCase().includes('working tree bersih');
+    },
+    { timeout: 15000 }
+  );
+  console.log('[chrome93] git stage + commit OK');
+
+  await page.keyboard.down('Control');
+  await page.keyboard.down('Shift');
+  await page.keyboard.press('p');
+  await page.keyboard.up('Shift');
+  await page.keyboard.up('Control');
+  await page.waitForSelector('.palette', { timeout: 10000 });
+  await page.type('.palette-input', 'terminal');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('.palette'), { timeout: 10000 });
+  console.log('[chrome93] command palette OK');
+
   await clickText('button', 'Share');
   await waitText('Share & Pairing');
   await clickText('button', 'Buat Pairing Token');

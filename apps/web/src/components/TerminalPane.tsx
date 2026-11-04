@@ -77,11 +77,13 @@ export function TerminalPane({
       socket = new WebSocket(terminalWsUrl(terminalId));
 
       socket.onopen = () => {
+        if (disposed) return;
         retries = 0;
         send({ type: 'resize', cols: terminal.cols, rows: terminal.rows });
       };
 
       socket.onmessage = (event) => {
+        if (disposed) return;
         let message: { type?: string; data?: string; code?: number; message?: string };
         try {
           message = JSON.parse(String(event.data)) as typeof message;
@@ -116,8 +118,10 @@ export function TerminalPane({
     const resizeDisposable = terminal.onResize(({ cols, rows }) => send({ type: 'resize', cols, rows }));
 
     const observer = new ResizeObserver(() => {
+      if (disposed) return;
       if (resizeTimer) window.clearTimeout(resizeTimer);
       resizeTimer = window.setTimeout(() => {
+        if (disposed) return;
         try {
           fit.fit();
           send({ type: 'resize', cols: terminal.cols, rows: terminal.rows });

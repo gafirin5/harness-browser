@@ -1,3 +1,4 @@
+import { cleanupAuthSessions } from '../auth/session.js';
 import { failStaleTasks, markStaleAgentsOffline, recomputeAllAgents } from './service.js';
 import { scheduleSummaryBroadcast } from './hub.js';
 
@@ -5,6 +6,7 @@ export function reconcileOnce(): void {
   const staleAgents = markStaleAgentsOffline();
   const agentsFixed = recomputeAllAgents();
   const staleTasks = failStaleTasks();
+  cleanupAuthSessions();
   if (staleAgents || staleTasks || agentsFixed) scheduleSummaryBroadcast();
 }
 

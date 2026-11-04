@@ -646,3 +646,57 @@ describe('orchestrator', () => {
     expect(agent.body.data.status).toBe('OFFLINE');
   });
 });
+
+describe('auth security', () => {
+  it('health mengecek database dan mengirim header keamanan', async () => {
+    const response = await request(app).get('/api/health');
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe('ok');
+    expect(response.headers['permissions-policy']).toContain('camera=()');
+    expect(response.headers['x-content-type-options']).toBe('nosniff');
+    expect(response.headers['x-frame-options']).toBe('DENY');
+  });
+
+  it('mengganti password, mencabut sesi lain, dan mempertahankan sesi aktif', async () => {
+    const second = request.agent(app);
+    const secondLogin = await second.post('/api/auth/login').send({ password: 'test-password' });
+    expect(secondLogin.status).toBe(200);
+
+    const changed = await api
+      .patch('/api/auth/password')
+      .send({ currentPassword: 'test-password', newPassword: 'test-password-2' });
+    expect(changed.status).toBe(200);
+    expect(changed.body.data.updated).toBe(true);
+
+    const oldPassword = await request(app).post('/api/auth/login').send({ password: 'test-password' });
+    expect(oldPassword.status).toBe(401);
+
+    const third = request.agent(app);
+    const thirdLogin = await third.post('/api/auth/login').send({ password: 'test-password-2' });
+    expect(thirdLogin.status).toBe(200);
+
+    expect((await api.get('/api/auth/me')).status).toBe(200);
+    expect((await second.get('/api/auth/me')).status).toBe(401);
+
+    const revoked = await api.post('/api/auth/sessions/revoke-others');
+    expect(revoked.status).toBe(200);
+    expect(revoked.body.data.revoked).toBeGreaterThanOrEqual(1);
+    expect((await third.get('/api/auth/me')).status).toBe(401);
+    expect((await api.get('/api/auth/me')).status).toBe(200);
+
+    const restored = await api
+      .patch('/api/auth/password')
+      .send({ currentPassword: 'test-password-2', newPassword: 'test-password' });
+    expect(restored.status).toBe(200);
+    const restoredLogin = await request(app).post('/api/auth/login').send({ password: 'test-password' });
+    expect(restoredLogin.status).toBe(200);
+  });
+
+  it('logout mencabut sesi yang sedang dipakai', async () => {
+    const agent = request.agent(app);
+    expect((await agent.post('/api/auth/login').send({ password: 'test-password' })).status).toBe(200);
+    expect((await agent.get('/api/auth/me')).status).toBe(200);
+    expect((await agent.post('/api/auth/logout')).status).toBe(204);
+    expect((await agent.get('/api/auth/me')).status).toBe(401);
+  });
+});

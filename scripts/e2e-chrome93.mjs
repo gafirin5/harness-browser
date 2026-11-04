@@ -53,7 +53,7 @@ async function api(pathname, options = {}, cookie = '') {
 
 const login = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ password }) });
 if (login.status !== 200) throw new Error(`Login API gagal: ${login.status}`);
-const cookie = (login.headers.get('set-cookie') ?? '').split(';')[0];
+let cookie = (login.headers.get('set-cookie') ?? '').split(';')[0];
 
 const project = await api(
   '/api/projects',
@@ -518,6 +518,25 @@ try {
   await page.click('.orch-head button[aria-label="Tutup"]');
   await page.waitForFunction(() => !document.querySelector('.orch-panel'), { timeout: 10000 });
   console.log('[chrome93] orchestrator task end-to-end OK');
+
+  await clickText('button', 'Setelan');
+  await waitText('Pengaturan Keamanan');
+  await clickText('button', 'Cabut Sesi Lain');
+  await waitText('sesi lain dicabut');
+  await page.click('button[aria-label="Tutup"]');
+  await page.waitForFunction(() => !document.body.innerText.includes('Pengaturan Keamanan'), {
+    timeout: 10000
+  });
+  console.log('[chrome93] settings dialog OK');
+
+  // "Cabut Sesi Lain" juga mencabut sesi API milik script E2E; login ulang
+  // agar langkah pairing dan cleanup tetap memakai sesi yang valid.
+  const relogin = await api('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ password })
+  });
+  if (relogin.status !== 200) throw new Error(`Login ulang E2E gagal: ${relogin.status}`);
+  cookie = (relogin.headers.get('set-cookie') ?? '').split(';')[0];
 
   await clickText('button', 'History');
   await waitText('Riwayat Sesi Agent');

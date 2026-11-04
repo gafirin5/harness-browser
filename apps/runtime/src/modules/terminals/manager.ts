@@ -271,7 +271,14 @@ class TerminalManager {
       const removed = runtime.chunks.shift();
       runtime.bufferSize -= removed?.length ?? 0;
     }
-    runtime.log?.write(data);
+    // PTY dapat masih mengirim data setelah stream log ditutup saat shutdown/exit.
+    if (runtime.log && !runtime.log.writableEnded && !runtime.log.destroyed) {
+      try {
+        runtime.log.write(data);
+      } catch {
+        // abaikan write ke stream yang sudah ditutup
+      }
+    }
   }
 
   private broadcast(runtime: Runtime, message: unknown): void {

@@ -61,3 +61,13 @@ export type TerminalServerMessage =
 export const pairingTokenCreateSchema = z.object({
   label: z.string().trim().min(1).max(80).default('Browser')
 });
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Password saat ini wajib diisi.').max(200),
+    newPassword: z.string().min(8, 'Password baru minimal 8 karakter.').max(200)
+  })
+  .refine((data) => data.currentPassword !== data.newPassword, {
+    message: 'Password baru harus berbeda dari password saat ini.',
+    path: ['newPassword']
+  });

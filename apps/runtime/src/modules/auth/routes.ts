@@ -1,29 +1,33 @@
 import crypto from 'node:crypto';
 import { Router } from 'express';
-import { loginSchema, pairSchema, pairingTokenCreateSchema } from '@dorado/shared';
+import { changePasswordSchema, loginSchema, pairSchema, pairingTokenCreateSchema } from '@dorado/shared';
 import { config } from '../../config.js';
 import { db, newId, nowIso } from '../../db/index.js';
 import { AppError } from '../../lib/errors.js';
 import { asyncHandler } from '../../lib/errors.js';
-import { parseWith, safeEqual, sha256 } from '../../lib/validation.js';
+import { parseWith, sha256 } from '../../lib/validation.js';
+import { verifyAdminPassword, updateAdminPassword } from './credentials.js';
 import { csrfGuard, rateLimit, requireAuth } from './middleware.js';
-import { clearSessionCookie, setSessionCookie } from './session.js';
+import {
+  clearSessionCookie,
+  createSession,
+  getSessionFromRequest,
+  revokeCurrentSession,
+  revokeOtherSessions
+} from './session.js';
 
 export const authRouter = Router();
 authRouter.use(csrfGuard);
-
-const adminFingerprint = crypto.createHash('sha256').update(config.adminPassword).digest('hex');
 
 authRouter.post(
   '/login',
   asyncHandler(async (req, res) => {
     rateLimit(`login:${req.ip ?? 'unknown'}`, 15, 60_000);
     const body = parseWith(loginSchema, req.body);
-    const supplied = crypto.createHash('sha256').update(body.password).digest('hex');
-    if (!safeEqual(supplied, adminFingerprint)) {
+    if (!verifyAdminPassword(body.password)) {
       throw new AppError(401, 'UNAUTHORIZED', 'Password salah.');
     }
-    setSessionCookie(res);
+    createSession(req, res);
     res.json({ data: { user: { id: 1, name: 'Admin' } } });
   })
 );
@@ -41,18 +45,41 @@ authRouter.post(
       throw new AppError(401, 'UNAUTHORIZED', 'Token pairing tidak valid atau sudah kedaluwarsa.');
     }
     db.prepare('UPDATE pairing_tokens SET last_used_at = ? WHERE id = ?').run(nowIso(), row.id);
-    setSessionCookie(res);
+    createSession(req, res);
     res.json({ data: { user: { id: 1, name: 'Admin' } } });
   })
 );
 
-authRouter.post('/logout', (_req, res) => {
+authRouter.post('/logout', (req, res) => {
+  revokeCurrentSession(req);
   clearSessionCookie(res);
   res.status(204).end();
 });
 
 authRouter.get('/me', requireAuth, (_req, res) => {
   res.json({ data: { user: { id: 1, name: 'Admin' } } });
+});
+
+authRouter.patch(
+  '/password',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const body = parseWith(changePasswordSchema, req.body);
+    if (!verifyAdminPassword(body.currentPassword)) {
+      throw new AppError(401, 'UNAUTHORIZED', 'Password saat ini salah.');
+    }
+    updateAdminPassword(body.newPassword);
+    const session = getSessionFromRequest(req);
+    const revoked = session ? revokeOtherSessions(session.id) : 0;
+    res.json({ data: { updated: true, revokedSessions: revoked }, message: 'Password berhasil diperbarui.' });
+  })
+);
+
+authRouter.post('/sessions/revoke-others', requireAuth, (req, res) => {
+  const session = getSessionFromRequest(req);
+  if (!session) throw new AppError(401, 'UNAUTHORIZED', 'Sesi tidak valid.');
+  const revoked = revokeOtherSessions(session.id);
+  res.json({ data: { revoked }, message: 'Sesi lain berhasil dicabut.' });
 });
 
 export const pairingRouter = Router();

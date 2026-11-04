@@ -3,7 +3,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cookieParser from 'cookie-parser';
+import { db } from './db/index.js';
 import { errorHandler } from './lib/errors.js';
+import { rateLimit } from './modules/auth/middleware.js';
 import { authRouter, pairingRouter } from './modules/auth/routes.js';
 import { projectsRouter } from './modules/projects/routes.js';
 import { worktreesRouter } from './modules/worktrees/routes.js';
@@ -26,6 +28,7 @@ export function createApp(): express.Express {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('Referrer-Policy', 'same-origin');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
     res.setHeader(
       'Content-Security-Policy',
       "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws: wss:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
@@ -38,8 +41,26 @@ export function createApp(): express.Express {
     next();
   });
 
+  app.use('/api', (req, _res, next) => {
+    if (req.path === '/health') {
+      next();
+      return;
+    }
+    try {
+      rateLimit(`api:${req.ip ?? 'unknown'}`, 300, 60_000);
+      next();
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok', time: new Date().toISOString(), version: '0.1.0' });
+    try {
+      db.prepare('SELECT 1 AS ok').get();
+      res.json({ status: 'ok', time: new Date().toISOString(), version: '0.1.0' });
+    } catch {
+      res.status(503).json({ status: 'unavailable', time: new Date().toISOString(), version: '0.1.0' });
+    }
   });
 
   app.use('/api/auth', authRouter);

@@ -79,6 +79,26 @@ db.exec(`
     value TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS admin_credentials (
+    id            INTEGER PRIMARY KEY CHECK (id = 1),
+    password_hash TEXT NOT NULL,
+    updated_at    TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS auth_sessions (
+    id           TEXT PRIMARY KEY,
+    token_hash   TEXT NOT NULL UNIQUE,
+    created_at   TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL,
+    expires_at   TEXT NOT NULL,
+    revoked_at   TEXT,
+    ip           TEXT,
+    user_agent   TEXT
+  );
+
+  CREATE INDEX IF NOT EXISTS auth_sessions_token_ix ON auth_sessions(token_hash);
+  CREATE INDEX IF NOT EXISTS auth_sessions_expiry_ix ON auth_sessions(expires_at);
+
   -- Orchestrator: provider, agent pekerja, task, dan log.
   CREATE TABLE IF NOT EXISTS providers (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,

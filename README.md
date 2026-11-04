@@ -6,7 +6,8 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 
 ## Fitur M1
 
-- Login admin (password) dan **pairing token** untuk akses browser lain.
+- Login admin (password bcrypt + sesi server-side) dan **pairing token** untuk akses browser lain.
+- **Pengaturan keamanan**: ganti password dan cabut sesi browser lain.
 - Tambah project dari path repository Git lokal.
 - Daftar branch dan pembuatan **git worktree** paralel.
 - **Terminal PTY** per worktree dengan xterm.js, resize, replay buffer, dan reconnect.
@@ -22,7 +23,7 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **Info Runtime**: versi, Node, tmux, data directory, agent CLI, dan jumlah data.
 - **Integrasi GitHub read-only**: info repository, pull request, dan issue per worktree; link keluar ke GitHub, caching 60 detik, token opsional.
 - **Orchestrator terintegrasi**: dashboard realtime (SSE + fallback polling), provider LLM dengan API key terenkripsi, agent worker dengan token/heartbeat, antrean task berprioritas, dispatcher, callback worker, cancel/retry, log, dan perhitungan biaya.
-- **Command palette** (`Ctrl+Shift+P` atau `Ctrl+K`): terminal, agent, worktree, split, orchestrator, search, refresh, history, github, info, share.
+- **Command palette** (`Ctrl+Shift+P` atau `Ctrl+K`): terminal, agent, worktree, split, orchestrator, search, refresh, history, github, info, settings, share.
 - **Resume sesi** agent dengan konteks percakapan (OpenCode `--continue`), serta stop sesi berjalan.
 - **Persistensi terminal/agent sejati** setelah runtime restart melalui tmux, dengan tombol Restart untuk shell.
 - Hentikan sesi, tutup terminal, hapus worktree (dengan proteksi sesi aktif).
@@ -186,15 +187,20 @@ BASE_URL=http://127.0.0.1:7788 \
 node scripts/e2e-chrome93.mjs
 ```
 
-Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `echo chrome93-ok`), file explorer + editor (buka/sunting/simpan `README.md`), git status + diff, pencarian kode dan lompat ke baris, stage + commit, command palette, terminal multi-pane (3 pane), pencarian terminal, dialog Info, dialog GitHub, buat/rename file, dialog riwayat sesi, dialog Share, dan pairing URL auto-login.
+Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `echo chrome93-ok`), file explorer + editor (buka/sunting/simpan `README.md`), git status + diff, pencarian kode dan lompat ke baris, stage + commit, command palette, terminal multi-pane (3 pane), pencarian terminal, dialog Info, dialog GitHub, orchestrator end-to-end, pengaturan/ganti password/cabut sesi, buat/rename file, dialog riwayat sesi, dialog Share, dan pairing URL auto-login.
 
 ## Keamanan
 
 - Runtime bind ke `127.0.0.1` secara default; gunakan tunnel/reverse proxy untuk akses remote.
-- Password admin dari environment, dibandingkan dengan timing-safe hash.
+- Password admin di-hash dengan **bcrypt** dan disimpan di database; password awal di-seed dari `ADMIN_PASSWORD`.
+- Sesi disimpan server-side sebagai hash token: idle **8 jam**, maksimal **24 jam**, dapat dicabut, dan otomatis dibersihkan setelah 7 hari.
+- Ganti password mencabut semua sesi lain; tersedia juga tombol **Cabut Sesi Lain**.
 - Pairing token 32 byte, disimpan sebagai SHA-256, dapat dicabut, dan memiliki masa berlaku.
 - Cookie HttpOnly + SameSite=Lax; `Secure` otomatis bila `PUBLIC_BASE_URL` HTTPS.
 - Origin check untuk request mutasi dan WebSocket.
+- Rate limit: login 15/menit/IP, API umum 300/menit/IP, callback agent 120/menit/agent.
+- `/api/health` mengecek database dan mengembalikan 503 bila SQLite tidak siap.
+- Header keamanan: CSP, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, dan `Permissions-Policy`.
 - Path worktree divalidasi agar tidak keluar dari data directory.
 - File explorer dibatasi pada worktree, menolak path traversal/symlink ke luar worktree, dan mengabaikan `.git`, `node_modules`, `dist`, dan folder build.
 - Commit/push dari UI memakai remote pertama (utamakan `origin`); pull memakai `--ff-only`. Pastikan user.name/user.email dan kredensial Git host sudah benar.
@@ -205,7 +211,7 @@ Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `ech
 ## Test
 
 ```bash
-npm test          # 19 test integrasi API
+npm test          # 22 test integrasi API
 npm run verify    # typecheck + test + build + gate Chrome 93
 npm run e2e:chrome93
 ```

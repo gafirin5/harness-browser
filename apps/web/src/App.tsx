@@ -21,6 +21,7 @@ import { GitHubDialog } from './components/GitHubDialog';
 import { HistoryDialog } from './components/HistoryDialog';
 import { InfoDialog } from './components/InfoDialog';
 import { SearchDialog } from './components/SearchDialog';
+import { SettingsDialog } from './components/SettingsDialog';
 import {
   AddProjectDialog,
   NewSessionDialog,
@@ -65,6 +66,7 @@ export function App(): JSX.Element {
   const [githubOpen, setGithubOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [orchestratorOpen, setOrchestratorOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [fileJump, setFileJump] = useState<{ path: string; line: number; token: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [terminalVersion, setTerminalVersion] = useState(0);
@@ -608,6 +610,12 @@ export function App(): JSX.Element {
       run: () => setInfoOpen(true)
     },
     {
+      id: 'settings',
+      label: 'Pengaturan Keamanan',
+      hint: 'Ganti password dan cabut sesi lain',
+      run: () => setSettingsOpen(true)
+    },
+    {
       id: 'share',
       label: 'Share / Pairing Token',
       hint: 'Buat URL untuk browser lain',
@@ -651,6 +659,9 @@ export function App(): JSX.Element {
         </button>
         <button className="btn tiny" onClick={() => setDialog({ type: 'share' })}>
           Share
+        </button>
+        <button className="btn tiny" onClick={() => setSettingsOpen(true)}>
+          Setelan
         </button>
         <button className="btn tiny ghost" onClick={() => void logout()}>
           Keluar
@@ -1082,6 +1093,7 @@ export function App(): JSX.Element {
           <OrchestratorPanel onClose={() => setOrchestratorOpen(false)} />
         </Suspense>
       ) : null}
+      {settingsOpen ? <SettingsDialog onClose={() => setSettingsOpen(false)} /> : null}
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
 

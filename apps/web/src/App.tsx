@@ -25,6 +25,7 @@ import { SettingsDialog } from './components/SettingsDialog';
 import { ShortcutsDialog } from './components/ShortcutsDialog';
 import { AddProjectDialog, NewSessionDialog, NewWorktreeDialog, ShareDialog } from './components/Dialogs';
 import { Spinner, StatusBadge, useToast } from './components/ui';
+import { WorktreeCheckpoint, checkpointLabel } from './components/WorktreeCheckpoint';
 
 const OrchestratorPanel = lazy(() => import('./components/OrchestratorPanel'));
 const AuditDialog = lazy(() => import('./components/AuditDialog'));
@@ -1083,8 +1084,12 @@ export function App(): JSX.Element {
                                 ⑂
                               </span>
                               <span className="branch">{worktree.branch}</span>
-                              <span className={`badge ${worktree.status === 'ready' ? 'completed' : 'failed'}`}>
-                                {worktree.status}
+                              {worktree.status !== 'ready' ? <span className="badge failed">missing</span> : null}
+                              <span
+                                className={`checkpoint-badge ${worktree.taskStatus}`}
+                                title={worktree.note || checkpointLabel(worktree.taskStatus)}
+                              >
+                                {checkpointLabel(worktree.taskStatus)}
                               </span>
                               <button
                                 className="icon-btn"
@@ -1097,6 +1102,15 @@ export function App(): JSX.Element {
                                 ×
                               </button>
                             </div>
+                            {worktree.id === selectedWorktreeId ? (
+                              <WorktreeCheckpoint
+                                key={`checkpoint:${worktree.id}`}
+                                worktree={worktree}
+                                onUpdated={(next) =>
+                                  setWorktrees((current) => current.map((item) => (item.id === next.id ? next : item)))
+                                }
+                              />
+                            ) : null}
                             {worktree.id === selectedWorktreeId ? (
                               <div className="session-list">
                                 {sessions.map((session) => (

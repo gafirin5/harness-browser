@@ -12,8 +12,12 @@ export interface Worktree {
   path: string;
   baseRef: string;
   status: 'ready' | 'missing';
+  taskStatus: WorktreeTaskStatus;
+  note: string;
   createdAt: string;
 }
+
+export type WorktreeTaskStatus = 'todo' | 'in-progress' | 'in-review' | 'completed';
 
 export interface GitGraphCommit {
   hash: string;

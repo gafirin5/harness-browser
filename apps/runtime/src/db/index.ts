@@ -256,6 +256,14 @@ addUserColumn('totp_secret_encrypted', 'totp_secret_encrypted TEXT');
 addUserColumn('totp_last_counter', 'totp_last_counter INTEGER');
 addUserColumn('totp_confirmed_at', 'totp_confirmed_at TEXT');
 
+// Migrasi database lama: checkpoint worktree.
+const worktreeColumns = db.prepare('PRAGMA table_info(worktrees)').all() as Array<{ name: string }>;
+const addWorktreeColumn = (name: string, ddl: string): void => {
+  if (!worktreeColumns.some((column) => column.name === name)) db.exec(`ALTER TABLE worktrees ADD COLUMN ${ddl}`);
+};
+addWorktreeColumn('task_status', "task_status TEXT NOT NULL DEFAULT 'todo'");
+addWorktreeColumn('note', "note TEXT NOT NULL DEFAULT ''");
+
 export function newId(): string {
   return crypto.randomUUID().replaceAll('-', '').slice(0, 24);
 }

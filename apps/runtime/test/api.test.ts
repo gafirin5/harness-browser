@@ -128,6 +128,38 @@ describe('projects & worktrees', () => {
   });
 });
 
+describe('worktree checkpoints', () => {
+  it('menyimpan status dan catatan checkpoint', async () => {
+    const worktree = await api.post('/api/worktrees').send({
+      projectId,
+      branch: 'agent/checkpoint-test',
+      baseRef: 'main'
+    });
+    expect(worktree.status).toBe(201);
+    expect(worktree.body.data.taskStatus).toBe('todo');
+    expect(worktree.body.data.note).toBe('');
+    const id = worktree.body.data.id;
+
+    const patched = await api.patch(`/api/worktrees/${id}`).send({
+      taskStatus: 'in-progress',
+      note: 'Sedang dikerjakan agent'
+    });
+    expect(patched.status).toBe(200);
+    expect(patched.body.data.taskStatus).toBe('in-progress');
+    expect(patched.body.data.note).toBe('Sedang dikerjakan agent');
+
+    const list = await api.get(`/api/worktrees?projectId=${projectId}`);
+    const found = list.body.data.find((item: { id: string }) => item.id === id);
+    expect(found.taskStatus).toBe('in-progress');
+    expect(found.note).toBe('Sedang dikerjakan agent');
+
+    const invalid = await api.patch(`/api/worktrees/${id}`).send({ taskStatus: 'ngawur' });
+    expect(invalid.status).toBe(422);
+
+    await api.delete(`/api/worktrees/${id}`);
+  });
+});
+
 describe('github integration', () => {
   it('melaporkan connected:false untuk remote non-GitHub tanpa panggilan jaringan', async () => {
     const worktree = await api.post('/api/worktrees').send({

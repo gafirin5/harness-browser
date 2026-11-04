@@ -161,3 +161,10 @@ export const diffCommentUpdateSchema = z
     resolved: z.boolean().optional()
   })
   .refine((data) => Object.keys(data).length > 0, 'Tidak ada perubahan yang dikirim.');
+
+export const worktreeUpdateSchema = z
+  .object({
+    taskStatus: z.enum(['todo', 'in-progress', 'in-review', 'completed']).optional(),
+    note: z.string().max(2000, 'Catatan maksimal 2.000 karakter.').optional()
+  })
+  .refine((data) => Object.keys(data).length > 0, 'Tidak ada perubahan yang dikirim.');

@@ -167,6 +167,26 @@ try {
   );
   console.log('[chrome93] project + worktree OK');
 
+  await page.select(`select[aria-label="Checkpoint ${createdWorktree.branch}"]`, 'in-progress');
+  await waitText('Checkpoint worktree disimpan.');
+  await page.type(`textarea[aria-label="Catatan checkpoint ${createdWorktree.branch}"]`, 'Catatan checkpoint E2E');
+  await clickText('button', 'Simpan Catatan');
+  await page.waitForFunction(
+    () => {
+      const toast = Array.from(document.querySelectorAll('.toast')).find((item) =>
+        (item.textContent || '').includes('Checkpoint worktree disimpan.')
+      );
+      return Boolean(toast);
+    },
+    { timeout: 10000 }
+  );
+  const checkpointList = await api(`/api/worktrees?projectId=${createdProject.id}`, {}, cookie);
+  const checkpoint = checkpointList.body?.data?.find((item) => item.id === createdWorktree.id);
+  if (checkpoint?.taskStatus !== 'in-progress' || checkpoint?.note !== 'Catatan checkpoint E2E') {
+    throw new Error('Checkpoint worktree tidak tersimpan.');
+  }
+  console.log('[chrome93] worktree checkpoint OK');
+
   await clickText('button', '+ Terminal');
   await page.waitForSelector('.xterm', { timeout: 15000 });
   await page.waitForFunction(() => (document.querySelector('.xterm-rows')?.innerText ?? '').trim().length > 0, {

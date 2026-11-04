@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { Router } from 'express';
-import { worktreeCreateSchema, type Worktree } from '@dorado/shared';
+import { worktreeCreateSchema, worktreeUpdateSchema, type Worktree } from '@dorado/shared';
 import { config } from '../../config.js';
 import { db, newId, nowIso } from '../../db/index.js';
 import { AppError, asyncHandler, notFound } from '../../lib/errors.js';
@@ -17,7 +17,16 @@ interface WorktreeRow {
   path: string;
   base_ref: string;
   status: string;
+  task_status: string;
+  note: string;
   created_at: string;
+}
+
+const TASK_STATUSES = ['todo', 'in-progress', 'in-review', 'completed'] as const;
+type TaskStatus = (typeof TASK_STATUSES)[number];
+
+function normalizeTaskStatus(value: string): TaskStatus {
+  return (TASK_STATUSES as readonly string[]).includes(value) ? (value as TaskStatus) : 'todo';
 }
 
 async function mapWorktree(row: WorktreeRow): Promise<Worktree> {
@@ -29,6 +38,8 @@ async function mapWorktree(row: WorktreeRow): Promise<Worktree> {
     path: row.path,
     baseRef: row.base_ref,
     status: healthy ? 'ready' : 'missing',
+    taskStatus: normalizeTaskStatus(row.task_status),
+    note: row.note ?? '',
     createdAt: row.created_at
   };
 }
@@ -87,9 +98,28 @@ worktreesRouter.post(
         path: directory,
         baseRef: body.baseRef,
         status: 'ready',
+        taskStatus: 'todo',
+        note: '',
         createdAt
       }
     });
+  })
+);
+
+worktreesRouter.patch(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const row = getWorktreeRow(String(req.params.id ?? ''));
+    if (!row) throw notFound('Worktree tidak ditemukan.');
+    const body = parseWith(worktreeUpdateSchema, req.body);
+    db.prepare('UPDATE worktrees SET task_status = ?, note = ? WHERE id = ?').run(
+      body.taskStatus ?? row.task_status,
+      body.note ?? row.note,
+      row.id
+    );
+    const updated = getWorktreeRow(row.id);
+    if (!updated) throw notFound('Worktree tidak ditemukan.');
+    res.json({ data: await mapWorktree(updated) });
   })
 );
 

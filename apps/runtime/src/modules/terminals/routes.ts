@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { terminalCreateSchema } from '@dorado/shared';
+import { terminalCreateSchema, terminalInputSchema } from '@dorado/shared';
 import { asyncHandler, notFound } from '../../lib/errors.js';
 import { parseWith } from '../../lib/validation.js';
 import { csrfGuard, requireAuth } from '../auth/middleware.js';
@@ -25,6 +25,14 @@ terminalsRouter.post('/', (req, res) => {
     rows: body.rows
   });
   res.status(201).json({ data: terminal });
+});
+
+terminalsRouter.post('/:id/input', (req, res) => {
+  const id = String(req.params.id ?? '');
+  if (!terminalManager.getRow(id)) throw notFound('Terminal tidak ditemukan.');
+  const body = parseWith(terminalInputSchema, req.body);
+  terminalManager.write(id, body.data);
+  res.json({ data: { ok: true } });
 });
 
 terminalsRouter.post('/:id/restart', (req, res) => {

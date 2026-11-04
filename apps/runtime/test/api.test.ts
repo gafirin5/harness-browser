@@ -333,6 +333,61 @@ describe('git graph', () => {
   });
 });
 
+describe('quick commands', () => {
+  it('membuat, membaca, mengubah, dan menghapus command global/project', async () => {
+    const global = await api.post('/api/quick-commands').send({ label: 'Test global', command: 'npm test' });
+    expect(global.status).toBe(201);
+    expect(global.body.data.scope).toBe('global');
+    expect(global.body.data.projectId).toBeNull();
+
+    const projectCommand = await api.post('/api/quick-commands').send({
+      label: 'Test project',
+      command: 'npm run build',
+      scope: 'project',
+      projectId
+    });
+    expect(projectCommand.status).toBe(201);
+    expect(projectCommand.body.data.projectId).toBe(projectId);
+
+    const list = await api.get(`/api/quick-commands?projectId=${projectId}`);
+    expect(list.status).toBe(200);
+    expect(list.body.data.map((item: { id: string }) => item.id)).toEqual(
+      expect.arrayContaining([global.body.data.id, projectCommand.body.data.id])
+    );
+
+    const globalOnly = await api.get('/api/quick-commands');
+    expect(globalOnly.body.data.some((item: { id: string }) => item.id === global.body.data.id)).toBe(true);
+    expect(globalOnly.body.data.some((item: { id: string }) => item.id === projectCommand.body.data.id)).toBe(false);
+
+    const patched = await api.patch(`/api/quick-commands/${global.body.data.id}`).send({ label: 'Test global v2' });
+    expect(patched.status).toBe(200);
+    expect(patched.body.data.label).toBe('Test global v2');
+
+    const removed = await api.delete(`/api/quick-commands/${projectCommand.body.data.id}`);
+    expect(removed.status).toBe(204);
+    const missing = await api.delete(`/api/quick-commands/${projectCommand.body.data.id}`);
+    expect(missing.status).toBe(404);
+    await api.delete(`/api/quick-commands/${global.body.data.id}`);
+  });
+
+  it('menolak scope project tanpa project valid', async () => {
+    const withoutProject = await api.post('/api/quick-commands').send({
+      label: 'Tanpa project',
+      command: 'echo x',
+      scope: 'project'
+    });
+    expect(withoutProject.status).toBe(422);
+
+    const unknownProject = await api.post('/api/quick-commands').send({
+      label: 'Project asing',
+      command: 'echo x',
+      scope: 'project',
+      projectId: 'tidak-ada'
+    });
+    expect(unknownProject.status).toBe(404);
+  });
+});
+
 describe('session history', () => {
   it('mencari sesi berdasarkan judul/prompt dan filter status', async () => {
     const worktree = await api.post('/api/worktrees').send({
@@ -436,6 +491,33 @@ describe('terminals', () => {
     const removed = await api.delete(`/api/terminals/${terminal.body.data.id}`);
     expect(removed.status).toBe(204);
 
+    await api.delete(`/api/worktrees/${worktree.body.data.id}`);
+  });
+
+  it('mengirim input ke terminal yang berjalan', async () => {
+    const worktree = await api.post('/api/worktrees').send({
+      projectId,
+      branch: 'agent/terminal-input-test',
+      baseRef: 'main'
+    });
+    expect(worktree.status).toBe(201);
+    const terminal = await api.post('/api/terminals').send({
+      worktreeId: worktree.body.data.id,
+      title: 'Input Terminal'
+    });
+    expect(terminal.status).toBe(201);
+
+    const sent = await api.post(`/api/terminals/${terminal.body.data.id}/input`).send({ data: 'echo quick-command\r' });
+    expect(sent.status).toBe(200);
+    expect(sent.body.data.ok).toBe(true);
+
+    const empty = await api.post(`/api/terminals/${terminal.body.data.id}/input`).send({ data: '' });
+    expect(empty.status).toBe(422);
+
+    const missing = await api.post('/api/terminals/tidak-ada/input').send({ data: 'echo x\r' });
+    expect(missing.status).toBe(404);
+
+    await api.delete(`/api/terminals/${terminal.body.data.id}`);
     await api.delete(`/api/worktrees/${worktree.body.data.id}`);
   });
 

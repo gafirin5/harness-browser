@@ -21,6 +21,7 @@ import { GitHubDialog } from './components/GitHubDialog';
 import { HistoryDialog } from './components/HistoryDialog';
 import { InfoDialog } from './components/InfoDialog';
 import { QuickOpenDialog } from './components/QuickOpenDialog';
+import { QuickCommandsDialog } from './components/QuickCommandsDialog';
 import { SearchDialog } from './components/SearchDialog';
 import { SettingsDialog } from './components/SettingsDialog';
 import { ShortcutsDialog } from './components/ShortcutsDialog';
@@ -73,6 +74,7 @@ export function App(): JSX.Element {
   const [jumpOpen, setJumpOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [gitGraphOpen, setGitGraphOpen] = useState(false);
+  const [quickCommandsOpen, setQuickCommandsOpen] = useState(false);
   const shortcutRef = useRef({
     selectedWorktree: null as Worktree | null,
     terminals: [] as TerminalInfo[],
@@ -752,6 +754,12 @@ export function App(): JSX.Element {
       run: () => setGitGraphOpen(true)
     },
     {
+      id: 'quick-commands',
+      label: 'Quick Commands',
+      hint: 'Simpan dan jalankan command yang sering dipakai',
+      run: () => setQuickCommandsOpen(true)
+    },
+    {
       id: 'github',
       label: 'GitHub Repository',
       hint: 'Pull request dan issue untuk worktree aktif',
@@ -1190,6 +1198,9 @@ export function App(): JSX.Element {
               >
                 Find
               </button>
+              <button className="btn tiny" onClick={() => setQuickCommandsOpen(true)} title="Quick commands">
+                Commands
+              </button>
             </div>
           </div>
 
@@ -1384,6 +1395,13 @@ export function App(): JSX.Element {
         <QuickOpenDialog worktreeId={selectedWorktreeId} onClose={() => setQuickOpen(false)} onOpen={openFile} />
       ) : null}
       {shortcutsOpen ? <ShortcutsDialog onClose={() => setShortcutsOpen(false)} /> : null}
+      {quickCommandsOpen ? (
+        <QuickCommandsDialog
+          project={selectedProject}
+          activeTerminal={activeTerminal}
+          onClose={() => setQuickCommandsOpen(false)}
+        />
+      ) : null}
 
       {dialog?.type === 'project' ? (
         <AddProjectDialog

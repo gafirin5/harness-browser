@@ -20,6 +20,7 @@ import { githubRouter } from './modules/github/routes.js';
 import { infoRouter } from './modules/info/routes.js';
 import { orchestratorAgentRouter, orchestratorRouter } from './modules/orchestrator/routes.js';
 import { searchRouter } from './modules/search/routes.js';
+import { quickCommandsRouter } from './modules/quick-commands/routes.js';
 
 export function createApp(): express.Express {
   const app = express();
@@ -120,6 +121,7 @@ export function createApp(): express.Express {
   app.use('/api/github', githubRouter);
   app.use('/api/info', infoRouter);
   app.use('/api/search', searchRouter);
+  app.use('/api/quick-commands', quickCommandsRouter);
   app.use('/api/orchestrator/agent', orchestratorAgentRouter);
   app.use('/api/orchestrator', orchestratorRouter);
 

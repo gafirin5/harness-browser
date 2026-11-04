@@ -1581,6 +1581,80 @@ button:disabled {
   color: var(--danger, #f07c8e);
 }
 
+/* ---------- quick commands ---------- */
+
+.quick-command-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--panel-2);
+  margin-bottom: 12px;
+}
+
+.quick-command-form .row {
+  display: flex;
+  align-items: center;
+}
+
+.quick-command-form .input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.quick-command-form select.input {
+  flex: 0 0 130px;
+}
+
+.quick-command-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 300px;
+  overflow: auto;
+}
+
+.quick-command-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 7px;
+  background: var(--panel-2);
+}
+
+.quick-command-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.quick-command-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.quick-command-code {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.quick-command-actions {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
 /* ---------- session history ---------- */
 
 .history-layout {

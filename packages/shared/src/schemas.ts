@@ -122,3 +122,28 @@ export const userUpdateSchema = z
 export const userResetPasswordSchema = z.object({
   newPassword: z.string().min(8, 'Password minimal 8 karakter.').max(200)
 });
+
+export const quickCommandCreateSchema = z
+  .object({
+    label: z.string().trim().min(1, 'Label wajib diisi.').max(80),
+    command: z.string().trim().min(1, 'Command wajib diisi.').max(4000),
+    scope: z.enum(['global', 'project']).default('global'),
+    projectId: z.string().min(1).nullable().optional()
+  })
+  .refine((data) => data.scope !== 'project' || Boolean(data.projectId), {
+    message: 'Project wajib dipilih untuk command ber-scope project.',
+    path: ['projectId']
+  });
+
+export const quickCommandUpdateSchema = z
+  .object({
+    label: z.string().trim().min(1).max(80).optional(),
+    command: z.string().trim().min(1).max(4000).optional(),
+    scope: z.enum(['global', 'project']).optional(),
+    projectId: z.string().min(1).nullable().optional()
+  })
+  .refine((data) => Object.keys(data).length > 0, 'Tidak ada perubahan yang dikirim.');
+
+export const terminalInputSchema = z.object({
+  data: z.string().min(1, 'Input kosong.').max(8000)
+});

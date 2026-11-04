@@ -180,6 +180,50 @@ try {
   });
   console.log('[chrome93] terminal PTY + WebSocket OK');
 
+  await clickText('button', 'Commands');
+  await page.waitForSelector('.quick-command-form input', { timeout: 10000 });
+  await page.type('.quick-command-form input', 'E2E Command');
+  await page.type('.quick-command-form textarea', 'echo quick-command-e2e');
+  await clickText('button', '+ Tambah Command');
+  await page.waitForFunction(
+    () =>
+      Array.from(document.querySelectorAll('.quick-command-row')).some((row) =>
+        (row.textContent || '').includes('E2E Command')
+      ),
+    { timeout: 10000 }
+  );
+  await page.evaluate(() => {
+    const row = Array.from(document.querySelectorAll('.quick-command-row')).find((item) =>
+      (item.textContent || '').includes('E2E Command')
+    );
+    const button = Array.from(row?.querySelectorAll('button') ?? []).find(
+      (item) => (item.textContent || '').trim() === 'Run'
+    );
+    button?.click();
+  });
+  await page.waitForFunction(() => document.querySelector('.xterm-rows')?.innerText.includes('quick-command-e2e'), {
+    timeout: 10000
+  });
+  await page.evaluate(() => {
+    const row = Array.from(document.querySelectorAll('.quick-command-row')).find((item) =>
+      (item.textContent || '').includes('E2E Command')
+    );
+    const button = Array.from(row?.querySelectorAll('button') ?? []).find(
+      (item) => (item.textContent || '').trim() === 'Hapus'
+    );
+    button?.click();
+  });
+  await page.waitForFunction(
+    () =>
+      !Array.from(document.querySelectorAll('.quick-command-row')).some((row) =>
+        (row.textContent || '').includes('E2E Command')
+      ),
+    { timeout: 10000 }
+  );
+  await clickText('button', 'Tutup');
+  await page.waitForFunction(() => !document.querySelector('.quick-command-form'), { timeout: 10000 });
+  console.log('[chrome93] quick commands OK');
+
   await page.waitForSelector('.file-row', { timeout: 15000 });
   await clickText('.file-row', 'README.md');
   await page.waitForSelector('.CodeMirror', { timeout: 15000 });

@@ -57,6 +57,17 @@ export interface GitCommitDetail {
   files: GitCommitFile[];
 }
 
+export type QuickCommandScope = 'global' | 'project';
+
+export interface QuickCommand {
+  id: string;
+  scope: QuickCommandScope;
+  projectId: string | null;
+  label: string;
+  command: string;
+  createdAt: string;
+}
+
 export type TerminalKind = 'shell' | 'agent';
 export type TerminalStatus = 'running' | 'exited' | 'stopped';
 

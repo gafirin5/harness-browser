@@ -63,6 +63,15 @@ db.exec(`
     ended_at    TEXT
   );
 
+  CREATE TABLE IF NOT EXISTS quick_commands (
+    id         TEXT PRIMARY KEY,
+    scope      TEXT NOT NULL DEFAULT 'global' CHECK (scope IN ('global','project')),
+    project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
+    label      TEXT NOT NULL,
+    command    TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS pairing_tokens (
     id           TEXT PRIMARY KEY,
     token_hash   TEXT NOT NULL UNIQUE,
@@ -216,6 +225,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS worktrees_project_ix ON worktrees(project_id);
   CREATE INDEX IF NOT EXISTS terminals_worktree_ix ON terminals(worktree_id);
   CREATE INDEX IF NOT EXISTS sessions_worktree_ix ON sessions(worktree_id);
+  CREATE INDEX IF NOT EXISTS quick_commands_project_ix ON quick_commands(project_id);
 `);
 
 // Migrasi database lama: auth_sessions belum memiliki user_id.

@@ -3,7 +3,8 @@ import fs from 'node:fs';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { authenticator } from 'otplib';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { db } from '../src/db/index.js';
@@ -13,6 +14,7 @@ import { pump } from '../src/modules/orchestrator/dispatcher.js';
 import { heartbeatOnce } from '../src/modules/orchestrator/heartbeat.js';
 import { applyAgentResult, findAgentByToken } from '../src/modules/orchestrator/service.js';
 import { terminalManager } from '../src/modules/terminals/manager.js';
+import { clearRateLimits } from '../src/modules/auth/middleware.js';
 
 const app = createApp();
 const repoDir = fs.mkdtempSync('/tmp/dorado-unit-repo-');
@@ -34,6 +36,10 @@ beforeAll(async () => {
   api = request.agent(app);
   const login = await api.post('/api/auth/login').send({ password: 'test-password' });
   expect(login.status).toBe(200);
+});
+
+beforeEach(() => {
+  clearRateLimits();
 });
 
 afterAll(() => {
@@ -795,5 +801,61 @@ describe('multi-user & role', () => {
     const disable = await api.patch('/api/users/1').send({ isActive: false });
     expect(disable.status).toBe(422);
     expect(disable.body.error.code).toBe('LAST_ADMIN');
+  });
+});
+
+describe('two-factor authentication', () => {
+  it('setup TOTP, login dengan kode, menolak replay, dan reset oleh admin', async () => {
+    const created = await api.post('/api/users').send({
+      username: 'totp-viewer',
+      name: 'TOTP Viewer',
+      password: 'totp-pass-123',
+      role: 'VIEWER'
+    });
+    expect(created.status).toBe(201);
+    const userId = created.body.data.id as number;
+
+    const viewer = request.agent(app);
+    expect(
+      (await viewer.post('/api/auth/login').send({ username: 'totp-viewer', password: 'totp-pass-123' })).status
+    ).toBe(200);
+    expect((await viewer.get('/api/auth/me')).body.data.user.totpEnabled).toBe(false);
+
+    const setup = await viewer.post('/api/auth/2fa/setup');
+    expect(setup.status).toBe(200);
+    expect(setup.body.data.secret).toMatch(/^[A-Z2-7]+$/);
+    expect(setup.body.data.qrDataUrl).toContain('data:image/png;base64,');
+    const secret = setup.body.data.secret as string;
+
+    const confirm = await viewer.post('/api/auth/2fa/confirm').send({ code: authenticator.generate(secret) });
+    expect(confirm.status).toBe(200);
+    expect((await viewer.get('/api/auth/me')).body.data.user.totpEnabled).toBe(true);
+
+    const withoutCode = await request(app)
+      .post('/api/auth/login')
+      .send({ username: 'totp-viewer', password: 'totp-pass-123' });
+    expect(withoutCode.status).toBe(401);
+    expect(withoutCode.body.error.code).toBe('TOTP_REQUIRED');
+
+    const code = authenticator.generate(secret);
+    const withCode = await request(app)
+      .post('/api/auth/login')
+      .send({ username: 'totp-viewer', password: 'totp-pass-123', totpCode: code });
+    expect(withCode.status).toBe(200);
+    expect(withCode.body.data.user.totpEnabled).toBe(true);
+
+    const replay = await request(app)
+      .post('/api/auth/login')
+      .send({ username: 'totp-viewer', password: 'totp-pass-123', totpCode: code });
+    expect(replay.status).toBe(401);
+    expect(replay.body.error.code).toBe('INVALID_TOTP');
+
+    const reset = await api.post(`/api/users/${userId}/2fa-disable`);
+    expect(reset.status).toBe(200);
+    const afterReset = await request(app)
+      .post('/api/auth/login')
+      .send({ username: 'totp-viewer', password: 'totp-pass-123' });
+    expect(afterReset.status).toBe(200);
+    expect(afterReset.body.data.user.totpEnabled).toBe(false);
   });
 });

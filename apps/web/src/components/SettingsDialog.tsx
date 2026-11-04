@@ -7,7 +7,15 @@ function messageOf(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
 }
 
-export function SettingsDialog({ onClose, currentUser }: { onClose: () => void; currentUser: UserInfo }): JSX.Element {
+export function SettingsDialog({
+  onClose,
+  currentUser,
+  onUserUpdated
+}: {
+  onClose: () => void;
+  currentUser: UserInfo;
+  onUserUpdated?: (user: UserInfo) => void;
+}): JSX.Element {
   const { push } = useToast();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -15,6 +23,18 @@ export function SettingsDialog({ onClose, currentUser }: { onClose: () => void; 
   const [saving, setSaving] = useState(false);
   const [revoking, setRevoking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [totpEnabled, setTotpEnabled] = useState(currentUser.totpEnabled);
+  const [totpSetup, setTotpSetup] = useState<{
+    secret: string;
+    otpauthUrl: string;
+    qrDataUrl: string;
+  } | null>(null);
+  const [totpCode, setTotpCode] = useState('');
+  const [disablePassword, setDisablePassword] = useState('');
+  const [disableCode, setDisableCode] = useState('');
+  const [twoFactorBusy, setTwoFactorBusy] = useState(false);
+  const [twoFactorError, setTwoFactorError] = useState<string | null>(null);
 
   const [users, setUsers] = useState<UserInfo[]>([]);
   const [usersError, setUsersError] = useState<string | null>(null);
@@ -80,6 +100,70 @@ export function SettingsDialog({ onClose, currentUser }: { onClose: () => void; 
       setError(messageOf(caught, 'Gagal mencabut sesi lain.'));
     } finally {
       setRevoking(false);
+    }
+  };
+
+  const startTotpSetup = async (): Promise<void> => {
+    setTwoFactorBusy(true);
+    setTwoFactorError(null);
+    try {
+      const response = await request<{ data: { secret: string; otpauthUrl: string; qrDataUrl: string } }>(
+        '/auth/2fa/setup',
+        { method: 'POST' }
+      );
+      setTotpSetup(response.data);
+      setTotpCode('');
+    } catch (caught) {
+      setTwoFactorError(messageOf(caught, 'Gagal memulai setup 2FA.'));
+    } finally {
+      setTwoFactorBusy(false);
+    }
+  };
+
+  const confirmTotpSetup = async (): Promise<void> => {
+    setTwoFactorBusy(true);
+    setTwoFactorError(null);
+    try {
+      await request('/auth/2fa/confirm', { method: 'POST', body: { code: totpCode } });
+      setTotpEnabled(true);
+      setTotpSetup(null);
+      setTotpCode('');
+      onUserUpdated?.({ ...currentUser, totpEnabled: true });
+      push('success', '2FA berhasil diaktifkan.');
+    } catch (caught) {
+      setTwoFactorError(messageOf(caught, 'Kode 2FA tidak valid.'));
+    } finally {
+      setTwoFactorBusy(false);
+    }
+  };
+
+  const disableTotpNow = async (): Promise<void> => {
+    setTwoFactorBusy(true);
+    setTwoFactorError(null);
+    try {
+      await request('/auth/2fa/disable', {
+        method: 'POST',
+        body: { password: disablePassword, code: disableCode }
+      });
+      setTotpEnabled(false);
+      setDisablePassword('');
+      setDisableCode('');
+      onUserUpdated?.({ ...currentUser, totpEnabled: false });
+      push('success', '2FA dinonaktifkan.');
+    } catch (caught) {
+      setTwoFactorError(messageOf(caught, 'Gagal menonaktifkan 2FA.'));
+    } finally {
+      setTwoFactorBusy(false);
+    }
+  };
+
+  const resetUserTotp = async (user: UserInfo): Promise<void> => {
+    try {
+      await request(`/users/${user.id}/2fa-disable`, { method: 'POST' });
+      push('success', `2FA ${user.username} dinonaktifkan.`);
+      await loadUsers();
+    } catch (caught) {
+      push('error', messageOf(caught, 'Gagal menonaktifkan 2FA user.'));
     }
   };
 
@@ -200,6 +284,79 @@ export function SettingsDialog({ onClose, currentUser }: { onClose: () => void; 
         </div>
       </form>
 
+      <div className="section-label">Autentikasi Dua Faktor</div>
+      {twoFactorError ? <div className="error-banner">{twoFactorError}</div> : null}
+      {totpEnabled ? (
+        <div>
+          <p className="muted" style={{ fontSize: 11.5, marginTop: 0 }}>
+            2FA aktif. Untuk menonaktifkan, masukkan password dan kode 6 digit saat ini.
+          </p>
+          <div className="orch-form">
+            <Field label="Password">
+              <input
+                className="input"
+                type="password"
+                value={disablePassword}
+                onChange={(event) => setDisablePassword(event.target.value)}
+                autoComplete="current-password"
+              />
+            </Field>
+            <Field label="Kode 2FA">
+              <input
+                className="input"
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                value={disableCode}
+                onChange={(event) => setDisableCode(event.target.value.replace(/\D/g, ''))}
+              />
+            </Field>
+            <div className="orch-form-actions">
+              <button className="btn tiny" onClick={() => void disableTotpNow()} disabled={twoFactorBusy}>
+                {twoFactorBusy ? 'Memproses...' : 'Nonaktifkan 2FA'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : totpSetup ? (
+        <div>
+          <p className="muted" style={{ fontSize: 11.5, marginTop: 0 }}>
+            Scan QR dengan aplikasi authenticator, lalu masukkan kode 6 digit.
+          </p>
+          <img className="totp-qr" src={totpSetup.qrDataUrl} alt="QR 2FA" />
+          <p className="mono" style={{ wordBreak: 'break-all', fontSize: 10.5 }}>
+            {totpSetup.secret}
+          </p>
+          <div className="row">
+            <input
+              className="input"
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              value={totpCode}
+              onChange={(event) => setTotpCode(event.target.value.replace(/\D/g, ''))}
+              placeholder="Kode 6 digit"
+              aria-label="Kode konfirmasi 2FA"
+            />
+            <button className="btn tiny primary" onClick={() => void confirmTotpSetup()} disabled={twoFactorBusy}>
+              {twoFactorBusy ? 'Memproses...' : 'Konfirmasi 2FA'}
+            </button>
+            <button className="btn tiny" onClick={() => setTotpSetup(null)} disabled={twoFactorBusy}>
+              Batal
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <p className="muted" style={{ fontSize: 11.5, marginTop: 0 }}>
+            2FA belum aktif. Aktifkan untuk mewajibkan kode authenticator saat login.
+          </p>
+          <button className="btn tiny" onClick={() => void startTotpSetup()} disabled={twoFactorBusy}>
+            {twoFactorBusy ? 'Menyiapkan...' : 'Aktifkan 2FA'}
+          </button>
+        </div>
+      )}
+
       {isAdmin ? (
         <>
           <div className="section-label">Pengguna</div>
@@ -212,6 +369,7 @@ export function SettingsDialog({ onClose, currentUser }: { onClose: () => void; 
                   <th>Nama</th>
                   <th>Role</th>
                   <th>Status</th>
+                  <th>2FA</th>
                   <th>Aksi</th>
                 </tr>
               </thead>
@@ -228,10 +386,20 @@ export function SettingsDialog({ onClose, currentUser }: { onClose: () => void; 
                         {user.isActive ? 'ACTIVE' : 'INACTIVE'}
                       </span>
                     </td>
+                    <td>
+                      <span className={`badge ${user.totpEnabled ? 'active' : 'inactive'}`}>
+                        {user.totpEnabled ? 'ON' : 'OFF'}
+                      </span>
+                    </td>
                     <td className="orch-actions">
                       <button className="btn tiny" onClick={() => void resetPassword(user)}>
                         Reset Password
                       </button>
+                      {user.totpEnabled ? (
+                        <button className="btn tiny" onClick={() => void resetUserTotp(user)}>
+                          Reset 2FA
+                        </button>
+                      ) : null}
                       <button className="btn tiny" onClick={() => void toggleUser(user)}>
                         {user.isActive ? 'Nonaktifkan' : 'Aktifkan'}
                       </button>

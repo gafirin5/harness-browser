@@ -1,8 +1,23 @@
 import { z } from 'zod';
 
+const totpCodeSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{6}$/, 'Kode 2FA harus 6 digit.');
+
 export const loginSchema = z.object({
   username: z.string().trim().min(1, 'Username wajib diisi.').max(60).default('admin'),
-  password: z.string().min(1, 'Password wajib diisi.').max(200)
+  password: z.string().min(1, 'Password wajib diisi.').max(200),
+  totpCode: totpCodeSchema.optional()
+});
+
+export const totpConfirmSchema = z.object({
+  code: totpCodeSchema
+});
+
+export const totpDisableSchema = z.object({
+  password: z.string().min(1, 'Password wajib diisi.').max(200),
+  code: totpCodeSchema
 });
 
 export const pairSchema = z.object({

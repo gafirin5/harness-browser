@@ -21,7 +21,8 @@ const adminUser: UserInfo = {
   username: 'admin',
   name: 'Admin',
   role: 'ADMIN',
-  isActive: true
+  isActive: true,
+  totpEnabled: false
 };
 
 function renderDialog(currentUser: UserInfo = adminUser): ReturnType<typeof render> {
@@ -37,6 +38,16 @@ describe('SettingsDialog', () => {
     mockedRequest.mockReset();
     mockedRequest.mockImplementation((async (path: string) => {
       if (path === '/users') return { data: [] };
+      if (path === '/auth/2fa/setup') {
+        return {
+          data: {
+            secret: 'JBSWY3DPEHPK3PXP',
+            otpauthUrl: 'otpauth://totp/Dorado:admin?secret=JBSWY3DPEHPK3PXP',
+            qrDataUrl: 'data:image/png;base64,AAAA'
+          }
+        };
+      }
+      if (path === '/auth/2fa/confirm') return { data: { enabled: true } };
       return { data: { revokedSessions: 2 } };
     }) as never);
   });
@@ -75,5 +86,17 @@ describe('SettingsDialog', () => {
   it('menampilkan mode viewer tanpa form pengguna', () => {
     renderDialog({ ...adminUser, id: 2, username: 'viewer', role: 'VIEWER' });
     expect(screen.getByText('Mode viewer: pengelolaan user hanya tersedia untuk admin.')).toBeInTheDocument();
+  });
+
+  it('menyiapkan dan mengonfirmasi 2FA', async () => {
+    const user = userEvent.setup();
+    renderDialog();
+    await user.click(screen.getByRole('button', { name: 'Aktifkan 2FA' }));
+    expect(await screen.findByAltText('QR 2FA')).toBeInTheDocument();
+    expect(screen.getByText('JBSWY3DPEHPK3PXP')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Kode konfirmasi 2FA'), { target: { value: '123456' } });
+    await user.click(screen.getByRole('button', { name: 'Konfirmasi 2FA' }));
+    expect(await screen.findByText('2FA berhasil diaktifkan.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Nonaktifkan 2FA' })).toBeInTheDocument();
   });
 });

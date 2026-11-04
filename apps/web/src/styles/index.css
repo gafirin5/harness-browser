@@ -1696,6 +1696,16 @@ button:disabled {
 
 /* ---------- orchestrator ---------- */
 
+.totp-qr {
+  display: block;
+  width: 180px;
+  height: 180px;
+  margin: 8px 0;
+  background: #fff;
+  border-radius: 6px;
+  padding: 6px;
+}
+
 .orch-overlay {
   position: fixed;
   inset: 0;

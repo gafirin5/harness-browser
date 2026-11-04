@@ -5,6 +5,7 @@ import { ApiError, apiPost } from '../lib/api';
 export function Login({ onLoggedIn }: { onLoggedIn: (user: UserInfo) => void }): JSX.Element {
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('');
+  const [totpCode, setTotpCode] = useState('');
   const [token, setToken] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -31,7 +32,11 @@ export function Login({ onLoggedIn }: { onLoggedIn: (user: UserInfo) => void }):
     setError(null);
     setPending(true);
     try {
-      const response = await apiPost<{ data: { user: UserInfo } }>('/auth/login', { username, password });
+      const response = await apiPost<{ data: { user: UserInfo } }>('/auth/login', {
+        username,
+        password,
+        ...(totpCode ? { totpCode } : {})
+      });
       onLoggedIn(response.data.user);
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : 'Login gagal.');
@@ -93,6 +98,20 @@ export function Login({ onLoggedIn }: { onLoggedIn: (user: UserInfo) => void }):
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="totp">Kode 2FA (opsional)</label>
+            <input
+              id="totp"
+              className="input"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              value={totpCode}
+              onChange={(event) => setTotpCode(event.target.value.replace(/\D/g, ''))}
+              placeholder="6 digit jika 2FA aktif"
             />
           </div>
           <button className="btn primary" type="submit" disabled={pending} style={{ width: '100%' }}>

@@ -85,6 +85,10 @@ db.exec(`
     password_hash TEXT NOT NULL,
     role          TEXT NOT NULL DEFAULT 'VIEWER' CHECK (role IN ('ADMIN','VIEWER')),
     is_active     INTEGER NOT NULL DEFAULT 1,
+    totp_enabled  INTEGER NOT NULL DEFAULT 0,
+    totp_secret_encrypted TEXT,
+    totp_last_counter INTEGER,
+    totp_confirmed_at TEXT,
     created_at    TEXT NOT NULL,
     updated_at    TEXT NOT NULL
   );
@@ -206,6 +210,16 @@ if (!authSessionColumns.some((column) => column.name === 'user_id')) {
   db.exec('ALTER TABLE auth_sessions ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1');
 }
 db.exec('CREATE INDEX IF NOT EXISTS auth_sessions_user_ix ON auth_sessions(user_id)');
+
+// Migrasi database lama: kolom 2FA pada users.
+const userColumns = db.prepare('PRAGMA table_info(users)').all() as Array<{ name: string }>;
+const addUserColumn = (name: string, ddl: string): void => {
+  if (!userColumns.some((column) => column.name === name)) db.exec(`ALTER TABLE users ADD COLUMN ${ddl}`);
+};
+addUserColumn('totp_enabled', 'totp_enabled INTEGER NOT NULL DEFAULT 0');
+addUserColumn('totp_secret_encrypted', 'totp_secret_encrypted TEXT');
+addUserColumn('totp_last_counter', 'totp_last_counter INTEGER');
+addUserColumn('totp_confirmed_at', 'totp_confirmed_at TEXT');
 
 export function newId(): string {
   return crypto.randomUUID().replaceAll('-', '').slice(0, 24);

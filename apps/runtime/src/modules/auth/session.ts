@@ -25,6 +25,7 @@ interface SessionRow {
   name: string;
   role: UserRole;
   is_active: number;
+  totp_enabled: number;
 }
 
 export interface SessionContext {
@@ -57,7 +58,8 @@ function toContext(row: SessionRow): SessionContext {
       username: row.username,
       name: row.name,
       role: row.role,
-      isActive: Boolean(row.is_active)
+      isActive: Boolean(row.is_active),
+      totpEnabled: Boolean(row.totp_enabled)
     }
   };
 }
@@ -66,7 +68,7 @@ function findValidSession(token: string | null): SessionContext | null {
   if (!token) return null;
   const row = db
     .prepare(
-      `SELECT s.*, u.username, u.name, u.role, u.is_active
+      `SELECT s.*, u.username, u.name, u.role, u.is_active, u.totp_enabled
        FROM auth_sessions s
        JOIN users u ON u.id = s.user_id
        WHERE s.token_hash = ?`

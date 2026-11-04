@@ -1121,7 +1121,13 @@ export function App(): JSX.Element {
           <OrchestratorPanel onClose={() => setOrchestratorOpen(false)} />
         </Suspense>
       ) : null}
-      {settingsOpen && user ? <SettingsDialog onClose={() => setSettingsOpen(false)} currentUser={user} /> : null}
+      {settingsOpen && user ? (
+        <SettingsDialog
+          onClose={() => setSettingsOpen(false)}
+          currentUser={user}
+          onUserUpdated={(next) => setUser(next)}
+        />
+      ) : null}
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
 

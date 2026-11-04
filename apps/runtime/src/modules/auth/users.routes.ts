@@ -4,7 +4,7 @@ import { AppError } from '../../lib/errors.js';
 import { parseWith } from '../../lib/validation.js';
 import { csrfGuard, requireAdmin, requireAuth } from './middleware.js';
 import { revokeUserSessions } from './session.js';
-import { createUser, listUsers, resetUserPassword, updateUser } from './users.js';
+import { createUser, disableTotp, listUsers, resetUserPassword, updateUser } from './users.js';
 
 export const usersRouter = Router();
 usersRouter.use(csrfGuard, requireAuth, requireAdmin);
@@ -38,4 +38,11 @@ usersRouter.post('/:id/reset-password', (req, res) => {
   resetUserPassword(id, body.newPassword);
   const revoked = revokeUserSessions(id);
   res.json({ data: { revoked }, message: 'Password user berhasil direset.' });
+});
+
+usersRouter.post('/:id/2fa-disable', (req, res) => {
+  const id = parseId(req.params.id ?? '');
+  disableTotp(id);
+  revokeUserSessions(id);
+  res.json({ data: { enabled: false }, message: '2FA user berhasil dinonaktifkan.' });
 });

@@ -1,10 +1,19 @@
+import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import { Router } from 'express';
-import { changePasswordSchema, loginSchema, pairSchema, pairingTokenCreateSchema } from '@dorado/shared';
+import {
+  changePasswordSchema,
+  loginSchema,
+  pairSchema,
+  pairingTokenCreateSchema,
+  totpConfirmSchema,
+  totpDisableSchema
+} from '@dorado/shared';
 import { config } from '../../config.js';
 import { db, newId, nowIso } from '../../db/index.js';
 import { AppError } from '../../lib/errors.js';
 import { asyncHandler } from '../../lib/errors.js';
+import { generateTotpSetup } from '../../lib/totp.js';
 import { parseWith, sha256 } from '../../lib/validation.js';
 import { csrfGuard, rateLimit, requireAdmin, requireAuth } from './middleware.js';
 import {
@@ -14,7 +23,18 @@ import {
   revokeCurrentSession,
   revokeOtherSessions
 } from './session.js';
-import { ensureAdminUser, getUserById, updateUserPassword, verifyUserPassword } from './users.js';
+import {
+  confirmTotp,
+  disableTotp,
+  ensureAdminUser,
+  getUserAuthByUsername,
+  getUserById,
+  mapUser,
+  storeTotpSetup,
+  updateUserPassword,
+  verifyUserPassword,
+  verifyUserTotp
+} from './users.js';
 
 export const authRouter = Router();
 authRouter.use(csrfGuard);
@@ -25,12 +45,24 @@ authRouter.post(
   asyncHandler(async (req, res) => {
     rateLimit(`login:${req.ip ?? 'unknown'}`, 15, 60_000);
     const body = parseWith(loginSchema, req.body);
-    const user = verifyUserPassword(body.username, body.password);
-    if (!user) {
+    const record = getUserAuthByUsername(body.username);
+    if (!record || !record.is_active || !bcrypt.compareSync(body.password, record.password_hash)) {
       throw new AppError(401, 'UNAUTHORIZED', 'Username atau password salah.');
     }
-    createSession(req, res, user.id);
-    res.json({ data: { user } });
+    if (record.totp_enabled) {
+      if (!body.totpCode) {
+        throw new AppError(401, 'TOTP_REQUIRED', 'Kode 2FA wajib diisi.', {
+          totpCode: 'Kode 2FA wajib diisi.'
+        });
+      }
+      if (!verifyUserTotp(record.id, body.totpCode)) {
+        throw new AppError(401, 'INVALID_TOTP', 'Kode 2FA salah atau kedaluwarsa.', {
+          totpCode: 'Kode 2FA salah atau kedaluwarsa.'
+        });
+      }
+    }
+    createSession(req, res, record.id);
+    res.json({ data: { user: mapUser(record) } });
   })
 );
 
@@ -63,6 +95,61 @@ authRouter.post('/logout', (req, res) => {
 authRouter.get('/me', requireAuth, (_req, res) => {
   res.json({ data: { user: res.locals.user } });
 });
+
+authRouter.post(
+  '/2fa/setup',
+  requireAuth,
+  asyncHandler(async (_req, res) => {
+    const current = res.locals.user as { id: number; username: string; totpEnabled: boolean } | undefined;
+    if (!current) throw new AppError(401, 'UNAUTHORIZED', 'Sesi tidak valid.');
+    if (current.totpEnabled) {
+      throw new AppError(409, 'TOTP_ALREADY_ENABLED', '2FA sudah aktif. Nonaktifkan terlebih dahulu.');
+    }
+    const setup = await generateTotpSetup(current.username);
+    storeTotpSetup(current.id, setup.encryptedSecret);
+    res.json({
+      data: { secret: setup.secret, otpauthUrl: setup.otpauthUrl, qrDataUrl: setup.qrDataUrl },
+      message: 'Scan QR lalu masukkan kode 6 digit untuk mengaktifkan 2FA.'
+    });
+  })
+);
+
+authRouter.post(
+  '/2fa/confirm',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const current = res.locals.user as { id: number } | undefined;
+    if (!current) throw new AppError(401, 'UNAUTHORIZED', 'Sesi tidak valid.');
+    const body = parseWith(totpConfirmSchema, req.body);
+    if (!confirmTotp(current.id, body.code)) {
+      throw new AppError(401, 'INVALID_TOTP', 'Kode 2FA salah atau kedaluwarsa.', {
+        code: 'Kode 2FA salah atau kedaluwarsa.'
+      });
+    }
+    res.json({ data: { enabled: true }, message: '2FA berhasil diaktifkan.' });
+  })
+);
+
+authRouter.post(
+  '/2fa/disable',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const current = res.locals.user as { id: number; username: string; totpEnabled: boolean } | undefined;
+    if (!current) throw new AppError(401, 'UNAUTHORIZED', 'Sesi tidak valid.');
+    if (!current.totpEnabled) throw new AppError(409, 'TOTP_NOT_ENABLED', '2FA belum aktif.');
+    const body = parseWith(totpDisableSchema, req.body);
+    if (!verifyUserPassword(current.username, body.password)) {
+      throw new AppError(401, 'UNAUTHORIZED', 'Password salah.');
+    }
+    if (!verifyUserTotp(current.id, body.code)) {
+      throw new AppError(401, 'INVALID_TOTP', 'Kode 2FA salah atau kedaluwarsa.', {
+        code: 'Kode 2FA salah atau kedaluwarsa.'
+      });
+    }
+    disableTotp(current.id);
+    res.json({ data: { enabled: false }, message: '2FA dinonaktifkan.' });
+  })
+);
 
 authRouter.patch(
   '/password',

@@ -3,6 +3,8 @@ import type { UserInfo, UserRole } from '@dorado/shared';
 import { config } from '../../config.js';
 import { db, nowIso } from '../../db/index.js';
 import { AppError, notFound } from '../../lib/errors.js';
+import { decryptSecret } from '../../lib/secret.js';
+import { currentTotpCounter, verifyTotpCode } from '../../lib/totp.js';
 
 const BCRYPT_COST = 10;
 
@@ -13,6 +15,10 @@ interface UserRow {
   password_hash: string;
   role: UserRole;
   is_active: number;
+  totp_enabled: number;
+  totp_secret_encrypted: string | null;
+  totp_last_counter: number | null;
+  totp_confirmed_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -44,7 +50,8 @@ export function mapUser(row: UserRow): UserInfo {
     username: row.username,
     name: row.name,
     role: row.role,
-    isActive: Boolean(row.is_active)
+    isActive: Boolean(row.is_active),
+    totpEnabled: Boolean(row.totp_enabled)
   };
 }
 
@@ -79,14 +86,66 @@ export function listUsers(): UserInfo[] {
   return rows.map(mapUser);
 }
 
-export function verifyUserPassword(username: string, password: string): UserInfo | null {
+export function getUserAuthByUsername(username: string): UserRow | null {
   ensureAdminUser();
   const row = db.prepare('SELECT * FROM users WHERE lower(username) = lower(?)').get(username) as unknown as
     | UserRow
     | undefined;
+  return row ?? null;
+}
+
+export function getUserAuthById(id: number): UserRow | null {
+  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as unknown as UserRow | undefined;
+  return row ?? null;
+}
+
+export function verifyUserPassword(username: string, password: string): UserInfo | null {
+  const row = getUserAuthByUsername(username);
   if (!row || !row.is_active) return null;
   if (!bcrypt.compareSync(password, row.password_hash)) return null;
   return mapUser(row);
+}
+
+export function verifyUserTotp(userId: number, code: string): boolean {
+  const row = getUserAuthById(userId);
+  if (!row || !row.is_active || !row.totp_enabled || !row.totp_secret_encrypted) return false;
+  const counter = currentTotpCounter();
+  if (row.totp_last_counter !== null && counter <= row.totp_last_counter) return false;
+  const secret = decryptSecret(row.totp_secret_encrypted);
+  if (!verifyTotpCode(secret, code)) return false;
+  db.prepare('UPDATE users SET totp_last_counter = ?, updated_at = ? WHERE id = ?').run(counter, nowIso(), userId);
+  return true;
+}
+
+export function storeTotpSetup(userId: number, encryptedSecret: string): void {
+  const result = db
+    .prepare(
+      'UPDATE users SET totp_enabled = 0, totp_secret_encrypted = ?, totp_last_counter = NULL, totp_confirmed_at = NULL, updated_at = ? WHERE id = ?'
+    )
+    .run(encryptedSecret, nowIso(), userId);
+  if (Number(result.changes) === 0) throw notFound('User tidak ditemukan.');
+}
+
+export function confirmTotp(userId: number, code: string): boolean {
+  const row = getUserAuthById(userId);
+  if (!row || !row.totp_secret_encrypted) return false;
+  const secret = decryptSecret(row.totp_secret_encrypted);
+  if (!verifyTotpCode(secret, code)) return false;
+  // Jangan simpan counter di sini agar kode yang sama masih bisa dipakai
+  // untuk login pertama; perlindungan replay diterapkan saat login.
+  db.prepare(
+    'UPDATE users SET totp_enabled = 1, totp_last_counter = NULL, totp_confirmed_at = ?, updated_at = ? WHERE id = ?'
+  ).run(nowIso(), nowIso(), userId);
+  return true;
+}
+
+export function disableTotp(userId: number): void {
+  const result = db
+    .prepare(
+      'UPDATE users SET totp_enabled = 0, totp_secret_encrypted = NULL, totp_last_counter = NULL, totp_confirmed_at = NULL, updated_at = ? WHERE id = ?'
+    )
+    .run(nowIso(), userId);
+  if (Number(result.changes) === 0) throw notFound('User tidak ditemukan.');
 }
 
 export function createUser(input: UserCreateInput): UserInfo {

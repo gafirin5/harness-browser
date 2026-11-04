@@ -76,6 +76,7 @@ export interface UserInfo {
   name: string;
   role: UserRole;
   isActive: boolean;
+  totpEnabled: boolean;
 }
 
 export interface ApiErrorBody {

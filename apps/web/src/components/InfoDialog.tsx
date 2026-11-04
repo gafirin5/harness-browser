@@ -31,9 +31,7 @@ function formatUptime(seconds: number): string {
 export function buildRuntimeSummary(info: Info): string {
   const agentLines =
     info.agents.length > 0
-      ? info.agents.map(
-          (agent) => `- ${agent.name} (${agent.command}): ${agent.installed ? 'terpasang' : 'tidak ada'}`
-        )
+      ? info.agents.map((agent) => `- ${agent.name} (${agent.command}): ${agent.installed ? 'terpasang' : 'tidak ada'}`)
       : ['- Tidak ada agent.'];
   return [
     'Info Runtime Dorado',

@@ -618,6 +618,27 @@ try {
   await page.waitForFunction(() => !document.body.innerText.includes('Riwayat Sesi Agent'), { timeout: 10000 });
   console.log('[chrome93] session history dialog OK');
 
+  await clickText('button', 'Inbox');
+  await page.waitForSelector('.agent-dashboard', { timeout: 15000 });
+  await page.evaluate(() => {
+    const button = Array.from(document.querySelectorAll('.agent-dashboard .dashboard-tabs button')).find(
+      (item) => (item.textContent || '').trim() === 'Board'
+    );
+    button?.click();
+  });
+  await waitText('Needs You');
+  await waitText('Working');
+  await page.evaluate(() => {
+    const button = Array.from(document.querySelectorAll('.agent-dashboard .dashboard-tabs button')).find((item) =>
+      (item.textContent || '').trim().startsWith('Inbox')
+    );
+    button?.click();
+  });
+  await page.waitForSelector('.dashboard-inbox', { timeout: 10000 });
+  await page.click('.agent-dashboard button[aria-label="Tutup"]');
+  await page.waitForFunction(() => !document.querySelector('.agent-dashboard'), { timeout: 10000 });
+  console.log('[chrome93] agent dashboard + inbox OK');
+
   await clickText('button', 'Share');
   await waitText('Share & Pairing');
   await clickText('button', 'Buat Pairing Token');

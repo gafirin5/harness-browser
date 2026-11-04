@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   AgentInfo,
   Project,
@@ -32,6 +32,9 @@ const OrchestratorPanel = lazy(() => import('./components/OrchestratorPanel'));
 const AuditDialog = lazy(() => import('./components/AuditDialog'));
 const GitGraphPanel = lazy(() =>
   import('./components/GitGraphPanel').then((module) => ({ default: module.GitGraphPanel }))
+);
+const AgentDashboard = lazy(() =>
+  import('./components/AgentDashboard').then((module) => ({ default: module.AgentDashboard }))
 );
 
 type DialogState =
@@ -75,6 +78,19 @@ export function App(): JSX.Element {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [gitGraphOpen, setGitGraphOpen] = useState(false);
   const [quickCommandsOpen, setQuickCommandsOpen] = useState(false);
+  const [dashboardOpen, setDashboardOpen] = useState(false);
+  const [dashboardTab, setDashboardTab] = useState<'board' | 'inbox'>('board');
+  const [dashboardSessions, setDashboardSessions] = useState<SessionHistoryItem[]>([]);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [inboxRead, setInboxRead] = useState<string[]>(() => {
+    try {
+      const raw = window.localStorage.getItem('dorado-inbox-read');
+      const parsed: unknown = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === 'string') : [];
+    } catch {
+      return [];
+    }
+  });
   const shortcutRef = useRef({
     selectedWorktree: null as Worktree | null,
     terminals: [] as TerminalInfo[],
@@ -212,6 +228,43 @@ export function App(): JSX.Element {
     },
     [loadWorktreeData]
   );
+
+  const loadDashboardSessions = useCallback(
+    async (silent = false) => {
+      if (!silent) setDashboardLoading(true);
+      try {
+        const response = await apiGet<{ data: SessionHistoryItem[] }>('/sessions/history?page_size=100');
+        setDashboardSessions(response.data);
+      } catch (caught) {
+        if (!silent) toastError(caught, 'Gagal memuat dashboard agent.');
+      } finally {
+        if (!silent) setDashboardLoading(false);
+      }
+    },
+    [toastError]
+  );
+
+  useEffect(() => {
+    if (!booted) return undefined;
+    void loadDashboardSessions(true);
+    const timer = window.setInterval(() => void loadDashboardSessions(true), 20000);
+    return () => window.clearInterval(timer);
+  }, [booted, loadDashboardSessions]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('dorado-inbox-read', JSON.stringify(inboxRead.slice(-500)));
+    } catch {
+      // localStorage bisa diblokir; abaikan.
+    }
+  }, [inboxRead]);
+
+  const unreadInboxCount = useMemo(() => {
+    const read = new Set(inboxRead);
+    return dashboardSessions.filter(
+      (session) => (session.status === 'completed' || session.status === 'failed') && !read.has(session.id)
+    ).length;
+  }, [dashboardSessions, inboxRead]);
 
   useEffect(() => {
     if (!user || projects.length === 0 || selectedProjectId) return;
@@ -513,6 +566,48 @@ export function App(): JSX.Element {
     }
   };
 
+  const openDashboardSession = async (session: SessionHistoryItem): Promise<void> => {
+    const project = projects.find((item) => item.id === session.projectId);
+    if (!project) {
+      push('error', 'Project untuk sesi ini sudah tidak ada.');
+      return;
+    }
+    try {
+      dataVersion.current += 1;
+      setSelectedProjectId(project.id);
+      setSelectedWorktreeId(session.worktreeId);
+      setTerminals([]);
+      setSessions([]);
+      setActiveTerminalId(null);
+      setActiveFilePath(null);
+      setActiveDiffPath(null);
+      setSplitTerminalIds([]);
+      const worktreeResponse = await apiGet<{ data: Worktree[] }>(
+        `/worktrees?projectId=${encodeURIComponent(project.id)}`
+      );
+      setWorktrees(worktreeResponse.data);
+      await loadWorktreeData(session.worktreeId);
+      setActiveTerminalId(session.terminalId);
+      setActiveFilePath(null);
+      setActiveDiffPath(null);
+      setDashboardOpen(false);
+    } catch (caught) {
+      toastError(caught, 'Gagal membuka sesi.');
+    }
+  };
+
+  const markInboxRead = (id: string): void => {
+    setInboxRead((current) => (current.includes(id) ? current : [...current, id]));
+  };
+
+  const markInboxAllRead = (ids: string[]): void => {
+    setInboxRead((current) => {
+      const next = new Set(current);
+      for (const id of ids) next.add(id);
+      return Array.from(next);
+    });
+  };
+
   const createTerminal = async (): Promise<void> => {
     if (!selectedWorktree) return;
     markMutation();
@@ -760,6 +855,24 @@ export function App(): JSX.Element {
       run: () => setQuickCommandsOpen(true)
     },
     {
+      id: 'dashboard',
+      label: 'Agent Dashboard',
+      hint: 'Papan Needs You / Working / Done / Idle',
+      run: () => {
+        setDashboardTab('board');
+        setDashboardOpen(true);
+      }
+    },
+    {
+      id: 'inbox',
+      label: 'Agent Inbox',
+      hint: 'Notifikasi sesi agent yang selesai atau gagal',
+      run: () => {
+        setDashboardTab('inbox');
+        setDashboardOpen(true);
+      }
+    },
+    {
       id: 'github',
       label: 'GitHub Repository',
       hint: 'Pull request dan issue untuk worktree aktif',
@@ -869,6 +982,16 @@ export function App(): JSX.Element {
         </button>
         <button className="btn tiny" onClick={() => setInfoOpen(true)}>
           Info
+        </button>
+        <button
+          className="btn tiny"
+          onClick={() => {
+            setDashboardTab('inbox');
+            setDashboardOpen(true);
+          }}
+          title="Agent dashboard dan inbox"
+        >
+          Inbox{unreadInboxCount > 0 ? ` (${unreadInboxCount})` : ''}
         </button>
         <button className="btn tiny" onClick={() => setHistoryOpen(true)}>
           History
@@ -1379,6 +1502,34 @@ export function App(): JSX.Element {
           }
         >
           <GitGraphPanel project={selectedProject} onClose={() => setGitGraphOpen(false)} />
+        </Suspense>
+      ) : null}
+      {dashboardOpen ? (
+        <Suspense
+          fallback={
+            <div className="orch-overlay">
+              <div className="empty">Memuat Agent Dashboard...</div>
+            </div>
+          }
+        >
+          <AgentDashboard
+            sessions={dashboardSessions}
+            loading={dashboardLoading}
+            projects={projects}
+            selectedProjectId={selectedProjectId}
+            inboxRead={inboxRead}
+            initialTab={dashboardTab}
+            onClose={() => setDashboardOpen(false)}
+            onRefresh={() => void loadDashboardSessions()}
+            onOpenSession={(session) => void openDashboardSession(session)}
+            onRerun={(session) => {
+              setDashboardOpen(false);
+              void rerunHistory(session);
+            }}
+            onStop={(session) => void stopSession(session).then(() => void loadDashboardSessions(true))}
+            onMarkRead={markInboxRead}
+            onMarkAllRead={markInboxAllRead}
+          />
         </Suspense>
       ) : null}
 

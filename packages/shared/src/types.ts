@@ -68,6 +68,16 @@ export interface QuickCommand {
   createdAt: string;
 }
 
+export interface DiffComment {
+  id: string;
+  worktreeId: string;
+  path: string;
+  line: number;
+  body: string;
+  createdAt: string;
+  resolvedAt: string | null;
+}
+
 export type TerminalKind = 'shell' | 'agent';
 export type TerminalStatus = 'running' | 'exited' | 'stopped';
 

@@ -254,6 +254,30 @@ try {
   await waitText('edited by chrome93');
   console.log('[chrome93] git status + diff OK');
 
+  await page.evaluate(() => {
+    const button = Array.from(document.querySelectorAll('.diff-line-no')).find(
+      (item) => (item.textContent || '').trim().length > 0 && !item.disabled
+    );
+    button?.click();
+  });
+  await page.waitForSelector('.diff-comment-box textarea', { timeout: 10000 });
+  await page.type('.diff-comment-box textarea', 'Komentar E2E untuk agent');
+  await page.keyboard.press('Enter');
+  await waitText('Komentar E2E untuk agent');
+  const reviewComments = await api(`/api/review?worktreeId=${createdWorktree.id}&path=README.md`, {}, cookie);
+  if (reviewComments.body?.data?.length !== 1) {
+    throw new Error('Komentar diff tidak tersimpan melalui API.');
+  }
+  await clickText('button', 'Kirim ke Agent');
+  await waitText('Kirim Komentar ke Agent');
+  await clickText('button', 'Batal');
+  await page.waitForFunction(() => !document.body.innerText.includes('Kirim Komentar ke Agent'), {
+    timeout: 10000
+  });
+  await page.click('.diff-comment .icon-btn');
+  await page.waitForFunction(() => !document.querySelector('.diff-comment'), { timeout: 10000 });
+  console.log('[chrome93] annotate diff OK');
+
   await clickText('button', 'Cari');
   await page.waitForSelector('.search-form input', { timeout: 10000 });
   await page.type('.search-form input', 'edited by chrome93');

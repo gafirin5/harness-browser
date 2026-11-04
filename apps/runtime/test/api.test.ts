@@ -388,6 +388,46 @@ describe('quick commands', () => {
   });
 });
 
+describe('diff comments', () => {
+  it('membuat, membaca, mengubah, dan menghapus komentar diff', async () => {
+    const worktree = await api.post('/api/worktrees').send({
+      projectId,
+      branch: 'agent/review-test',
+      baseRef: 'main'
+    });
+    expect(worktree.status).toBe(201);
+    const worktreeId = worktree.body.data.id;
+
+    const created = await api.post('/api/review').send({
+      worktreeId,
+      path: 'src/app.ts',
+      line: 12,
+      body: 'Tolong pakai early return.'
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.data.line).toBe(12);
+    expect(created.body.data.resolvedAt).toBeNull();
+
+    const list = await api.get(`/api/review?worktreeId=${worktreeId}&path=src%2Fapp.ts`);
+    expect(list.status).toBe(200);
+    expect(list.body.data).toHaveLength(1);
+
+    const patched = await api.patch(`/api/review/${created.body.data.id}`).send({ resolved: true });
+    expect(patched.status).toBe(200);
+    expect(patched.body.data.resolvedAt).not.toBeNull();
+
+    const removed = await api.delete(`/api/review/${created.body.data.id}`);
+    expect(removed.status).toBe(204);
+    const missing = await api.delete(`/api/review/${created.body.data.id}`);
+    expect(missing.status).toBe(404);
+
+    const invalid = await api.post('/api/review').send({ worktreeId, path: 'a.ts', line: 0, body: 'x' });
+    expect(invalid.status).toBe(422);
+
+    await api.delete(`/api/worktrees/${worktreeId}`);
+  });
+});
+
 describe('session history', () => {
   it('mencari sesi berdasarkan judul/prompt dan filter status', async () => {
     const worktree = await api.post('/api/worktrees').send({

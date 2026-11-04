@@ -72,6 +72,16 @@ db.exec(`
     created_at TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS diff_comments (
+    id          TEXT PRIMARY KEY,
+    worktree_id TEXT NOT NULL,
+    file_path   TEXT NOT NULL,
+    line_number INTEGER NOT NULL,
+    body        TEXT NOT NULL,
+    created_at  TEXT NOT NULL,
+    resolved_at TEXT
+  );
+
   CREATE TABLE IF NOT EXISTS pairing_tokens (
     id           TEXT PRIMARY KEY,
     token_hash   TEXT NOT NULL UNIQUE,
@@ -226,6 +236,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS terminals_worktree_ix ON terminals(worktree_id);
   CREATE INDEX IF NOT EXISTS sessions_worktree_ix ON sessions(worktree_id);
   CREATE INDEX IF NOT EXISTS quick_commands_project_ix ON quick_commands(project_id);
+  CREATE INDEX IF NOT EXISTS diff_comments_worktree_ix ON diff_comments(worktree_id, file_path);
 `);
 
 // Migrasi database lama: auth_sessions belum memiliki user_id.

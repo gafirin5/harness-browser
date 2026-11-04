@@ -147,3 +147,17 @@ export const quickCommandUpdateSchema = z
 export const terminalInputSchema = z.object({
   data: z.string().min(1, 'Input kosong.').max(8000)
 });
+
+export const diffCommentCreateSchema = z.object({
+  worktreeId: z.string().min(1),
+  path: z.string().trim().min(1).max(1000),
+  line: z.coerce.number().int().min(1).max(2_000_000),
+  body: z.string().trim().min(1, 'Komentar wajib diisi.').max(4000)
+});
+
+export const diffCommentUpdateSchema = z
+  .object({
+    body: z.string().trim().min(1).max(4000).optional(),
+    resolved: z.boolean().optional()
+  })
+  .refine((data) => Object.keys(data).length > 0, 'Tidak ada perubahan yang dikirim.');

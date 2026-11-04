@@ -1355,6 +1355,13 @@ export function App(): JSX.Element {
                 worktreeId={selectedWorktreeId ?? ''}
                 filePath={activeDiffPath}
                 initialStaged={false}
+                onSessionStarted={(session) => {
+                  setSessions((current) => [session, ...current]);
+                  setActiveTerminalId(session.terminalId);
+                  setActiveFilePath(null);
+                  setActiveDiffPath(null);
+                  void loadWorktreeData(session.worktreeId);
+                }}
               />
             ) : activeTerminal ? (
               <div className={`terminal-panes panes-${paneIds.length}`}>

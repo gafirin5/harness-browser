@@ -1,6 +1,6 @@
 # Verifikasi M1
 
-Tanggal: 2026-11-04
+Tanggal: 2026-11-05
 Lingkungan: Ubuntu 24.04, Node.js 24.19.0, Chromium 93.0.4577.0, cloudflared 2026.10.1.
 
 ## Test API
@@ -9,7 +9,7 @@ Lingkungan: Ubuntu 24.04, Node.js 24.19.0, Chromium 93.0.4577.0, cloudflared 202
 npm test
 ```
 
-Hasil: **27 test lulus** — auth/pairing, health check database + header keamanan, ganti password + cabut sesi lain + logout, project/branch, worktree create/delete, terminal create/list/delete, file tree/content/write + path traversal, git stage/commit/push/pull, riwayat sesi, resume sesi dengan mock agent, info runtime, parsing remote GitHub (SSH/HTTPS/git), integrasi GitHub dengan remote non-GitHub (`connected:false`, `NOT_GITHUB`), pencarian kode (match, case sensitivity, batas hasil, regex invalid), agent tidak dikenal, multi-user & role (viewer read-only, admin menonaktifkan/mereset password viewer, proteksi admin terakhir), 2FA (setup QR, konfirmasi, login wajib kode, anti-replay, reset oleh admin), audit log (login/gagal login/user create + viewer ditolak), serta Orchestrator (provider + API key tidak bocor, agent token/hash + heartbeat, dispatch task, callback idempoten, biaya half-up `2500 × 0.0020 = 0.0050`, idempotency task, cancel/retry, dan kegagalan dispatcher).
+Hasil: **44 test lulus** — auth/pairing, health check database + header keamanan, ganti password + cabut sesi lain + logout, project/branch, worktree create/delete + checkpoint, terminal create/list/input/delete, file tree/content/write + path traversal, git stage/commit/push/pull, git graph + detail commit, quick commands, komentar diff, riwayat sesi, resume sesi dengan mock agent, info runtime, parsing remote GitHub (SSH/HTTPS/git), integrasi GitHub dengan remote non-GitHub (`connected:false`, `NOT_GITHUB`, aksi tulis ditolak), pencarian kode (match, case sensitivity, batas hasil, regex invalid), agent tidak dikenal, automations (CRUD + run manual), multi-user & role (viewer read-only, admin menonaktifkan/mereset password viewer, proteksi admin terakhir), 2FA (setup QR, konfirmasi, login wajib kode, anti-replay, reset oleh admin), audit log (login/gagal login/user create + viewer ditolak), serta Orchestrator (provider + API key tidak bocor, agent token/hash + heartbeat, dispatch task, callback idempoten, biaya half-up `2500 × 0.0020 = 0.0050`, idempotency task, cancel/retry, dan kegagalan dispatcher).
 
 Test frontend (Vitest + Testing Library + jsdom):
 
@@ -17,7 +17,7 @@ Test frontend (Vitest + Testing Library + jsdom):
 npm run test:web
 ```
 
-Hasil: **13 test lulus** — CommandPalette (filter + Enter + Escape), SettingsDialog (validasi konfirmasi + request ganti password + mode viewer + setup/konfirmasi 2FA), OrchestratorPanel (dashboard summary + tab provider), AuditDialog (label aksi + target + detail), InfoDialog (ringkasan runtime + tombol Salin Ringkasan), dan Modal (fokus field body, tidak merebut fokus saat onClose berubah, Escape).
+Hasil: **40 test lulus** — CommandPalette, SettingsDialog, OrchestratorPanel, AuditDialog, InfoDialog, Modal, QuickOpenDialog, ShortcutsDialog, keyboard Ctrl+Enter, GitGraphPanel, AgentDashboard, QuickCommandsDialog, DiffViewer annotate, HistoryDialog, WorktreeCheckpoint, AutomationsDialog, MarkdownPreview, GitHubDialog write actions, dan preferensi/keymap terminal.
 
 ## Gate Chrome 93
 
@@ -33,10 +33,10 @@ npm run verify
 | Sintaks ES2020 | Lulus — semua chunk |
 | API JS terlarang | Lulus |
 | CSS terlarang | Lulus |
-| Bundel JS awal | **139,2 KB gzip** (batas 150 KB) |
-| Bundel total + editor & orchestrator lazy | **262,4 KB gzip** (batas 300 KB) |
-| Test API | 27 lulus |
-| Test frontend (Testing Library) | 13 lulus |
+| Bundel JS awal | **145,6 KB gzip** (batas 150 KB) |
+| Bundel total + editor & orchestrator lazy | **281,7 KB gzip** (batas 300 KB) |
+| Test API | 44 lulus |
+| Test frontend (Testing Library) | 40 lulus |
 | Playwright E2E | 3 lulus |
 
 ## Smoke Chromium 93
@@ -51,24 +51,32 @@ BASE_URL=https://<tunnel>.trycloudflare.com node scripts/e2e-chrome93.mjs
 Alur yang diuji:
 
 1. Login password → sidebar project.
-2. Pilih project dan worktree.
+2. Pilih project dan worktree, ubah checkpoint menjadi **In progress** dan simpan catatan lewat sidebar; verifikasi lewat API.
 3. Buat terminal shell, ketik `echo chrome93-ok` lewat WebSocket, verifikasi output di xterm.
-4. Buka file `README.md` di CodeMirror, sunting, simpan dengan Ctrl+S, verifikasi isi file.
-5. Panel Changes menampilkan `README.md`; buka diff dan verifikasi baris hasil edit.
-6. Buka dialog **Cari Kode**, cari `edited by chrome93`, klik hasil, dan verifikasi editor membuka file pada baris yang sesuai.
-7. Stage `README.md`, buka modal commit, isi pesan, commit, dan verifikasi working tree bersih.
-8. Buat terminal kedua dan ketiga, aktifkan multi-pane hingga 3 pane, lalu Unsplit.
-9. Buka pencarian terminal dan cari teks, lalu tutup.
-10. Buka dialog Info Runtime, verifikasi data runtime, lalu klik **Salin Ringkasan** dan pastikan toast sukses muncul.
-11. Buka dialog GitHub pada worktree dengan remote non-GitHub dan verifikasi state "Remote bukan repository GitHub".
-12. Buat dan rename file lewat file explorer.
-13. Buka **Orchestrator**, buat provider lewat form UI, daftarkan agent lewat API, jalankan mock worker, buat task, dan verifikasi task berubah `COMPLETED` dengan biaya `$0.0050`; buka detail task dan konfirmasi log "Task selesai".
-14. Buka **Setelan**, cabut sesi lain, verifikasi toast sukses dan sesi browser tetap aktif.
-15. Buka command palette (`Ctrl+Shift+P`), cari perintah, lalu tutup dengan Escape.
-16. Buka dialog riwayat sesi dan verifikasi pencarian/filter.
-17. Buka dialog Share dan buat pairing token.
-18. Buka pairing URL di incognito context → auto-login.
-19. Nol error konsol/pageerror.
+4. Buka **Tampilan**, ubah ukuran font terminal, simpan, verifikasi localStorage, lalu klik **Reset**.
+5. Buat quick command `echo quick-command-e2e`, jalankan di terminal aktif, verifikasi output, lalu hapus.
+6. Buka file `README.md` di CodeMirror, sunting, simpan dengan Ctrl+S, verifikasi isi file.
+7. Toggle **Preview** markdown, verifikasi heading hasil edit, lalu kembali ke **Raw**.
+8. Panel Changes menampilkan `README.md`; buka diff dan verifikasi baris hasil edit.
+9. Tambah komentar inline pada baris diff, verifikasi tersimpan lewat API, buka dialog kirim ke agent, lalu hapus komentar.
+10. Buka dialog **Cari Kode**, cari `edited by chrome93`, klik hasil, dan verifikasi editor membuka file pada baris yang sesuai.
+11. Stage `README.md`, buka modal commit, isi pesan, commit dengan **Ctrl+Enter**, dan verifikasi working tree bersih.
+12. Buat terminal kedua dan ketiga, aktifkan multi-pane hingga 3 pane, lalu Unsplit.
+13. Buka pencarian terminal dan cari teks, lalu tutup.
+14. Buka dialog Info Runtime dan verifikasi data runtime.
+15. Buka dialog GitHub pada worktree dengan remote non-GitHub dan verifikasi state "Remote bukan repository GitHub".
+16. Buka command palette (`Ctrl+Shift+P`), cari perintah, lalu tutup dengan Escape.
+17. Buka daftar shortcut (`Alt+/`), Jump Palette (`Alt+J`), dan Quick Open (`Alt+P`).
+18. Buka Git Graph (`Alt+Shift+G`), verifikasi lane/commit, buka detail commit, lalu tutup.
+19. Buka **Scheduled Automations**, buat otomasi manual, verifikasi lewat API, lalu hapus.
+20. Buat dan rename file lewat file explorer.
+21. Buka **Orchestrator**, buat provider lewat form UI, daftarkan agent lewat API, jalankan mock worker, buat task, dan verifikasi task berubah `COMPLETED` dengan biaya `$0.0050`; buka detail task dan konfirmasi log "Task selesai".
+22. Buka **Setelan**, cabut sesi lain, verifikasi toast sukses dan sesi browser tetap aktif.
+23. Buka dialog riwayat sesi dan verifikasi scope/grup/filter.
+24. Buka **Agent Dashboard / Inbox**, verifikasi kolom board dan tab inbox.
+25. Buka dialog Share dan buat pairing token.
+26. Buka pairing URL di incognito context → auto-login.
+27. Nol error konsol/pageerror.
 
 Git push/pull divalidasi melalui test API dengan remote bare lokal; tombol UI tersedia di panel Changes.
 
@@ -117,7 +125,9 @@ Hasil: **3 test lulus** di Chrome sistem — login, command palette, panel Orche
 
 - Sesi tmux tidak bertahan setelah host reboot (hanya runtime restart).
 - Log terminal berupa file append-only tanpa rotasi otomatis.
-- Integrasi GitHub read-only; belum ada komentar, review, atau merge dari UI, dan bergantung pada rate limit/token GitHub.
+- Integrasi GitHub write (komentar/review/merge) membutuhkan `GITHUB_TOKEN` dengan scope write; tanpa token, aksi tulis ditolak dengan pesan yang jelas dan tetap bergantung pada rate limit GitHub.
+- Markdown preview belum mendukung Mermaid/diagram; renderer sengaja dibuat ringan agar bundel tetap kecil.
+- Pull request/issue GitHub pada UI belum menampilkan daftar komentar atau review yang sudah ada.
 - Pencarian kode mengikuti `.gitignore`; fallback `git grep` hanya mencari file tracked dan hasil dibatasi 100 match.
 - Orchestrator memakai satu admin; worker agent harus dapat dijangkau runtime, dan `AGENT_KEY_DELIVERY=payload` mengirim API key provider ke worker. Gunakan HTTPS/trusted network atau set `none`.
 - UI Orchestrator saat ini mendukung create provider/agent, toggle aktif, rotasi token, create/cancel/retry task; edit detail provider/agent belum disediakan.

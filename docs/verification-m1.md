@@ -17,7 +17,7 @@ Test frontend (Vitest + Testing Library + jsdom):
 npm run test:web
 ```
 
-Hasil: **8 test lulus** — CommandPalette (filter + Enter + Escape), SettingsDialog (validasi konfirmasi + request ganti password + mode viewer + setup/konfirmasi 2FA), OrchestratorPanel (dashboard summary + tab provider), dan AuditDialog (label aksi + target + detail).
+Hasil: **10 test lulus** — CommandPalette (filter + Enter + Escape), SettingsDialog (validasi konfirmasi + request ganti password + mode viewer + setup/konfirmasi 2FA), OrchestratorPanel (dashboard summary + tab provider), AuditDialog (label aksi + target + detail), dan InfoDialog (ringkasan runtime + tombol Salin Ringkasan).
 
 ## Gate Chrome 93
 
@@ -33,10 +33,10 @@ npm run verify
 | Sintaks ES2020 | Lulus — semua chunk |
 | API JS terlarang | Lulus |
 | CSS terlarang | Lulus |
-| Bundel JS awal | **138,9 KB gzip** (batas 150 KB) |
-| Bundel total + editor & orchestrator lazy | **262,1 KB gzip** (batas 300 KB) |
+| Bundel JS awal | **139,2 KB gzip** (batas 150 KB) |
+| Bundel total + editor & orchestrator lazy | **262,4 KB gzip** (batas 300 KB) |
 | Test API | 27 lulus |
-| Test frontend (Testing Library) | 8 lulus |
+| Test frontend (Testing Library) | 10 lulus |
 | Playwright E2E | 3 lulus |
 
 ## Smoke Chromium 93
@@ -59,7 +59,7 @@ Alur yang diuji:
 7. Stage `README.md`, buka modal commit, isi pesan, commit, dan verifikasi working tree bersih.
 8. Buat terminal kedua dan ketiga, aktifkan multi-pane hingga 3 pane, lalu Unsplit.
 9. Buka pencarian terminal dan cari teks, lalu tutup.
-10. Buka dialog Info Runtime dan verifikasi data runtime.
+10. Buka dialog Info Runtime, verifikasi data runtime, lalu klik **Salin Ringkasan** dan pastikan toast sukses muncul.
 11. Buka dialog GitHub pada worktree dengan remote non-GitHub dan verifikasi state "Remote bukan repository GitHub".
 12. Buat dan rename file lewat file explorer.
 13. Buka **Orchestrator**, buat provider lewat form UI, daftarkan agent lewat API, jalankan mock worker, buat task, dan verifikasi task berubah `COMPLETED` dengan biaya `$0.0050`; buka detail task dan konfirmasi log "Task selesai".

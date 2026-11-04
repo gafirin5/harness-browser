@@ -22,7 +22,7 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **Pencarian terminal** (`Find` atau `Ctrl+F`) dengan navigasi hasil.
 - **Pencarian kode worktree** (`Ctrl+Shift+F` atau tombol **Cari**): ripgrep dengan fallback `git grep`, filter case-sensitive/regex, dan klik hasil untuk melompat ke baris di editor.
 - **Notifikasi sesi** saat agent selesai/gagal + penanda unread di sidebar dan judul tab.
-- **Info Runtime**: versi, Node, tmux, data directory, agent CLI, dan jumlah data.
+- **Info Runtime**: versi, Node, tmux, data directory, agent CLI, jumlah data, dan tombol **Salin Ringkasan**.
 - **Integrasi GitHub read-only**: info repository, pull request, dan issue per worktree; link keluar ke GitHub, caching 60 detik, token opsional.
 - **Orchestrator terintegrasi**: dashboard realtime (SSE + fallback polling), provider LLM dengan API key terenkripsi, agent worker dengan token/heartbeat, antrean task berprioritas, dispatcher, callback worker, cancel/retry, log, dan perhitungan biaya.
 - **Command palette** (`Ctrl+Shift+P` atau `Ctrl+K`): terminal, agent, worktree, split, orchestrator, search, refresh, history, github, info, settings, share.
@@ -217,7 +217,7 @@ Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `ech
 ## Test
 
 ```bash
-npm test                 # 27 test API + 8 test frontend (Testing Library)
+npm test                 # 27 test API + 10 test frontend (Testing Library)
 npm run test:web         # hanya test frontend (Vitest + Testing Library)
 npm run lint             # ESLint
 npm run format:check

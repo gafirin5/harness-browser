@@ -2063,6 +2063,42 @@ button:disabled {
   color: var(--text);
 }
 
+.history-filters {
+  flex-wrap: wrap;
+}
+
+.history-filters .select {
+  max-width: 150px;
+}
+
+.history-group + .history-group {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.history-group .section-label {
+  margin: 4px 6px;
+}
+
+.history-copy-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.history-id {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-path {
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 760px) {
   .history-layout {
     grid-template-columns: minmax(0, 1fr);

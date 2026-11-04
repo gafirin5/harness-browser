@@ -45,6 +45,7 @@ export function listAgents(): AgentInfo[] {
     name: agent.name,
     command: agent.command,
     args: agent.args,
+    resumeArgs: agent.resumeArgs,
     installed: isInstalled(agent.command)
   }));
 }

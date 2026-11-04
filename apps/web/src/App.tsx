@@ -18,10 +18,8 @@ import { ChangesPanel } from './components/ChangesPanel';
 import { DiffViewer } from './components/DiffViewer';
 import { CommandPalette, type Command } from './components/CommandPalette';
 import { GitHubDialog } from './components/GitHubDialog';
-import { HistoryDialog } from './components/HistoryDialog';
 import { InfoDialog } from './components/InfoDialog';
 import { QuickOpenDialog } from './components/QuickOpenDialog';
-import { QuickCommandsDialog } from './components/QuickCommandsDialog';
 import { SearchDialog } from './components/SearchDialog';
 import { SettingsDialog } from './components/SettingsDialog';
 import { ShortcutsDialog } from './components/ShortcutsDialog';
@@ -35,6 +33,12 @@ const GitGraphPanel = lazy(() =>
 );
 const AgentDashboard = lazy(() =>
   import('./components/AgentDashboard').then((module) => ({ default: module.AgentDashboard }))
+);
+const HistoryDialog = lazy(() =>
+  import('./components/HistoryDialog').then((module) => ({ default: module.HistoryDialog }))
+);
+const QuickCommandsDialog = lazy(() =>
+  import('./components/QuickCommandsDialog').then((module) => ({ default: module.QuickCommandsDialog }))
 );
 
 type DialogState =
@@ -1465,7 +1469,22 @@ export function App(): JSX.Element {
         </div>
       ) : null}
 
-      {historyOpen ? <HistoryDialog onClose={() => setHistoryOpen(false)} onRerun={rerunHistory} /> : null}
+      {historyOpen ? (
+        <Suspense
+          fallback={
+            <div className="orch-overlay">
+              <div className="empty">Memuat Riwayat Sesi...</div>
+            </div>
+          }
+        >
+          <HistoryDialog
+            onClose={() => setHistoryOpen(false)}
+            onRerun={rerunHistory}
+            selectedProjectId={selectedProjectId}
+            selectedWorktreeId={selectedWorktreeId}
+          />
+        </Suspense>
+      ) : null}
       {infoOpen ? <InfoDialog onClose={() => setInfoOpen(false)} /> : null}
       {githubOpen ? <GitHubDialog worktreeId={selectedWorktreeId} onClose={() => setGithubOpen(false)} /> : null}
       {searchOpen ? (
@@ -1554,11 +1573,19 @@ export function App(): JSX.Element {
       ) : null}
       {shortcutsOpen ? <ShortcutsDialog onClose={() => setShortcutsOpen(false)} /> : null}
       {quickCommandsOpen ? (
-        <QuickCommandsDialog
-          project={selectedProject}
-          activeTerminal={activeTerminal}
-          onClose={() => setQuickCommandsOpen(false)}
-        />
+        <Suspense
+          fallback={
+            <div className="orch-overlay">
+              <div className="empty">Memuat Quick Commands...</div>
+            </div>
+          }
+        >
+          <QuickCommandsDialog
+            project={selectedProject}
+            activeTerminal={activeTerminal}
+            onClose={() => setQuickCommandsOpen(false)}
+          />
+        </Suspense>
       ) : null}
 
       {dialog?.type === 'project' ? (

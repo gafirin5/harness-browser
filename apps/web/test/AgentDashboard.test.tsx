@@ -30,7 +30,8 @@ function makeSession(
     endedAt: status === 'running' ? null : created,
     projectId: 'p-1',
     projectName: 'Dorado',
-    worktreeBranch: 'main'
+    worktreeBranch: 'main',
+    worktreePath: '/tmp/dorado/worktrees/main'
   };
 }
 

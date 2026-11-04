@@ -638,6 +638,8 @@ try {
 
   await clickText('button', 'History');
   await waitText('Riwayat Sesi Agent');
+  await page.waitForSelector('select[aria-label="Scope riwayat"]', { timeout: 10000 });
+  await page.waitForSelector('select[aria-label="Kelompok riwayat"]', { timeout: 10000 });
   await page.click('button[aria-label="Tutup"]');
   await page.waitForFunction(() => !document.body.innerText.includes('Riwayat Sesi Agent'), { timeout: 10000 });
   console.log('[chrome93] session history dialog OK');

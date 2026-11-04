@@ -53,6 +53,7 @@ interface HistoryRow extends SessionRow {
   project_id: string;
   project_name: string;
   worktree_branch: string;
+  worktree_path: string;
 }
 
 function mapHistory(row: HistoryRow): SessionHistoryItem {
@@ -60,7 +61,8 @@ function mapHistory(row: HistoryRow): SessionHistoryItem {
     ...mapSession(row),
     projectId: row.project_id,
     projectName: row.project_name,
-    worktreeBranch: row.worktree_branch
+    worktreeBranch: row.worktree_branch,
+    worktreePath: row.worktree_path
   };
 }
 
@@ -109,7 +111,7 @@ sessionsRouter.get('/history', (req, res) => {
     .get(...params) as { total: number } | undefined;
   const rows = db
     .prepare(
-      `SELECT s.*, w.project_id, w.branch AS worktree_branch, p.name AS project_name
+      `SELECT s.*, w.project_id, w.branch AS worktree_branch, w.path AS worktree_path, p.name AS project_name
        FROM sessions s
        JOIN worktrees w ON w.id = s.worktree_id
        JOIN projects p ON p.id = w.project_id

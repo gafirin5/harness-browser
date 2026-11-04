@@ -463,6 +463,10 @@ describe('session history', () => {
     expect(byQuery.body.data).toHaveLength(1);
     expect(byQuery.body.data[0].title).toBe('Deploy staging');
     expect(byQuery.body.data[0].projectName).toBe('Test Repo');
+    expect(byQuery.body.data[0].worktreePath).toContain('agent-history-test');
+
+    const byAgent = await api.get('/api/sessions/history?agent=opencode&projectId=' + projectId);
+    expect(byAgent.body.data.length).toBeGreaterThanOrEqual(2);
 
     const byStatus = await api.get('/api/sessions/history?status=failed');
     expect(byStatus.body.data).toHaveLength(1);

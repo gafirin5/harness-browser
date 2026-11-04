@@ -113,6 +113,7 @@ export interface SessionHistoryItem extends SessionInfo {
   projectId: string;
   projectName: string;
   worktreeBranch: string;
+  worktreePath: string;
 }
 
 export interface AgentInfo {
@@ -120,6 +121,7 @@ export interface AgentInfo {
   name: string;
   command: string;
   args: string[];
+  resumeArgs?: string[];
   installed: boolean;
 }
 

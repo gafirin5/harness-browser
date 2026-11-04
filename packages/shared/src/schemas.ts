@@ -168,3 +168,24 @@ export const worktreeUpdateSchema = z
     note: z.string().max(2000, 'Catatan maksimal 2.000 karakter.').optional()
   })
   .refine((data) => Object.keys(data).length > 0, 'Tidak ada perubahan yang dikirim.');
+
+export const automationCreateSchema = z.object({
+  projectId: z.string().min(1),
+  worktreeId: z.string().min(1).nullable().optional(),
+  name: z.string().trim().min(1, 'Nama otomasi wajib diisi.').max(100),
+  schedule: z.string().trim().min(1, 'Jadwal wajib diisi.').max(100),
+  prompt: z.string().trim().min(1, 'Prompt wajib diisi.').max(20000),
+  agent: z.string().min(1).max(60),
+  enabled: z.boolean().default(true)
+});
+
+export const automationUpdateSchema = z
+  .object({
+    name: z.string().trim().min(1).max(100).optional(),
+    schedule: z.string().trim().min(1).max(100).optional(),
+    prompt: z.string().trim().min(1).max(20000).optional(),
+    agent: z.string().min(1).max(60).optional(),
+    worktreeId: z.string().min(1).nullable().optional(),
+    enabled: z.boolean().optional()
+  })
+  .refine((data) => Object.keys(data).length > 0, 'Tidak ada perubahan yang dikirim.');

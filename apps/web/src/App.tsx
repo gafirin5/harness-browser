@@ -41,6 +41,9 @@ const HistoryDialog = lazy(() =>
 const QuickCommandsDialog = lazy(() =>
   import('./components/QuickCommandsDialog').then((module) => ({ default: module.QuickCommandsDialog }))
 );
+const AutomationsDialog = lazy(() =>
+  import('./components/AutomationsDialog').then((module) => ({ default: module.AutomationsDialog }))
+);
 
 type DialogState =
   | { type: 'project' }
@@ -83,6 +86,7 @@ export function App(): JSX.Element {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [gitGraphOpen, setGitGraphOpen] = useState(false);
   const [quickCommandsOpen, setQuickCommandsOpen] = useState(false);
+  const [automationsOpen, setAutomationsOpen] = useState(false);
   const [dashboardOpen, setDashboardOpen] = useState(false);
   const [dashboardTab, setDashboardTab] = useState<'board' | 'inbox'>('board');
   const [dashboardSessions, setDashboardSessions] = useState<SessionHistoryItem[]>([]);
@@ -860,6 +864,12 @@ export function App(): JSX.Element {
       run: () => setQuickCommandsOpen(true)
     },
     {
+      id: 'automations',
+      label: 'Scheduled Automations',
+      hint: 'Jalankan prompt agent sesuai jadwal',
+      run: () => setAutomationsOpen(true)
+    },
+    {
       id: 'dashboard',
       label: 'Agent Dashboard',
       hint: 'Papan Needs You / Working / Done / Idle',
@@ -1065,6 +1075,16 @@ export function App(): JSX.Element {
                           title="Git Graph (Alt+Shift+G)"
                         >
                           Graph
+                        </button>
+                        <button
+                          className="btn tiny"
+                          onClick={() => {
+                            void selectProject(project);
+                            setAutomationsOpen(true);
+                          }}
+                          title="Scheduled automations"
+                        >
+                          Auto
                         </button>
                       </div>
                       <div className="worktree-list">
@@ -1598,6 +1618,25 @@ export function App(): JSX.Element {
             project={selectedProject}
             activeTerminal={activeTerminal}
             onClose={() => setQuickCommandsOpen(false)}
+          />
+        </Suspense>
+      ) : null}
+      {automationsOpen ? (
+        <Suspense
+          fallback={
+            <div className="orch-overlay">
+              <div className="empty">Memuat Automations...</div>
+            </div>
+          }
+        >
+          <AutomationsDialog
+            project={selectedProject}
+            worktrees={worktrees}
+            onClose={() => setAutomationsOpen(false)}
+            onRan={() => {
+              if (selectedWorktree) void loadWorktreeData(selectedWorktree.id);
+              void loadDashboardSessions(true);
+            }}
           />
         </Suspense>
       ) : null}

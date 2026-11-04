@@ -82,6 +82,30 @@ export interface DiffComment {
   resolvedAt: string | null;
 }
 
+export interface Automation {
+  id: string;
+  projectId: string;
+  worktreeId: string | null;
+  name: string;
+  schedule: string;
+  prompt: string;
+  agent: string;
+  enabled: boolean;
+  lastRunAt: string | null;
+  nextRunAt: string | null;
+  createdAt: string;
+}
+
+export interface AutomationRun {
+  id: string;
+  automationId: string;
+  sessionId: string | null;
+  status: string;
+  error: string | null;
+  startedAt: string;
+  finishedAt: string | null;
+}
+
 export type TerminalKind = 'shell' | 'agent';
 export type TerminalStatus = 'running' | 'exited' | 'stopped';
 

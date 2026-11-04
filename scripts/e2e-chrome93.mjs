@@ -515,6 +515,54 @@ try {
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => !document.querySelector('.git-graph-panel'), { timeout: 10000 });
 
+  await clickText('button', 'Auto');
+  await waitText('Scheduled Automations');
+  await page.waitForFunction(
+    () => {
+      const select = document.querySelector('select[aria-label="Agent otomasi"]');
+      return select && select.options.length >= 1 && select.options[0].value !== '';
+    },
+    { timeout: 15000 }
+  );
+  await page.type('input[placeholder="Nama otomasi"]', 'E2E Automation');
+  await page.$eval('input[aria-label="Jadwal otomasi"]', (input) => {
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+    setter?.call(input, 'manual');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.type('textarea[placeholder="Prompt yang dijalankan agent..."]', 'Cek kondisi repo');
+  await clickText('button', '+ Tambah Otomasi');
+  await page.waitForFunction(
+    () =>
+      Array.from(document.querySelectorAll('.automation-row')).some((row) =>
+        (row.textContent || '').includes('E2E Automation')
+      ),
+    { timeout: 15000 }
+  );
+  const automationList = await api(`/api/automations?projectId=${createdProject.id}`, {}, cookie);
+  if (!automationList.body?.data?.some((item) => item.name === 'E2E Automation' && item.schedule === 'manual')) {
+    throw new Error('Otomasi tidak tersimpan melalui API.');
+  }
+  await page.evaluate(() => {
+    const row = Array.from(document.querySelectorAll('.automation-row')).find((item) =>
+      (item.textContent || '').includes('E2E Automation')
+    );
+    const button = Array.from(row?.querySelectorAll('button') ?? []).find(
+      (item) => (item.textContent || '').trim() === 'Hapus'
+    );
+    button?.click();
+  });
+  await page.waitForFunction(
+    () =>
+      !Array.from(document.querySelectorAll('.automation-row')).some((row) =>
+        (row.textContent || '').includes('E2E Automation')
+      ),
+    { timeout: 10000 }
+  );
+  await clickText('button', 'Tutup');
+  await page.waitForFunction(() => !document.querySelector('.automation-form'), { timeout: 10000 });
+  console.log('[chrome93] scheduled automations OK');
+
   dialogValues.push('created-by-e2e.txt');
   await page.evaluate(() => {
     document.querySelector('button[title="File baru"]')?.click();

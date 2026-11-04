@@ -82,6 +82,30 @@ db.exec(`
     resolved_at TEXT
   );
 
+  CREATE TABLE IF NOT EXISTS automations (
+    id          TEXT PRIMARY KEY,
+    project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    worktree_id TEXT REFERENCES worktrees(id) ON DELETE SET NULL,
+    name        TEXT NOT NULL,
+    schedule    TEXT NOT NULL,
+    prompt      TEXT NOT NULL,
+    agent       TEXT NOT NULL,
+    enabled     INTEGER NOT NULL DEFAULT 1,
+    last_run_at TEXT,
+    next_run_at TEXT,
+    created_at  TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS automation_runs (
+    id            TEXT PRIMARY KEY,
+    automation_id TEXT NOT NULL REFERENCES automations(id) ON DELETE CASCADE,
+    session_id    TEXT,
+    status        TEXT NOT NULL,
+    error         TEXT,
+    started_at    TEXT NOT NULL,
+    finished_at   TEXT
+  );
+
   CREATE TABLE IF NOT EXISTS pairing_tokens (
     id           TEXT PRIMARY KEY,
     token_hash   TEXT NOT NULL UNIQUE,
@@ -237,6 +261,9 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS sessions_worktree_ix ON sessions(worktree_id);
   CREATE INDEX IF NOT EXISTS quick_commands_project_ix ON quick_commands(project_id);
   CREATE INDEX IF NOT EXISTS diff_comments_worktree_ix ON diff_comments(worktree_id, file_path);
+  CREATE INDEX IF NOT EXISTS automations_project_ix ON automations(project_id);
+  CREATE INDEX IF NOT EXISTS automations_due_ix ON automations(enabled, next_run_at);
+  CREATE INDEX IF NOT EXISTS automation_runs_automation_ix ON automation_runs(automation_id, started_at DESC);
 `);
 
 // Migrasi database lama: auth_sessions belum memiliki user_id.

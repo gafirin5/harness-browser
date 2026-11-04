@@ -5,6 +5,7 @@ import { terminalManager } from './modules/terminals/manager.js';
 import { startDispatcher, stopDispatcher } from './modules/orchestrator/dispatcher.js';
 import { startHeartbeat, stopHeartbeat } from './modules/orchestrator/heartbeat.js';
 import { startReconcile, stopReconcile } from './modules/orchestrator/reconcile.js';
+import { startAutomations, stopAutomations } from './modules/automations/service.js';
 import { setupTerminalWebSocket } from './ws.js';
 
 terminalManager.reconcileOnStartup();
@@ -19,6 +20,7 @@ server.listen(config.port, process.env.HOST ?? '127.0.0.1', () => {
   startDispatcher();
   startHeartbeat();
   startReconcile();
+  startAutomations();
 });
 
 let shuttingDown = false;
@@ -29,6 +31,7 @@ function shutdown(signal: string): void {
   stopDispatcher();
   stopHeartbeat();
   stopReconcile();
+  stopAutomations();
   terminalManager.shutdown();
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(1), 8000).unref();

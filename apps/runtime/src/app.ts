@@ -22,6 +22,7 @@ import { orchestratorAgentRouter, orchestratorRouter } from './modules/orchestra
 import { searchRouter } from './modules/search/routes.js';
 import { quickCommandsRouter } from './modules/quick-commands/routes.js';
 import { reviewRouter } from './modules/review/routes.js';
+import { automationsRouter } from './modules/automations/routes.js';
 
 export function createApp(): express.Express {
   const app = express();
@@ -124,6 +125,7 @@ export function createApp(): express.Express {
   app.use('/api/search', searchRouter);
   app.use('/api/quick-commands', quickCommandsRouter);
   app.use('/api/review', reviewRouter);
+  app.use('/api/automations', automationsRouter);
   app.use('/api/orchestrator/agent', orchestratorAgentRouter);
   app.use('/api/orchestrator', orchestratorRouter);
 

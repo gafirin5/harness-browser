@@ -36,6 +36,7 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **Session History++**: scope worktree/project/semua, filter status/agent, grup project/agent, detail CWD dan prompt pertama, salin session ID/resume command, serta restart sesi.
 - **Worktree Checkpoints**: status **Todo / In progress / In review / Completed** dan catatan per worktree, bisa diubah dari sidebar atau API `PATCH /api/worktrees/:id`.
 - **Markdown Preview**: toggle **Preview/Raw** untuk file `.md` dengan heading, list, tabel, code block, gambar, link aman, dan daftar isi otomatis (renderer lazy-loaded).
+- **Scheduled Automations**: buat prompt agent berjadwal (manual, preset 5m–24h, atau cron sederhana), aktif/nonaktif, run now, dan riwayat eksekusi.
 - **Resume sesi** agent dengan konteks percakapan (OpenCode `--continue`), serta stop sesi berjalan.
 - **Persistensi terminal/agent sejati** setelah runtime restart melalui tmux, dengan tombol Restart untuk shell.
 - Hentikan sesi, tutup terminal, hapus worktree (dengan proteksi sesi aktif).

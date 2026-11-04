@@ -460,6 +460,59 @@ describe('diff comments', () => {
   });
 });
 
+describe('automations', () => {
+  it('CRUD otomasi, jadwal, dan run manual', async () => {
+    const worktree = await api.post('/api/worktrees').send({
+      projectId,
+      branch: 'agent/automation-test',
+      baseRef: 'main'
+    });
+    expect(worktree.status).toBe(201);
+    const worktreeId = worktree.body.data.id;
+
+    const created = await api.post('/api/automations').send({
+      projectId,
+      worktreeId,
+      name: 'Automation test',
+      schedule: 'manual',
+      prompt: 'jalankan pengecekan otomatis',
+      agent: 'mock',
+      enabled: true
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.data.nextRunAt).toBeNull();
+    const id = created.body.data.id;
+
+    const list = await api.get(`/api/automations?projectId=${projectId}`);
+    expect(list.body.data.some((item: { id: string }) => item.id === id)).toBe(true);
+
+    const patched = await api.patch(`/api/automations/${id}`).send({ schedule: '15m' });
+    expect(patched.status).toBe(200);
+    expect(patched.body.data.nextRunAt).not.toBeNull();
+
+    const invalid = await api.patch(`/api/automations/${id}`).send({ schedule: 'ngawur' });
+    expect(invalid.status).toBe(422);
+
+    const emptyRuns = await api.get(`/api/automations/${id}/runs`);
+    expect(emptyRuns.body.data).toHaveLength(0);
+
+    const run = await api.post(`/api/automations/${id}/run`);
+    expect(run.status).toBe(200);
+    expect(run.body.data.ok).toBe(true);
+    expect(run.body.data.sessionId).toBeTruthy();
+
+    const runs = await api.get(`/api/automations/${id}/runs`);
+    expect(runs.body.data).toHaveLength(1);
+    expect(runs.body.data[0].sessionId).toBe(run.body.data.sessionId);
+
+    await api.post(`/api/sessions/${run.body.data.sessionId}/stop`);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const deleted = await api.delete(`/api/automations/${id}`);
+    expect(deleted.status).toBe(204);
+    await api.delete(`/api/worktrees/${worktreeId}`);
+  });
+});
+
 describe('session history', () => {
   it('mencari sesi berdasarkan judul/prompt dan filter status', async () => {
     const worktree = await api.post('/api/worktrees').send({

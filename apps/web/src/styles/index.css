@@ -2000,6 +2000,122 @@ button:disabled {
   flex: 0 0 auto;
 }
 
+/* ---------- automations ---------- */
+
+.automation-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--panel-2);
+  margin-bottom: 12px;
+}
+
+.automation-form .row {
+  display: flex;
+  align-items: center;
+}
+
+.automation-form .input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.automation-enabled {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.automation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 340px;
+  overflow: auto;
+}
+
+.automation-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 7px;
+  background: var(--panel-2);
+}
+
+.automation-info {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.automation-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.automation-schedule {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--panel-3);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.automation-meta {
+  color: var(--muted);
+  font-size: 10.5px;
+  margin: 2px 0;
+}
+
+.automation-prompt {
+  color: var(--muted-2);
+  font-size: 10.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.automation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.automation-runs {
+  flex: 1 1 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.automation-run {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.automation-run-error {
+  color: var(--danger, #f07c8e);
+  overflow-wrap: anywhere;
+}
+
 /* ---------- agent dashboard ---------- */
 
 .agent-dashboard {

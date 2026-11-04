@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import type { AgentInfo } from '@dorado/shared';
-import { ApiError, apiGet } from '../lib/api';
-import { Modal, StatusBadge } from './ui';
+import { ApiError, apiGet, copyText } from '../lib/api';
+import { Modal, StatusBadge, useToast } from './ui';
 
-interface Info {
+export interface Info {
   version: string;
   node: string;
   uptimeSeconds: number;
@@ -22,9 +22,44 @@ interface Info {
   };
 }
 
+function formatUptime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return hours > 0 ? `${hours} jam ${minutes} menit` : `${minutes} menit`;
+}
+
+export function buildRuntimeSummary(info: Info): string {
+  const agentLines =
+    info.agents.length > 0
+      ? info.agents.map(
+          (agent) => `- ${agent.name} (${agent.command}): ${agent.installed ? 'terpasang' : 'tidak ada'}`
+        )
+      : ['- Tidak ada agent.'];
+  return [
+    'Info Runtime Dorado',
+    `Versi: ${info.version}`,
+    `Node.js: ${info.node}`,
+    `Uptime: ${formatUptime(info.uptimeSeconds)}`,
+    `Timezone: ${info.timezone}`,
+    `tmux: ${info.tmux ?? 'tidak tersedia'}`,
+    `Data dir: ${info.dataDir}`,
+    'Counts:',
+    `- Projects: ${info.counts.projects}`,
+    `- Worktrees: ${info.counts.worktrees}`,
+    `- Terminals: ${info.counts.terminals}`,
+    `- Sessions: ${info.counts.sessions}`,
+    `- Providers: ${info.counts.providers}`,
+    `- Agents: ${info.counts.agents}`,
+    `- Tasks: ${info.counts.tasks}`,
+    'Agents:',
+    ...agentLines
+  ].join('\n');
+}
+
 export function InfoDialog({ onClose }: { onClose: () => void }): JSX.Element {
   const [info, setInfo] = useState<Info | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { push } = useToast();
 
   useEffect(() => {
     apiGet<{ data: Info }>('/info')
@@ -32,10 +67,11 @@ export function InfoDialog({ onClose }: { onClose: () => void }): JSX.Element {
       .catch((caught: unknown) => setError(caught instanceof ApiError ? caught.message : 'Gagal memuat info runtime.'));
   }, []);
 
-  const uptime = (seconds: number): string => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    return hours > 0 ? `${hours} jam ${minutes} menit` : `${minutes} menit`;
+  const copySummary = (): void => {
+    if (!info) return;
+    void copyText(buildRuntimeSummary(info)).then((ok) =>
+      push(ok ? 'success' : 'error', ok ? 'Ringkasan runtime disalin.' : 'Gagal menyalin ringkasan runtime.')
+    );
   };
 
   return (
@@ -43,9 +79,14 @@ export function InfoDialog({ onClose }: { onClose: () => void }): JSX.Element {
       title="Info Runtime"
       onClose={onClose}
       footer={
-        <button className="btn" onClick={onClose}>
-          Tutup
-        </button>
+        <>
+          <button className="btn" onClick={copySummary} disabled={!info}>
+            Salin Ringkasan
+          </button>
+          <button className="btn" onClick={onClose}>
+            Tutup
+          </button>
+        </>
       }
     >
       {error ? <div className="error-banner">{error}</div> : null}
@@ -62,7 +103,7 @@ export function InfoDialog({ onClose }: { onClose: () => void }): JSX.Element {
           </div>
           <div className="kv">
             <span className="k">Uptime</span>
-            <span className="v">{uptime(info.uptimeSeconds)}</span>
+            <span className="v">{formatUptime(info.uptimeSeconds)}</span>
           </div>
           <div className="kv">
             <span className="k">Timezone</span>

@@ -16,6 +16,20 @@ const numberSchema = z.object({
   number: z.coerce.number().int().positive()
 });
 
+const commentSchema = numberSchema.extend({
+  body: z.string().trim().min(1, 'Komentar wajib diisi.').max(65536),
+  kind: z.enum(['pull', 'issue']).default('issue')
+});
+
+const reviewSchema = numberSchema.extend({
+  event: z.enum(['APPROVE', 'REQUEST_CHANGES', 'COMMENT']),
+  body: z.string().max(65536).optional().default('')
+});
+
+const mergeSchema = numberSchema.extend({
+  method: z.enum(['merge', 'squash', 'rebase']).default('merge')
+});
+
 export interface GitHubRepoRef {
   owner: string;
   repo: string;
@@ -99,6 +113,57 @@ async function github<T>(path: string): Promise<T> {
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function githubWrite<T>(path: string, method: 'POST' | 'PUT', body: unknown): Promise<T> {
+  if (!config.githubToken) {
+    throw new AppError(
+      422,
+      'GITHUB_TOKEN_MISSING',
+      'GITHUB_TOKEN belum diatur. Tambahkan token dengan scope write untuk komentar, review, atau merge.'
+    );
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const response = await fetch(`https://api.github.com${path}`, {
+      method,
+      headers: {
+        accept: 'application/vnd.github+json',
+        'content-type': 'application/json',
+        'user-agent': 'dorado-orchestrator',
+        authorization: `Bearer ${config.githubToken}`
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+    const text = await response.text();
+    let parsed: unknown = null;
+    try {
+      parsed = text ? JSON.parse(text) : null;
+    } catch {
+      parsed = null;
+    }
+    if (!response.ok) {
+      const message =
+        (parsed as { message?: string } | null)?.message ?? `GitHub API mengembalikan HTTP ${response.status}.`;
+      throw new AppError(502, 'GITHUB_ERROR', message.slice(0, 500));
+    }
+    return parsed as T;
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    if ((error as Error).name === 'AbortError') throw new AppError(504, 'GITHUB_TIMEOUT', 'GitHub API timeout.');
+    throw new AppError(502, 'GITHUB_ERROR', `Gagal menghubungi GitHub: ${(error as Error).message.slice(0, 300)}`);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function resolveRepo(worktreeId: string): Promise<GitHubRepoRef> {
+  const remote = await remoteUrl(worktreeId);
+  const ref = remote ? parseGitHubRemote(remote) : null;
+  if (!ref) throw new AppError(422, 'NOT_GITHUB', 'Remote bukan repository GitHub.');
+  return ref;
 }
 
 interface RepoResponse {
@@ -250,5 +315,44 @@ githubRouter.get(
         updatedAt: pull.updated_at
       }
     });
+  })
+);
+
+githubRouter.post(
+  '/comment',
+  asyncHandler(async (req, res) => {
+    const body = parseWith(commentSchema, req.body);
+    const ref = await resolveRepo(body.worktreeId);
+    await githubWrite(`/repos/${ref.owner}/${ref.repo}/issues/${body.number}/comments`, 'POST', {
+      body: body.body
+    });
+    res.status(201).json({ data: { ok: true, kind: body.kind, number: body.number } });
+  })
+);
+
+githubRouter.post(
+  '/review',
+  asyncHandler(async (req, res) => {
+    const body = parseWith(reviewSchema, req.body);
+    const ref = await resolveRepo(body.worktreeId);
+    if (body.event !== 'APPROVE' && !body.body.trim()) {
+      throw new AppError(422, 'REVIEW_BODY_REQUIRED', 'Komentar review wajib diisi untuk REQUEST_CHANGES/COMMENT.');
+    }
+    const payload: Record<string, string> = { event: body.event };
+    if (body.body.trim()) payload.body = body.body;
+    await githubWrite(`/repos/${ref.owner}/${ref.repo}/pulls/${body.number}/reviews`, 'POST', payload);
+    res.status(201).json({ data: { ok: true, event: body.event, number: body.number } });
+  })
+);
+
+githubRouter.post(
+  '/merge',
+  asyncHandler(async (req, res) => {
+    const body = parseWith(mergeSchema, req.body);
+    const ref = await resolveRepo(body.worktreeId);
+    await githubWrite(`/repos/${ref.owner}/${ref.repo}/pulls/${body.number}/merge`, 'PUT', {
+      merge_method: body.method
+    });
+    res.json({ data: { ok: true, method: body.method, number: body.number } });
   })
 );

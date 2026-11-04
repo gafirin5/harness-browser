@@ -37,6 +37,7 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **Worktree Checkpoints**: status **Todo / In progress / In review / Completed** dan catatan per worktree, bisa diubah dari sidebar atau API `PATCH /api/worktrees/:id`.
 - **Markdown Preview**: toggle **Preview/Raw** untuk file `.md` dengan heading, list, tabel, code block, gambar, link aman, dan daftar isi otomatis (renderer lazy-loaded).
 - **Scheduled Automations**: buat prompt agent berjadwal (manual, preset 5m–24h, atau cron sederhana), aktif/nonaktif, run now, dan riwayat eksekusi.
+- **GitHub write actions**: komentar PR/issue, review **Comment/Approve/Request changes**, dan merge PR dari dialog GitHub (butuh `GITHUB_TOKEN` dengan scope write).
 - **Resume sesi** agent dengan konteks percakapan (OpenCode `--continue`), serta stop sesi berjalan.
 - **Persistensi terminal/agent sejati** setelah runtime restart melalui tmux, dengan tombol Restart untuk shell.
 - Hentikan sesi, tutup terminal, hapus worktree (dengan proteksi sesi aktif).

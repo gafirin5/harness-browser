@@ -179,6 +179,46 @@ describe('github integration', () => {
     expect(pulls.status).toBe(422);
     expect(pulls.body.error.code).toBe('NOT_GITHUB');
 
+    const comment = await api.post('/api/github/comment').send({
+      worktreeId,
+      number: 1,
+      body: 'Komentar test',
+      kind: 'pull'
+    });
+    expect(comment.status).toBe(422);
+    expect(comment.body.error.code).toBe('NOT_GITHUB');
+
+    const emptyComment = await api.post('/api/github/comment').send({
+      worktreeId,
+      number: 1,
+      body: ''
+    });
+    expect(emptyComment.status).toBe(422);
+
+    const badReview = await api.post('/api/github/review').send({
+      worktreeId,
+      number: 1,
+      event: 'NGAWUR'
+    });
+    expect(badReview.status).toBe(422);
+
+    const review = await api.post('/api/github/review').send({
+      worktreeId,
+      number: 1,
+      event: 'REQUEST_CHANGES',
+      body: 'Perbaiki dulu'
+    });
+    expect(review.status).toBe(422);
+    expect(review.body.error.code).toBe('NOT_GITHUB');
+
+    const merge = await api.post('/api/github/merge').send({
+      worktreeId,
+      number: 1,
+      method: 'squash'
+    });
+    expect(merge.status).toBe(422);
+    expect(merge.body.error.code).toBe('NOT_GITHUB');
+
     await api.delete(`/api/worktrees/${worktreeId}`);
   });
 });

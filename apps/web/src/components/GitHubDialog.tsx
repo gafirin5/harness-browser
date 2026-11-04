@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ApiError, apiGet } from '../lib/api';
-import { Modal } from './ui';
+import { ApiError, apiGet, apiPost } from '../lib/api';
+import { Modal, useToast } from './ui';
 
 interface GitHubRef {
   owner: string;
@@ -76,6 +76,17 @@ export function GitHubDialog({ worktreeId, onClose }: { worktreeId: string | nul
   const [issues, setIssues] = useState<Issue[]>([]);
   const [listLoading, setListLoading] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
+  const { push } = useToast();
+  const [compose, setCompose] = useState<{
+    kind: 'pull' | 'issue';
+    number: number;
+    mode: 'comment' | 'review' | 'merge';
+  } | null>(null);
+  const [body, setBody] = useState('');
+  const [reviewEvent, setReviewEvent] = useState<'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT'>('COMMENT');
+  const [mergeMethod, setMergeMethod] = useState<'merge' | 'squash' | 'rebase'>('squash');
+  const [pending, setPending] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const loadInfo = useCallback(async (): Promise<void> => {
     if (!worktreeId) return;
@@ -126,6 +137,126 @@ export function GitHubDialog({ worktreeId, onClose }: { worktreeId: string | nul
   }, [connected, tab, state, loadList]);
 
   const list = tab === 'pulls' ? pulls : issues;
+
+  const openCompose = (kind: 'pull' | 'issue', number: number, mode: 'comment' | 'review' | 'merge'): void => {
+    setCompose({ kind, number, mode });
+    setBody('');
+    setReviewEvent('COMMENT');
+    setMergeMethod('squash');
+    setActionError(null);
+  };
+
+  const submitAction = async (): Promise<void> => {
+    if (!compose || !worktreeId) return;
+    if (compose.mode !== 'merge' && !body.trim()) {
+      setActionError('Isi komentar terlebih dahulu.');
+      return;
+    }
+    setPending(true);
+    setActionError(null);
+    try {
+      if (compose.mode === 'comment') {
+        await apiPost('/github/comment', {
+          worktreeId,
+          number: compose.number,
+          body,
+          kind: compose.kind
+        });
+        push('success', `Komentar dikirim ke #${compose.number}.`);
+      } else if (compose.mode === 'review') {
+        await apiPost('/github/review', {
+          worktreeId,
+          number: compose.number,
+          event: reviewEvent,
+          body
+        });
+        push('success', `Review ${reviewEvent.toLowerCase()} dikirim untuk #${compose.number}.`);
+      } else {
+        await apiPost('/github/merge', {
+          worktreeId,
+          number: compose.number,
+          method: mergeMethod
+        });
+        push('success', `Pull request #${compose.number} di-merge.`);
+        await loadList(tab, state);
+      }
+      setCompose(null);
+      setBody('');
+    } catch (caught) {
+      setActionError(caught instanceof ApiError ? caught.message : 'Aksi GitHub gagal.');
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const renderComposer = (kind: 'pull' | 'issue', number: number): JSX.Element | null => {
+    if (!compose || compose.kind !== kind || compose.number !== number) return null;
+    return (
+      <div className="gh-compose">
+        {actionError ? <div className="error-banner">{actionError}</div> : null}
+        {compose.mode === 'comment' ? (
+          <textarea
+            className="textarea"
+            rows={3}
+            placeholder={`Tulis komentar untuk #${number}...`}
+            value={body}
+            onChange={(event) => setBody(event.target.value)}
+            autoFocus
+          />
+        ) : null}
+        {compose.mode === 'review' ? (
+          <>
+            <select
+              className="select"
+              value={reviewEvent}
+              onChange={(event) => setReviewEvent(event.target.value as 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT')}
+              aria-label="Jenis review"
+            >
+              <option value="COMMENT">Comment</option>
+              <option value="APPROVE">Approve</option>
+              <option value="REQUEST_CHANGES">Request changes</option>
+            </select>
+            <textarea
+              className="textarea"
+              rows={3}
+              placeholder={reviewEvent === 'APPROVE' ? 'Catatan review (opsional)...' : 'Alasan review...'}
+              value={body}
+              onChange={(event) => setBody(event.target.value)}
+            />
+          </>
+        ) : null}
+        {compose.mode === 'merge' ? (
+          <>
+            <select
+              className="select"
+              value={mergeMethod}
+              onChange={(event) => setMergeMethod(event.target.value as 'merge' | 'squash' | 'rebase')}
+              aria-label="Metode merge"
+            >
+              <option value="merge">Merge commit</option>
+              <option value="squash">Squash</option>
+              <option value="rebase">Rebase</option>
+            </select>
+            <p className="hint">Pull request akan di-merge menggunakan token GitHub yang dikonfigurasi.</p>
+          </>
+        ) : null}
+        <div className="gh-compose-actions">
+          <button className="btn tiny" onClick={() => setCompose(null)} disabled={pending}>
+            Batal
+          </button>
+          <button className="btn tiny primary" onClick={() => void submitAction()} disabled={pending}>
+            {pending
+              ? 'Mengirim...'
+              : compose.mode === 'comment'
+                ? 'Kirim Komentar'
+                : compose.mode === 'review'
+                  ? 'Kirim Review'
+                  : 'Merge Sekarang'}
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <Modal
@@ -217,10 +348,12 @@ export function GitHubDialog({ worktreeId, onClose }: { worktreeId: string | nul
             <div className="gh-list">
               {tab === 'pulls'
                 ? pulls.map((pull) => (
-                    <a key={pull.number} className="gh-item" href={pull.htmlUrl} target="_blank" rel="noreferrer">
+                    <div key={pull.number} className="gh-item">
                       <div className="gh-item-head">
                         <span className="gh-number">#{pull.number}</span>
-                        <span className="gh-item-title">{pull.title}</span>
+                        <a className="gh-item-title" href={pull.htmlUrl} target="_blank" rel="noreferrer">
+                          {pull.title}
+                        </a>
                         {pull.draft ? <span className="badge stopped">draft</span> : null}
                         <span className={`badge ${pull.state === 'open' ? 'running' : 'completed'}`}>{pull.state}</span>
                       </div>
@@ -231,13 +364,32 @@ export function GitHubDialog({ worktreeId, onClose }: { worktreeId: string | nul
                         </span>
                         <span>{formatDate(pull.updatedAt)}</span>
                       </div>
-                    </a>
+                      <div className="gh-actions">
+                        <button className="btn tiny" onClick={() => openCompose('pull', pull.number, 'comment')}>
+                          Komentar
+                        </button>
+                        <button className="btn tiny" onClick={() => openCompose('pull', pull.number, 'review')}>
+                          Review
+                        </button>
+                        {pull.state === 'open' ? (
+                          <button className="btn tiny" onClick={() => openCompose('pull', pull.number, 'merge')}>
+                            Merge
+                          </button>
+                        ) : null}
+                        <a className="btn tiny ghost" href={pull.htmlUrl} target="_blank" rel="noreferrer">
+                          Buka ↗
+                        </a>
+                      </div>
+                      {renderComposer('pull', pull.number)}
+                    </div>
                   ))
                 : issues.map((issue) => (
-                    <a key={issue.number} className="gh-item" href={issue.htmlUrl} target="_blank" rel="noreferrer">
+                    <div key={issue.number} className="gh-item">
                       <div className="gh-item-head">
                         <span className="gh-number">#{issue.number}</span>
-                        <span className="gh-item-title">{issue.title}</span>
+                        <a className="gh-item-title" href={issue.htmlUrl} target="_blank" rel="noreferrer">
+                          {issue.title}
+                        </a>
                         <span className={`badge ${issue.state === 'open' ? 'running' : 'completed'}`}>
                           {issue.state}
                         </span>
@@ -259,7 +411,16 @@ export function GitHubDialog({ worktreeId, onClose }: { worktreeId: string | nul
                           ))}
                         </div>
                       ) : null}
-                    </a>
+                      <div className="gh-actions">
+                        <button className="btn tiny" onClick={() => openCompose('issue', issue.number, 'comment')}>
+                          Komentar
+                        </button>
+                        <a className="btn tiny ghost" href={issue.htmlUrl} target="_blank" rel="noreferrer">
+                          Buka ↗
+                        </a>
+                      </div>
+                      {renderComposer('issue', issue.number)}
+                    </div>
                   ))}
             </div>
           ) : null}

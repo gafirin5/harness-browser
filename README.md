@@ -26,6 +26,9 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **Integrasi GitHub read-only**: info repository, pull request, dan issue per worktree; link keluar ke GitHub, caching 60 detik, token opsional.
 - **Orchestrator terintegrasi**: dashboard realtime (SSE + fallback polling), provider LLM dengan API key terenkripsi, agent worker dengan token/heartbeat, antrean task berprioritas, dispatcher, callback worker, cancel/retry, log, dan perhitungan biaya.
 - **Command palette** (`Ctrl+Shift+P` atau `Ctrl+K`): terminal, agent, worktree, split, orchestrator, search, refresh, history, github, info, settings, share.
+- **Quick Open** (`Alt+P`) untuk melompat ke file berdasarkan nama, dan **Jump Palette** (`Alt+J`) untuk pindah cepat antar project, worktree, terminal, file, dan diff.
+- **Shortcut keyboard** (`Alt+/` untuk daftar lengkap): `Alt+T/A/O/G/H/S`, `Alt+]`/`Alt+[`, `Alt+W`, serta **Ctrl+Enter** untuk submit form/dialog mana pun.
+- **Sesi agent interaktif tanpa prompt awal**: buka agent lalu ketik instruksi langsung di terminal agent.
 - **Resume sesi** agent dengan konteks percakapan (OpenCode `--continue`), serta stop sesi berjalan.
 - **Persistensi terminal/agent sejati** setelah runtime restart melalui tmux, dengan tombol Restart untuk shell.
 - Hentikan sesi, tutup terminal, hapus worktree (dengan proteksi sesi aktif).

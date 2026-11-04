@@ -3,6 +3,7 @@ import path from 'node:path';
 import { Router } from 'express';
 import { z } from 'zod';
 import { AppError, asyncHandler, notFound } from '../../lib/errors.js';
+import { gitRaw } from '../../lib/git-raw.js';
 import { parseWith } from '../../lib/validation.js';
 import { csrfGuard, requireAuth } from '../auth/middleware.js';
 import { getWorktreeRow } from '../worktrees/routes.js';
@@ -13,6 +14,11 @@ const IGNORED = new Set(['.git', 'node_modules', '.next', 'dist', 'build', '.cac
 const querySchema = z.object({
   worktreeId: z.string().min(1),
   path: z.string().max(1000).default('')
+});
+
+const findQuerySchema = z.object({
+  worktreeId: z.string().min(1),
+  q: z.string().trim().max(200).optional().default('')
 });
 
 const writeSchema = z.object({
@@ -142,6 +148,55 @@ filesRouter.get(
     });
 
     res.json({ data: result.slice(0, 1000), path: relative });
+  })
+);
+
+filesRouter.get(
+  '/find',
+  asyncHandler(async (req, res) => {
+    const query = parseWith(findQuerySchema, req.query);
+    const root = resolveWorktree(query.worktreeId);
+    const result = await gitRaw(root, ['ls-files', '--cached', '--others', '--exclude-standard']);
+    if (result.code !== 0) {
+      throw new AppError(422, 'GIT_ERROR', (result.stderr || 'Gagal membaca daftar file.').trim().slice(0, 500));
+    }
+
+    const needle = query.q.toLowerCase();
+    const files = result.stdout
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .filter((filePath) => !filePath.split('/').some((segment) => IGNORED.has(segment)));
+
+    const scored = files
+      .map((filePath) => {
+        const name = path.posix.basename(filePath);
+        const lowerPath = filePath.toLowerCase();
+        const lowerName = name.toLowerCase();
+        return {
+          path: filePath,
+          name,
+          nameMatch: needle ? lowerName.includes(needle) : true,
+          pathMatch: needle ? lowerPath.includes(needle) : true
+        };
+      })
+      .filter((item) => item.pathMatch);
+
+    scored.sort((a, b) => {
+      if (a.nameMatch !== b.nameMatch) return a.nameMatch ? -1 : 1;
+      if (a.path.length !== b.path.length) return a.path.length - b.path.length;
+      return a.path.localeCompare(b.path, 'en', { sensitivity: 'base' });
+    });
+
+    const limited = scored.slice(0, 100);
+    res.json({
+      data: limited.map((item) => ({
+        path: item.path,
+        name: item.name,
+        dir: path.posix.dirname(item.path) === '.' ? '' : path.posix.dirname(item.path)
+      })),
+      meta: { total: scored.length, truncated: scored.length > limited.length }
+    });
   })
 );
 

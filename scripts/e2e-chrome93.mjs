@@ -331,11 +331,13 @@ try {
     const button = Array.from(document.querySelectorAll('.modal .btn.primary')).find((item) =>
       (item.textContent || '').includes('Commit')
     );
-    if (!button) return false;
-    button.click();
-    return true;
+    return Boolean(button && !button.disabled);
   });
   if (!committed) throw new Error('Tombol commit modal tidak ditemukan.');
+  await page.focus('.modal textarea');
+  await page.keyboard.down('Control');
+  await page.keyboard.press('Enter');
+  await page.keyboard.up('Control');
   await page.waitForFunction(
     () => {
       const rows = Array.from(document.querySelectorAll('.change-row'));
@@ -365,6 +367,41 @@ try {
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => !document.querySelector('.palette'), { timeout: 10000 });
   console.log('[chrome93] command palette OK');
+
+  await page.keyboard.down('Alt');
+  await page.keyboard.press('/');
+  await page.keyboard.up('Alt');
+  await waitText('Keyboard Shortcuts');
+  await waitText('Ctrl+Enter');
+  await page.click('button[aria-label="Tutup"]');
+  await page.waitForFunction(() => !document.body.innerText.includes('Keyboard Shortcuts'), { timeout: 10000 });
+  console.log('[chrome93] shortcut help OK');
+
+  await page.keyboard.down('Alt');
+  await page.keyboard.press('j');
+  await page.keyboard.up('Alt');
+  await page.waitForSelector('.palette', { timeout: 10000 });
+  const jumpPlaceholder = await page.$eval('.palette-input', (element) => element.getAttribute('placeholder'));
+  if (!jumpPlaceholder?.includes('Alt+J')) throw new Error('Jump Palette tidak terbuka lewat Alt+J.');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('.palette'), { timeout: 10000 });
+  console.log('[chrome93] jump palette OK');
+
+  await page.keyboard.down('Alt');
+  await page.keyboard.press('p');
+  await page.keyboard.up('Alt');
+  await page.waitForSelector('.quick-open', { timeout: 10000 });
+  await page.type('.quick-open .palette-input', 'README');
+  await page.waitForFunction(
+    () =>
+      Array.from(document.querySelectorAll('.quick-open .palette-label')).some((item) =>
+        (item.textContent || '').includes('README.md')
+      ),
+    { timeout: 10000 }
+  );
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('.quick-open'), { timeout: 10000 });
+  console.log('[chrome93] quick open OK');
 
   dialogValues.push('created-by-e2e.txt');
   await page.evaluate(() => {

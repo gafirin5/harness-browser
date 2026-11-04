@@ -60,7 +60,7 @@ export const sessionCreateSchema = z.object({
   worktreeId: z.string().min(1),
   agent: z.string().min(1).max(60),
   title: z.string().trim().min(1, 'Judul sesi wajib diisi.').max(120),
-  prompt: z.string().trim().min(1, 'Prompt wajib diisi.').max(20000)
+  prompt: z.string().trim().max(20000).optional().default('')
 });
 
 export const terminalClientMessageSchema = z.discriminatedUnion('type', [

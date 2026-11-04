@@ -220,27 +220,37 @@ export function ChangesPanel({
               </button>
               <button
                 className="btn primary"
-                onClick={() => void commit()}
+                type="submit"
+                form="commit-form"
                 disabled={busy || message.trim().length < 3}
+                title="Ctrl+Enter"
               >
                 {busy ? 'Commit...' : 'Commit'}
               </button>
             </>
           }
         >
-          {commitError ? <div className="error-banner">{commitError}</div> : null}
-          <div className="field">
-            <label>Pesan commit</label>
-            <textarea
-              className="textarea"
-              rows={4}
-              value={message}
-              onChange={(event) => setMessage(event.target.value)}
-              placeholder="Jelaskan perubahan..."
-              autoFocus
-            />
-            <div className="hint">{message.trim().length} karakter · minimal 3</div>
-          </div>
+          <form
+            id="commit-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void commit();
+            }}
+          >
+            {commitError ? <div className="error-banner">{commitError}</div> : null}
+            <div className="field">
+              <label>Pesan commit</label>
+              <textarea
+                className="textarea"
+                rows={4}
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
+                placeholder="Jelaskan perubahan..."
+                autoFocus
+              />
+              <div className="hint">{message.trim().length} karakter · minimal 3</div>
+            </div>
+          </form>
         </Modal>
       ) : null}
     </div>

@@ -56,5 +56,10 @@ export function getAgent(id: string): (AgentDefinition & { installed: boolean })
 }
 
 export function buildAgentArgs(args: string[], prompt: string): string[] {
+  if (!prompt.trim()) {
+    // Tanpa prompt, buka agent secara interaktif. Buang pasangan --prompt.
+    const index = args.indexOf('--prompt');
+    if (index >= 0) return [...args.slice(0, index), ...args.slice(index + 2)];
+  }
   return args.map((arg) => arg.replaceAll('{{prompt}}', prompt));
 }

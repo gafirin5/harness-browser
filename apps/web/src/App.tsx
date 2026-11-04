@@ -9,6 +9,7 @@ import type {
   Worktree
 } from '@dorado/shared';
 import { ApiError, apiDelete, apiGet, apiPost } from './lib/api';
+import { submitOnCtrlEnter } from './lib/keyboard';
 import { Login } from './components/Login';
 import { TerminalPane } from './components/TerminalPane';
 import { FileEditor } from './components/FileEditor';
@@ -19,8 +20,10 @@ import { CommandPalette, type Command } from './components/CommandPalette';
 import { GitHubDialog } from './components/GitHubDialog';
 import { HistoryDialog } from './components/HistoryDialog';
 import { InfoDialog } from './components/InfoDialog';
+import { QuickOpenDialog } from './components/QuickOpenDialog';
 import { SearchDialog } from './components/SearchDialog';
 import { SettingsDialog } from './components/SettingsDialog';
+import { ShortcutsDialog } from './components/ShortcutsDialog';
 import { AddProjectDialog, NewSessionDialog, NewWorktreeDialog, ShareDialog } from './components/Dialogs';
 import { Spinner, StatusBadge, useToast } from './components/ui';
 
@@ -63,6 +66,25 @@ export function App(): JSX.Element {
   const [orchestratorOpen, setOrchestratorOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [auditOpen, setAuditOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [jumpOpen, setJumpOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const shortcutRef = useRef({
+    selectedWorktree: null as Worktree | null,
+    terminals: [] as TerminalInfo[],
+    openFiles: [] as Array<{ path: string; name: string }>,
+    openDiffs: [] as string[],
+    activeTerminalId: null as string | null,
+    activeFilePath: null as string | null,
+    activeDiffPath: null as string | null,
+    createTerminal: (() => undefined) as () => void,
+    openAgent: (() => undefined) as () => void,
+    selectWorktree: ((_worktree: Worktree) => undefined) as (worktree: Worktree) => void,
+    selectProject: ((_project: Project) => undefined) as (project: Project) => void,
+    closeTerminal: ((_terminal: TerminalInfo) => undefined) as (terminal: TerminalInfo) => void,
+    closeFile: ((_path: string) => undefined) as (path: string) => void,
+    closeDiff: ((_path: string) => undefined) as (path: string) => void
+  });
   const [fileJump, setFileJump] = useState<{ path: string; line: number; token: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [terminalVersion, setTerminalVersion] = useState(0);
@@ -210,19 +232,98 @@ export function App(): JSX.Element {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
+      if (submitOnCtrlEnter(event)) return;
+
       const target = event.target;
       const editable =
         target instanceof Element && target.closest('input, textarea, select, [contenteditable="true"], .xterm');
       const mod = event.ctrlKey || event.metaKey;
+
       if (mod && event.shiftKey && event.key.toLowerCase() === 'p') {
         event.preventDefault();
         setPaletteOpen(true);
-      } else if (mod && event.shiftKey && event.key.toLowerCase() === 'f') {
+        return;
+      }
+      if (mod && event.shiftKey && event.key.toLowerCase() === 'f') {
         event.preventDefault();
         setSearchOpen(true);
-      } else if (mod && !event.shiftKey && event.key.toLowerCase() === 'k' && !editable) {
+        return;
+      }
+      if (mod && !event.shiftKey && event.key.toLowerCase() === 'k' && !editable) {
         event.preventDefault();
         setPaletteOpen(true);
+        return;
+      }
+      if (!event.altKey || mod || editable) return;
+
+      const state = shortcutRef.current;
+      const key = event.key.toLowerCase();
+      if (key === 't') {
+        event.preventDefault();
+        state.createTerminal();
+      } else if (key === 'a') {
+        event.preventDefault();
+        state.openAgent();
+      } else if (key === 'o') {
+        event.preventDefault();
+        setOrchestratorOpen(true);
+      } else if (key === 'g') {
+        event.preventDefault();
+        setGithubOpen(true);
+      } else if (key === 'h') {
+        event.preventDefault();
+        setHistoryOpen(true);
+      } else if (key === 's') {
+        event.preventDefault();
+        setSettingsOpen(true);
+      } else if (key === 'p') {
+        event.preventDefault();
+        setQuickOpen(true);
+      } else if (key === 'j') {
+        event.preventDefault();
+        setJumpOpen(true);
+      } else if (key === '/') {
+        event.preventDefault();
+        setShortcutsOpen(true);
+      } else if (key === ']' || key === '[' || key === 'w') {
+        event.preventDefault();
+        const tabs = [
+          ...state.terminals.map((terminal) => ({ kind: 'terminal' as const, id: terminal.id })),
+          ...state.openFiles.map((file) => ({ kind: 'file' as const, id: file.path })),
+          ...state.openDiffs.map((file) => ({ kind: 'diff' as const, id: file }))
+        ];
+        if (tabs.length === 0) return;
+        const activeIndex = tabs.findIndex((tab) =>
+          tab.kind === 'terminal'
+            ? !state.activeFilePath && !state.activeDiffPath && tab.id === state.activeTerminalId
+            : tab.kind === 'file'
+              ? tab.id === state.activeFilePath
+              : tab.id === state.activeDiffPath
+        );
+        if (key === 'w') {
+          if (state.activeFilePath) state.closeFile(state.activeFilePath);
+          else if (state.activeDiffPath) state.closeDiff(state.activeDiffPath);
+          else {
+            const terminal = state.terminals.find((item) => item.id === state.activeTerminalId);
+            if (terminal) state.closeTerminal(terminal);
+          }
+          return;
+        }
+        const nextIndex =
+          key === ']' ? (activeIndex + 1 + tabs.length) % tabs.length : (activeIndex - 1 + tabs.length) % tabs.length;
+        const next = tabs[nextIndex];
+        if (!next) return;
+        if (next.kind === 'terminal') {
+          setActiveTerminalId(next.id);
+          setActiveFilePath(null);
+          setActiveDiffPath(null);
+        } else if (next.kind === 'file') {
+          setActiveFilePath(next.id);
+          setActiveDiffPath(null);
+        } else {
+          setActiveDiffPath(next.id);
+          setActiveFilePath(null);
+        }
       }
     };
     window.addEventListener('keydown', onKey);
@@ -511,6 +612,25 @@ export function App(): JSX.Element {
     setSessions([]);
   };
 
+  shortcutRef.current = {
+    selectedWorktree,
+    terminals,
+    openFiles,
+    openDiffs,
+    activeTerminalId,
+    activeFilePath,
+    activeDiffPath,
+    createTerminal: () => void createTerminal(),
+    openAgent: () => {
+      if (selectedWorktree) setDialog({ type: 'session', worktree: selectedWorktree });
+    },
+    selectWorktree: (worktree) => void selectWorktree(worktree),
+    selectProject: (project) => void selectProject(project),
+    closeTerminal: (terminal) => void closeTerminal(terminal),
+    closeFile,
+    closeDiff
+  };
+
   if (!booted) {
     return (
       <div className="boot">
@@ -603,6 +723,24 @@ export function App(): JSX.Element {
       run: () => setSearchOpen(true)
     },
     {
+      id: 'quick-open',
+      label: 'Quick Open File',
+      hint: 'Lompat ke file berdasarkan nama (Alt+P)',
+      run: () => setQuickOpen(true)
+    },
+    {
+      id: 'jump',
+      label: 'Jump ke Worktree / Tab',
+      hint: 'Pindah cepat antar worktree dan tab (Alt+J)',
+      run: () => setJumpOpen(true)
+    },
+    {
+      id: 'shortcuts',
+      label: 'Keyboard Shortcuts',
+      hint: 'Daftar shortcut yang tersedia (Alt+/)',
+      run: () => setShortcutsOpen(true)
+    },
+    {
       id: 'github',
       label: 'GitHub Repository',
       hint: 'Pull request dan issue untuk worktree aktif',
@@ -636,6 +774,50 @@ export function App(): JSX.Element {
       hint: 'Buat URL untuk browser lain',
       run: () => setDialog({ type: 'share' })
     }
+  ];
+
+  const jumpCommands: Command[] = [
+    ...projects.map((project) => ({
+      id: `project:${project.id}`,
+      label: project.name,
+      hint: `Project · ${project.path}`,
+      run: () => void selectProject(project)
+    })),
+    ...worktrees.map((worktree) => ({
+      id: `worktree:${worktree.id}`,
+      label: worktree.branch,
+      hint: `Worktree · ${worktree.path}`,
+      run: () => void selectWorktree(worktree)
+    })),
+    ...terminals.map((terminal) => ({
+      id: `terminal:${terminal.id}`,
+      label: terminal.title,
+      hint: terminal.kind === 'agent' ? 'Sesi agent' : 'Terminal',
+      run: () => {
+        setActiveFilePath(null);
+        setActiveDiffPath(null);
+        setActiveTerminalId(terminal.id);
+        setSplitTerminalIds((current) => current.filter((id) => id !== terminal.id));
+      }
+    })),
+    ...openFiles.map((file) => ({
+      id: `file:${file.path}`,
+      label: file.name,
+      hint: `File · ${file.path}`,
+      run: () => {
+        setActiveDiffPath(null);
+        setActiveFilePath(file.path);
+      }
+    })),
+    ...openDiffs.map((filePath) => ({
+      id: `diff:${filePath}`,
+      label: filePath.split('/').pop() ?? filePath,
+      hint: `Diff · ${filePath}`,
+      run: () => {
+        setActiveFilePath(null);
+        setActiveDiffPath(filePath);
+      }
+    }))
   ];
 
   return (
@@ -1158,6 +1340,18 @@ export function App(): JSX.Element {
       ) : null}
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
+      {jumpOpen ? (
+        <CommandPalette
+          open
+          onClose={() => setJumpOpen(false)}
+          commands={jumpCommands}
+          placeholder="Cari project, worktree, atau tab... (Alt+J)"
+        />
+      ) : null}
+      {quickOpen ? (
+        <QuickOpenDialog worktreeId={selectedWorktreeId} onClose={() => setQuickOpen(false)} onOpen={openFile} />
+      ) : null}
+      {shortcutsOpen ? <ShortcutsDialog onClose={() => setShortcutsOpen(false)} /> : null}
 
       {dialog?.type === 'project' ? (
         <AddProjectDialog

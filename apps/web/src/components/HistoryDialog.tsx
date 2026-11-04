@@ -171,7 +171,7 @@ export function HistoryDialog({
                 <span className="v">{selected.endedAt ? formatDate(selected.endedAt) : '—'}</span>
               </div>
               <div className="section-label">Prompt</div>
-              <pre className="history-prompt">{selected.prompt}</pre>
+              <pre className="history-prompt">{selected.prompt || '—'}</pre>
             </>
           ) : (
             <div className="empty">Pilih sesi untuk melihat detail.</div>

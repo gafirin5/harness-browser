@@ -172,7 +172,6 @@ export function NewSessionDialog({
   const installed = agents.filter((agent) => agent.installed);
   const [agent, setAgent] = useState(installed[0]?.id ?? '');
   const [title, setTitle] = useState('');
-  const [prompt, setPrompt] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -184,8 +183,7 @@ export function NewSessionDialog({
       const response = await apiPost<{ data: SessionInfo }>('/sessions', {
         worktreeId: worktree.id,
         agent,
-        title,
-        prompt
+        title
       });
       onCreated(response.data);
       onClose();
@@ -210,6 +208,7 @@ export function NewSessionDialog({
             type="submit"
             form="session-form"
             disabled={pending || installed.length === 0}
+            title="Ctrl+Enter"
           >
             {pending ? 'Menjalankan...' : 'Jalankan Agent'}
           </button>
@@ -233,16 +232,9 @@ export function NewSessionDialog({
         <Field label="Judul sesi">
           <input className="input" value={title} onChange={(event) => setTitle(event.target.value)} required />
         </Field>
-        <Field label="Prompt awal" hint="Agent dijalankan di worktree ini dengan prompt tersebut.">
-          <textarea
-            className="textarea"
-            rows={6}
-            value={prompt}
-            onChange={(event) => setPrompt(event.target.value)}
-            placeholder="Jelaskan task yang harus dikerjakan agent..."
-            required
-          />
-        </Field>
+        <p className="hint" style={{ marginTop: 0 }}>
+          Agent akan dibuka secara interaktif. Ketik instruksi langsung di terminal agent.
+        </p>
       </form>
     </Modal>
   );

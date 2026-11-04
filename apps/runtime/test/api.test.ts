@@ -224,6 +224,16 @@ describe('files', () => {
     const traversal = await api.get(`/api/files/content?worktreeId=${worktreeId}&path=..%2F..%2Fetc%2Fpasswd`);
     expect(traversal.status).toBe(422);
 
+    const found = await api.get(`/api/files/find?worktreeId=${worktreeId}&q=hello`);
+    expect(found.status).toBe(200);
+    expect(found.body.data[0].path).toBe('hello.txt');
+    expect(found.body.data[0].name).toBe('hello.txt');
+    expect(found.body.data[0].dir).toBe('');
+
+    const none = await api.get(`/api/files/find?worktreeId=${worktreeId}&q=zzz-tidak-ada`);
+    expect(none.status).toBe(200);
+    expect(none.body.data).toEqual([]);
+
     const status = await api.get(`/api/git/status?worktreeId=${worktreeId}`);
     expect(status.status).toBe(200);
     expect(status.body.data.files.some((file: { path: string }) => file.path === 'hello.txt')).toBe(true);

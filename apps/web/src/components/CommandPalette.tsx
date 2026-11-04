@@ -11,11 +11,13 @@ export interface Command {
 export function CommandPalette({
   open,
   onClose,
-  commands
+  commands,
+  placeholder = 'Ketik perintah... (Ctrl+Shift+P)'
 }: {
   open: boolean;
   onClose: () => void;
   commands: Command[];
+  placeholder?: string;
 }): JSX.Element | null {
   const [query, setQuery] = useState('');
   const [index, setIndex] = useState(0);
@@ -84,7 +86,7 @@ export function CommandPalette({
               run(filtered[index]);
             }
           }}
-          placeholder="Ketik perintah... (Ctrl+Shift+P)"
+          placeholder={placeholder}
           aria-label="Cari perintah"
         />
         <div className="palette-list" role="listbox">

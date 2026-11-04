@@ -44,11 +44,9 @@ worktreesRouter.get(
   '/',
   asyncHandler(async (req, res) => {
     const projectId = typeof req.query.projectId === 'string' ? req.query.projectId : null;
-    const rows = (
-      projectId
-        ? db.prepare('SELECT * FROM worktrees WHERE project_id = ? ORDER BY created_at ASC').all(projectId)
-        : db.prepare('SELECT * FROM worktrees ORDER BY created_at ASC').all()
-    ) as unknown as unknown as WorktreeRow[];
+    const rows = (projectId
+      ? db.prepare('SELECT * FROM worktrees WHERE project_id = ? ORDER BY created_at ASC').all(projectId)
+      : db.prepare('SELECT * FROM worktrees ORDER BY created_at ASC').all()) as unknown as unknown as WorktreeRow[];
     res.json({ data: await Promise.all(rows.map(mapWorktree)) });
   })
 );

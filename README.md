@@ -211,12 +211,27 @@ Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `ech
 ## Test
 
 ```bash
-npm test          # 22 test integrasi API
-npm run verify    # typecheck + test + build + gate Chrome 93
+npm test            # 22 test integrasi API
+npm run lint        # ESLint
+npm run format:check
+npm run verify      # typecheck + lint + format + test + build + gate Chrome 93
 npm run e2e:chrome93
 ```
 
 Lihat [`docs/verification-m1.md`](docs/verification-m1.md) untuk hasil verifikasi terakhir.
+
+## Operasional
+
+```bash
+npm run backup       # snapshot SQLite + integrity check
+npm run restore -- ./backups/dorado-YYYYMMDD-HHMMSS.db
+npm run seed:perf    # 10.000 task + 100.000 log (butuh build:runtime)
+```
+
+Dokumentasi lengkap:
+
+- [`docs/deployment.md`](docs/deployment.md) — systemd, Nginx, backup/restore, health check.
+- [`docs/agent-protocol.md`](docs/agent-protocol.md) — kontrak worker agent, callback, cancel, idempotensi.
 
 ## Batasan M1
 

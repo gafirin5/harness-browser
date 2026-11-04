@@ -31,10 +31,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
         method: 'PATCH',
         body: { currentPassword, newPassword }
       });
-      push(
-        'success',
-        `Password diperbarui. ${response.data.revokedSessions} sesi lain dicabut.`
-      );
+      push('success', `Password diperbarui. ${response.data.revokedSessions} sesi lain dicabut.`);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -72,8 +69,8 @@ export function SettingsDialog({ onClose }: { onClose: () => void }): JSX.Elemen
     >
       <div className="section-label">Sesi</div>
       <p className="muted" style={{ fontSize: 11.5, marginTop: 0 }}>
-        Sesi berlaku 8 jam tanpa aktivitas dan maksimal 24 jam. Mencabut sesi lain akan mengeluarkan browser
-        lain yang masih login.
+        Sesi berlaku 8 jam tanpa aktivitas dan maksimal 24 jam. Mencabut sesi lain akan mengeluarkan browser lain yang
+        masih login.
       </p>
       <button className="btn tiny" onClick={() => void revokeOthers()} disabled={revoking}>
         {revoking ? 'Mencabut...' : 'Cabut Sesi Lain'}

@@ -38,9 +38,9 @@ function tokenFromRequest(req: Request): string | null {
 
 function findValidSession(token: string | null): SessionRow | null {
   if (!token) return null;
-  const row = db
-    .prepare('SELECT * FROM auth_sessions WHERE token_hash = ?')
-    .get(sha256(token)) as unknown as SessionRow | undefined;
+  const row = db.prepare('SELECT * FROM auth_sessions WHERE token_hash = ?').get(sha256(token)) as unknown as
+    | SessionRow
+    | undefined;
   if (!row || row.revoked_at) return null;
 
   const now = Date.now();

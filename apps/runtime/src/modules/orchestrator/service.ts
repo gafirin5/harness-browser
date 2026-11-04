@@ -103,9 +103,8 @@ export interface ProviderUpdateInput {
 export function listProviders(q: string, page: number, pageSize: number): { data: OrchProvider[]; total: number } {
   const filter = q ? 'WHERE lower(name) LIKE ?' : '';
   const params = q ? [`%${q.toLowerCase()}%`] : [];
-  const total = (
-    db.prepare(`SELECT count(*) AS total FROM providers ${filter}`).get(...params) as { total: number }
-  ).total;
+  const total = (db.prepare(`SELECT count(*) AS total FROM providers ${filter}`).get(...params) as { total: number })
+    .total;
   const rows = db
     .prepare(
       `SELECT * FROM providers ${filter}
@@ -161,7 +160,11 @@ export function updateProvider(id: number, input: ProviderUpdateInput): OrchProv
         .get(id) as { total: number }
     ).total;
     if (activeTasks > 0) {
-      throw new AppError(422, 'PROVIDER_IN_USE', 'Provider tidak dapat dinonaktifkan karena masih memiliki task yang aktif.');
+      throw new AppError(
+        422,
+        'PROVIDER_IN_USE',
+        'Provider tidak dapat dinonaktifkan karena masih memiliki task yang aktif.'
+      );
     }
     const activeAgents = (
       db.prepare('SELECT count(*) AS total FROM agents WHERE provider_id = ? AND is_active = 1').get(id) as {
@@ -169,7 +172,11 @@ export function updateProvider(id: number, input: ProviderUpdateInput): OrchProv
       }
     ).total;
     if (activeAgents > 0) {
-      throw new AppError(422, 'PROVIDER_IN_USE', 'Provider tidak dapat dinonaktifkan karena masih menjadi provider default agent aktif.');
+      throw new AppError(
+        422,
+        'PROVIDER_IN_USE',
+        'Provider tidak dapat dinonaktifkan karena masih menjadi provider default agent aktif.'
+      );
     }
   }
 
@@ -301,9 +308,8 @@ function assertActiveProvider(providerId: number): void {
 export function listAgents(q: string, page: number, pageSize: number): { data: OrchAgent[]; total: number } {
   const filter = q ? 'WHERE lower(a.code) LIKE ? OR lower(a.name) LIKE ?' : '';
   const params = q ? [`%${q.toLowerCase()}%`, `%${q.toLowerCase()}%`] : [];
-  const total = (
-    db.prepare(`SELECT count(*) AS total FROM agents a ${filter}`).get(...params) as { total: number }
-  ).total;
+  const total = (db.prepare(`SELECT count(*) AS total FROM agents a ${filter}`).get(...params) as { total: number })
+    .total;
   const rows = db
     .prepare(
       `SELECT ${agentSelect} ${filter}
@@ -318,8 +324,6 @@ export function getAgent(id: number): OrchAgent | null {
   const row = db.prepare(`SELECT ${agentSelect} WHERE a.id = ?`).get(id) as unknown as AgentRow | undefined;
   return row ? mapAgent(row) : null;
 }
-
-
 
 export function createAgent(input: AgentCreateInput): { agent: OrchAgent; token: string } {
   assertActiveProvider(input.providerId);
@@ -367,7 +371,11 @@ export function updateAgent(id: number, input: AgentUpdateInput): OrchAgent {
       }
     ).total;
     if (running > 0) {
-      throw new AppError(422, 'AGENT_IN_USE', 'Agent tidak dapat dinonaktifkan karena masih memiliki task yang sedang berjalan.');
+      throw new AppError(
+        422,
+        'AGENT_IN_USE',
+        'Agent tidak dapat dinonaktifkan karena masih memiliki task yang sedang berjalan.'
+      );
     }
     const queued = (
       db.prepare("SELECT count(*) AS total FROM tasks WHERE agent_id = ? AND status = 'QUEUED'").get(id) as {
@@ -375,7 +383,11 @@ export function updateAgent(id: number, input: AgentUpdateInput): OrchAgent {
       }
     ).total;
     if (queued > 0) {
-      throw new AppError(422, 'AGENT_IN_USE', 'Agent tidak dapat dinonaktifkan karena masih memiliki task dalam antrean.');
+      throw new AppError(
+        422,
+        'AGENT_IN_USE',
+        'Agent tidak dapat dinonaktifkan karena masih memiliki task dalam antrean.'
+      );
     }
   }
 
@@ -412,9 +424,9 @@ export function rotateAgentToken(id: number): string {
 }
 
 export function recomputeAgentStatus(agentId: number): OrchAgentStatus | null {
-  const agent = db
-    .prepare('SELECT is_active, last_error, max_concurrency FROM agents WHERE id = ?')
-    .get(agentId) as { is_active: number; last_error: string | null; max_concurrency: number } | undefined;
+  const agent = db.prepare('SELECT is_active, last_error, max_concurrency FROM agents WHERE id = ?').get(agentId) as
+    | { is_active: number; last_error: string | null; max_concurrency: number }
+    | undefined;
   if (!agent) return null;
   const count = (
     db.prepare("SELECT count(*) AS total FROM tasks WHERE agent_id = ? AND status = 'RUNNING'").get(agentId) as {
@@ -444,9 +456,9 @@ export function recomputeAllAgents(): number {
 }
 
 export function findAgentByToken(token: string): { id: number; code: string } | null {
-  const row = db
-    .prepare('SELECT id, code FROM agents WHERE auth_token_hash = ?')
-    .get(sha256(token)) as { id: number; code: string } | undefined;
+  const row = db.prepare('SELECT id, code FROM agents WHERE auth_token_hash = ?').get(sha256(token)) as
+    | { id: number; code: string }
+    | undefined;
   return row ?? null;
 }
 
@@ -598,8 +610,6 @@ export function getTask(id: number): OrchTask | null {
   return row ? mapTask(row) : null;
 }
 
-
-
 export function getTaskOrThrow(id: number): OrchTask {
   const task = getTask(id);
   if (!task) throw notFound('Task tidak ditemukan.');
@@ -730,9 +740,9 @@ function insertTaskTx(
     if (existing) return { id: existing.id, created: false };
   }
 
-  const agent = db
-    .prepare('SELECT id, code, status, is_active FROM agents WHERE id = ?')
-    .get(input.agentId) as { id: number; code: string; status: string; is_active: number } | undefined;
+  const agent = db.prepare('SELECT id, code, status, is_active FROM agents WHERE id = ?').get(input.agentId) as
+    | { id: number; code: string; status: string; is_active: number }
+    | undefined;
   if (!agent) {
     throw new AppError(422, 'VALIDATION_ERROR', 'Agent tujuan tidak ditemukan.', {
       agentId: 'Agent tidak ditemukan.'
@@ -800,9 +810,9 @@ function insertTaskTx(
     return { id: inserted.id, created: true };
   } catch (error) {
     if (uniqueError(error) && options.clientRequestId) {
-      const existing = db
-        .prepare('SELECT id FROM tasks WHERE client_request_id = ?')
-        .get(options.clientRequestId) as { id: number } | undefined;
+      const existing = db.prepare('SELECT id FROM tasks WHERE client_request_id = ?').get(options.clientRequestId) as
+        | { id: number }
+        | undefined;
       if (existing) return { id: existing.id, created: false };
     }
     throw error;
@@ -839,7 +849,11 @@ export function retryTask(taskId: number, clientRequestId?: string | null): Orch
         agentId: original.agentId,
         providerId: original.providerId
       },
-      { retryOf: { id: original.id, code: original.code }, allowOffline: true, clientRequestId: clientRequestId ?? null }
+      {
+        retryOf: { id: original.id, code: original.code },
+        allowOffline: true,
+        clientRequestId: clientRequestId ?? null
+      }
     )
   );
   const task = getTaskOrThrow(result.id);
@@ -918,9 +932,7 @@ export function applyAgentResult(
   input: AgentResultInput
 ): { taskId: number; noop: boolean; status: OrchTaskStatus } {
   const result = transaction(() => {
-    const row = db
-      .prepare('SELECT id, agent_id, status, cost_per_1k_snapshot FROM tasks WHERE code = ?')
-      .get(code) as
+    const row = db.prepare('SELECT id, agent_id, status, cost_per_1k_snapshot FROM tasks WHERE code = ?').get(code) as
       | { id: number; agent_id: number; status: OrchTaskStatus; cost_per_1k_snapshot: string }
       | undefined;
     if (!row) throw notFound('Task tidak ditemukan.');
@@ -940,9 +952,7 @@ export function applyAgentResult(
           tokenUsed: 'Token wajib diisi.'
         });
       }
-      const cost = intToDecimal4(
-        computeCost4(decimal4ToInt(row.cost_per_1k_snapshot), input.tokenUsed)
-      );
+      const cost = intToDecimal4(computeCost4(decimal4ToInt(row.cost_per_1k_snapshot), input.tokenUsed));
       db.prepare(
         `UPDATE tasks
          SET status = 'COMPLETED', token_used = ?, cost_usd = ?, result = ?, finished_at = ?, updated_at = ?
@@ -965,8 +975,7 @@ export function applyAgentResult(
         });
       }
       const tokens = input.tokenUsed ?? 0;
-      const cost =
-        tokens > 0 ? intToDecimal4(computeCost4(decimal4ToInt(row.cost_per_1k_snapshot), tokens)) : '0.0000';
+      const cost = tokens > 0 ? intToDecimal4(computeCost4(decimal4ToInt(row.cost_per_1k_snapshot), tokens)) : '0.0000';
       db.prepare(
         `UPDATE tasks
          SET status = 'FAILED', token_used = ?, cost_usd = ?, error_message = ?, finished_at = ?, updated_at = ?
@@ -1097,7 +1106,9 @@ export function markDispatchFailed(task: QueueTask, reason: string): void {
 export function failStaleTasks(): number {
   const cutoff = new Date(Date.now() - config.taskMaxDurationMs).toISOString();
   const stale = db
-    .prepare("SELECT id, code, agent_id FROM tasks WHERE status = 'RUNNING' AND started_at IS NOT NULL AND started_at < ?")
+    .prepare(
+      "SELECT id, code, agent_id FROM tasks WHERE status = 'RUNNING' AND started_at IS NOT NULL AND started_at < ?"
+    )
     .all(cutoff) as Array<{ id: number; code: string; agent_id: number }>;
   for (const task of stale) {
     transaction(() => {

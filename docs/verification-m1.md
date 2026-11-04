@@ -20,6 +20,8 @@ npm run verify
 | Gate | Hasil |
 |---|---|
 | Typecheck shared/runtime/web | Lulus |
+| ESLint (`--max-warnings=0`) | Lulus |
+| Prettier (`--check`) | Lulus |
 | Sintaks ES2020 | Lulus — semua chunk |
 | API JS terlarang | Lulus |
 | CSS terlarang | Lulus |
@@ -59,6 +61,35 @@ Alur yang diuji:
 19. Nol error konsol/pageerror.
 
 Git push/pull divalidasi melalui test API dengan remote bare lokal; tombol UI tersedia di panel Changes.
+
+## Backup, Restore, dan Performa
+
+Backup SQLite (`VACUUM INTO` + `PRAGMA integrity_check`):
+
+```bash
+DATA_DIR=/tmp/dorado-ops BACKUP_DIR=/tmp/dorado-backups npm run backup
+PORT=7799 DATA_DIR=/tmp/dorado-restore node scripts/restore.mjs /tmp/dorado-backups/dorado-*.db
+```
+
+Hasil uji: backup 200 task / 2.000 log berhasil, restore ke direktori bersih menghasilkan 200 task dan 2.000 log, integrity check `ok`.
+
+Seed performa:
+
+```bash
+DATA_DIR=/tmp/dorado-perf node scripts/seed-perf.mjs --tasks=10000 --logs=100000
+```
+
+Hasil: seed **10.000 task + 100.000 log dalam ±1,2 detik**. Pengukuran endpoint pada runtime lokal:
+
+| Endpoint | Waktu |
+|---|---|
+| `GET /api/orchestrator/summary` | ±57 ms |
+| `GET /api/orchestrator/tasks?page=1` | ±9 ms |
+| `GET /api/orchestrator/tasks?page=500` | ±25 ms |
+| `GET /api/orchestrator/tasks?status=FAILED` | ±5 ms |
+| `GET /api/orchestrator/tasks/1/logs?limit=100` | ±2 ms |
+
+Angka ini pengukuran lokal, bukan benchmark produksi.
 
 Persistensi terminal divalidasi manual: setelah runtime di-restart, sesi tmux tetap hidup, browser attach kembali, dan perintah `echo survived-restart` berhasil dijalankan di sesi yang sama tanpa ada gibberish terminal.
 

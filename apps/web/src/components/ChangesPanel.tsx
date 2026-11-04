@@ -122,7 +122,11 @@ export function ChangesPanel({
           </button>
         </span>
       </div>
-      {error ? <div className="empty" style={{ color: 'var(--danger)' }}>{error}</div> : null}
+      {error ? (
+        <div className="empty" style={{ color: 'var(--danger)' }}>
+          {error}
+        </div>
+      ) : null}
       {status ? (
         <div className="changes">
           <div className="change-branch mono">
@@ -208,32 +212,36 @@ export function ChangesPanel({
       {commitOpen ? (
         <Modal
           title="Commit Perubahan"
-        onClose={() => setCommitOpen(false)}
-        footer={
-          <>
-            <button className="btn" onClick={() => setCommitOpen(false)} disabled={busy}>
-              Batal
-            </button>
-            <button className="btn primary" onClick={() => void commit()} disabled={busy || message.trim().length < 3}>
-              {busy ? 'Commit...' : 'Commit'}
-            </button>
-          </>
-        }
-      >
-        {commitError ? <div className="error-banner">{commitError}</div> : null}
-        <div className="field">
-          <label>Pesan commit</label>
-          <textarea
-            className="textarea"
-            rows={4}
-            value={message}
-            onChange={(event) => setMessage(event.target.value)}
-            placeholder="Jelaskan perubahan..."
-            autoFocus
-          />
-          <div className="hint">{message.trim().length} karakter · minimal 3</div>
-        </div>
-      </Modal>
+          onClose={() => setCommitOpen(false)}
+          footer={
+            <>
+              <button className="btn" onClick={() => setCommitOpen(false)} disabled={busy}>
+                Batal
+              </button>
+              <button
+                className="btn primary"
+                onClick={() => void commit()}
+                disabled={busy || message.trim().length < 3}
+              >
+                {busy ? 'Commit...' : 'Commit'}
+              </button>
+            </>
+          }
+        >
+          {commitError ? <div className="error-banner">{commitError}</div> : null}
+          <div className="field">
+            <label>Pesan commit</label>
+            <textarea
+              className="textarea"
+              rows={4}
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              placeholder="Jelaskan perubahan..."
+              autoFocus
+            />
+            <div className="hint">{message.trim().length} karakter · minimal 3</div>
+          </div>
+        </Modal>
       ) : null}
     </div>
   );

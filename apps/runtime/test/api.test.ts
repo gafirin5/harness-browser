@@ -309,7 +309,18 @@ describe('session history', () => {
     db.prepare(
       `INSERT INTO sessions (id, worktree_id, terminal_id, agent, title, prompt, status, created_at, started_at, ended_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run('hist-1', worktreeId, 'term-1', 'opencode', 'Deploy staging', 'deploy the app to staging', 'completed', now, now, now);
+    ).run(
+      'hist-1',
+      worktreeId,
+      'term-1',
+      'opencode',
+      'Deploy staging',
+      'deploy the app to staging',
+      'completed',
+      now,
+      now,
+      now
+    );
     db.prepare(
       `INSERT INTO sessions (id, worktree_id, terminal_id, agent, title, prompt, status, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
@@ -591,9 +602,7 @@ describe('orchestrator', () => {
       applyAgentResult(agentId, first.body.data.code as string, { status: 'COMPLETED', tokenUsed: 10 })
     ).toThrow();
 
-    await api
-      .post(`/api/orchestrator/tasks/${first.body.data.id}/cancel`)
-      .send({ reason: 'bersihkan task idempoten' });
+    await api.post(`/api/orchestrator/tasks/${first.body.data.id}/cancel`).send({ reason: 'bersihkan task idempoten' });
   });
 
   it('membatalkan task RUNNING lalu retry menjadi QUEUED', async () => {
@@ -619,9 +628,7 @@ describe('orchestrator', () => {
     expect(retried.status).toBe(201);
     expect(retried.body.data.status).toBe('QUEUED');
     expect(retried.body.data.retryOfTaskId).toBe(taskId);
-    await api
-      .post(`/api/orchestrator/tasks/${retried.body.data.id}/cancel`)
-      .send({ reason: 'bersihkan task retry' });
+    await api.post(`/api/orchestrator/tasks/${retried.body.data.id}/cancel`).send({ reason: 'bersihkan task retry' });
   });
 
   it('menandai task FAILED bila endpoint agent tidak dapat dihubungi', async () => {

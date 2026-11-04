@@ -24,7 +24,11 @@ const syncSchema = z.object({ worktreeId: z.string().min(1) });
 
 const commitSchema = z.object({
   worktreeId: z.string().min(1),
-  message: z.string().trim().min(3, 'Pesan commit minimal 3 karakter.').max(2000, 'Pesan commit maksimal 2.000 karakter.')
+  message: z
+    .string()
+    .trim()
+    .min(3, 'Pesan commit minimal 3 karakter.')
+    .max(2000, 'Pesan commit maksimal 2.000 karakter.')
 });
 
 interface ChangedFile {
@@ -127,7 +131,10 @@ gitRouter.get(
     let result = await gitRaw(cwd, args);
 
     if (!result.stdout.trim() && query.staged === '0') {
-      const exists = await fs.stat(target).then(() => true).catch(() => false);
+      const exists = await fs
+        .stat(target)
+        .then(() => true)
+        .catch(() => false);
       if (exists) {
         result = await gitRaw(cwd, ['diff', '--no-index', '--no-color', '--', '/dev/null', relative]);
       }
@@ -189,7 +196,6 @@ gitRouter.post(
     res.json({ data: { hash, summary } });
   })
 );
-
 
 gitRouter.post(
   '/pull',

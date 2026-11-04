@@ -66,13 +66,7 @@ function formatDate(value: string): string {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString('id-ID');
 }
 
-export function GitHubDialog({
-  worktreeId,
-  onClose
-}: {
-  worktreeId: string | null;
-  onClose: () => void;
-}): JSX.Element {
+export function GitHubDialog({ worktreeId, onClose }: { worktreeId: string | null; onClose: () => void }): JSX.Element {
   const [info, setInfo] = useState<GitHubInfo | null>(null);
   const [infoLoading, setInfoLoading] = useState(false);
   const [infoError, setInfoError] = useState<string | null>(null);
@@ -88,9 +82,7 @@ export function GitHubDialog({
     setInfoLoading(true);
     setInfoError(null);
     try {
-      const response = await apiGet<{ data: GitHubInfo }>(
-        `/github/info?worktreeId=${encodeURIComponent(worktreeId)}`
-      );
+      const response = await apiGet<{ data: GitHubInfo }>(`/github/info?worktreeId=${encodeURIComponent(worktreeId)}`);
       setInfo(response.data);
     } catch (caught) {
       setInfoError(caught instanceof ApiError ? caught.message : 'Gagal memuat info GitHub.');
@@ -156,9 +148,7 @@ export function GitHubDialog({
           <div className="gh-empty-title">
             {info.remote ? 'Remote bukan repository GitHub' : 'Repository belum memiliki remote'}
           </div>
-          <p className="muted">
-            {info.reason ?? 'Worktree ini tidak terhubung ke repository GitHub.'}
-          </p>
+          <p className="muted">{info.reason ?? 'Worktree ini tidak terhubung ke repository GitHub.'}</p>
           <div className="kv">
             <span className="k">Remote</span>
             <span className="v mono">{info.remote ?? '—'}</span>
@@ -195,16 +185,10 @@ export function GitHubDialog({
 
           <div className="gh-tabs">
             <div className="gh-tab-buttons">
-              <button
-                className={`gh-tab ${tab === 'pulls' ? 'active' : ''}`}
-                onClick={() => setTab('pulls')}
-              >
+              <button className={`gh-tab ${tab === 'pulls' ? 'active' : ''}`} onClick={() => setTab('pulls')}>
                 Pull Requests
               </button>
-              <button
-                className={`gh-tab ${tab === 'issues' ? 'active' : ''}`}
-                onClick={() => setTab('issues')}
-              >
+              <button className={`gh-tab ${tab === 'issues' ? 'active' : ''}`} onClick={() => setTab('issues')}>
                 Issues
               </button>
             </div>
@@ -233,20 +217,12 @@ export function GitHubDialog({
             <div className="gh-list">
               {tab === 'pulls'
                 ? pulls.map((pull) => (
-                    <a
-                      key={pull.number}
-                      className="gh-item"
-                      href={pull.htmlUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
+                    <a key={pull.number} className="gh-item" href={pull.htmlUrl} target="_blank" rel="noreferrer">
                       <div className="gh-item-head">
                         <span className="gh-number">#{pull.number}</span>
                         <span className="gh-item-title">{pull.title}</span>
                         {pull.draft ? <span className="badge stopped">draft</span> : null}
-                        <span className={`badge ${pull.state === 'open' ? 'running' : 'completed'}`}>
-                          {pull.state}
-                        </span>
+                        <span className={`badge ${pull.state === 'open' ? 'running' : 'completed'}`}>{pull.state}</span>
                       </div>
                       <div className="gh-item-meta">
                         <span>@{pull.author}</span>
@@ -258,13 +234,7 @@ export function GitHubDialog({
                     </a>
                   ))
                 : issues.map((issue) => (
-                    <a
-                      key={issue.number}
-                      className="gh-item"
-                      href={issue.htmlUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
+                    <a key={issue.number} className="gh-item" href={issue.htmlUrl} target="_blank" rel="noreferrer">
                       <div className="gh-item-head">
                         <span className="gh-number">#{issue.number}</span>
                         <span className="gh-item-title">{issue.title}</span>

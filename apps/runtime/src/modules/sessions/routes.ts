@@ -132,11 +132,9 @@ sessionsRouter.get('/history', (req, res) => {
 
 sessionsRouter.get('/', (req, res) => {
   const worktreeId = typeof req.query.worktreeId === 'string' ? req.query.worktreeId : null;
-  const rows = (
-    worktreeId
-      ? db.prepare('SELECT * FROM sessions WHERE worktree_id = ? ORDER BY created_at DESC').all(worktreeId)
-      : db.prepare('SELECT * FROM sessions ORDER BY created_at DESC').all()
-  ) as unknown as unknown as SessionRow[];
+  const rows = (worktreeId
+    ? db.prepare('SELECT * FROM sessions WHERE worktree_id = ? ORDER BY created_at DESC').all(worktreeId)
+    : db.prepare('SELECT * FROM sessions ORDER BY created_at DESC').all()) as unknown as unknown as SessionRow[];
   res.json({ data: rows.map(mapSession) });
 });
 
@@ -213,7 +211,9 @@ sessionsRouter.post(
 );
 
 sessionsRouter.post('/:id/stop', (req, res) => {
-  const row = db.prepare('SELECT * FROM sessions WHERE id = ?').get(String(req.params.id ?? '')) as unknown as SessionRow | undefined;
+  const row = db.prepare('SELECT * FROM sessions WHERE id = ?').get(String(req.params.id ?? '')) as unknown as
+    | SessionRow
+    | undefined;
   if (!row) throw notFound('Sesi tidak ditemukan.');
   terminalManager.stop(row.terminal_id);
   res.json({ data: mapSession(row) });

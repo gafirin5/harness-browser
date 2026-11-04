@@ -90,15 +90,11 @@ export function getDashboardSummary(): OrchDashboardSummary {
   ).total;
   const tasksFailedToday = (
     db
-      .prepare(
-        "SELECT count(*) AS total FROM tasks WHERE status = 'FAILED' AND finished_at >= ? AND finished_at < ?"
-      )
+      .prepare("SELECT count(*) AS total FROM tasks WHERE status = 'FAILED' AND finished_at >= ? AND finished_at < ?")
       .get(start, end) as { total: number }
   ).total;
   const costRows = db
-    .prepare(
-      "SELECT cost_usd FROM tasks WHERE status = 'COMPLETED' AND finished_at >= ? AND finished_at < ?"
-    )
+    .prepare("SELECT cost_usd FROM tasks WHERE status = 'COMPLETED' AND finished_at >= ? AND finished_at < ?")
     .all(start, end) as Array<{ cost_usd: string }>;
   const costTodayUsd = sumDecimal4(costRows.map((row) => row.cost_usd));
 

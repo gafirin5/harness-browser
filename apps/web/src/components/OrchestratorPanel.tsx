@@ -1,11 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type {
-  OrchAgent,
-  OrchDashboardSummary,
-  OrchProvider,
-  OrchTask,
-  OrchTaskLog
-} from '@dorado/shared';
+import type { OrchAgent, OrchDashboardSummary, OrchProvider, OrchTask, OrchTaskLog } from '@dorado/shared';
 import {
   ORCH_PROVIDER_TYPES,
   ORCH_PROVIDER_TYPE_LABELS,
@@ -262,19 +256,41 @@ function ProvidersTab(): JSX.Element {
           </label>
           <label>
             Base URL
-            <input className="input" value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} placeholder="https://..." required />
+            <input
+              className="input"
+              value={baseUrl}
+              onChange={(event) => setBaseUrl(event.target.value)}
+              placeholder="https://..."
+              required
+            />
           </label>
           <label>
             Model Default
-            <input className="input" value={defaultModel} onChange={(event) => setDefaultModel(event.target.value)} required />
+            <input
+              className="input"
+              value={defaultModel}
+              onChange={(event) => setDefaultModel(event.target.value)}
+              required
+            />
           </label>
           <label>
             API Key
-            <input className="input" type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} required />
+            <input
+              className="input"
+              type="password"
+              value={apiKey}
+              onChange={(event) => setApiKey(event.target.value)}
+              required
+            />
           </label>
           <label>
             Tarif / 1K Token (USD)
-            <input className="input" value={costPer1kTokens} onChange={(event) => setCostPer1kTokens(event.target.value)} required />
+            <input
+              className="input"
+              value={costPer1kTokens}
+              onChange={(event) => setCostPer1kTokens(event.target.value)}
+              required
+            />
           </label>
           <div className="orch-form-actions">
             <button className="btn tiny primary" type="submit" disabled={saving}>
@@ -428,7 +444,9 @@ function AgentsTab(): JSX.Element {
           <button
             className="btn tiny"
             onClick={() => {
-              void copyText(token.value).then((ok) => push(ok ? 'success' : 'error', ok ? 'Token disalin.' : 'Gagal menyalin token.'));
+              void copyText(token.value).then((ok) =>
+                push(ok ? 'success' : 'error', ok ? 'Token disalin.' : 'Gagal menyalin token.')
+              );
             }}
           >
             Salin
@@ -449,7 +467,13 @@ function AgentsTab(): JSX.Element {
         >
           <label>
             Kode
-            <input className="input" value={code} onChange={(event) => setCode(event.target.value)} placeholder="AGT-CODER-01" required />
+            <input
+              className="input"
+              value={code}
+              onChange={(event) => setCode(event.target.value)}
+              placeholder="AGT-CODER-01"
+              required
+            />
           </label>
           <label>
             Nama
@@ -457,11 +481,22 @@ function AgentsTab(): JSX.Element {
           </label>
           <label>
             Endpoint URL
-            <input className="input" value={endpointUrl} onChange={(event) => setEndpointUrl(event.target.value)} placeholder="http://127.0.0.1:9101" required />
+            <input
+              className="input"
+              value={endpointUrl}
+              onChange={(event) => setEndpointUrl(event.target.value)}
+              placeholder="http://127.0.0.1:9101"
+              required
+            />
           </label>
           <label>
             Provider
-            <select className="select" value={providerId} onChange={(event) => setProviderId(event.target.value)} required>
+            <select
+              className="select"
+              value={providerId}
+              onChange={(event) => setProviderId(event.target.value)}
+              required
+            >
               <option value="">Pilih provider</option>
               {providers.map((provider) => (
                 <option key={provider.id} value={provider.id}>
@@ -705,7 +740,12 @@ function TasksTab(): JSX.Element {
           </label>
           <label>
             Provider
-            <select className="select" value={providerId} onChange={(event) => setProviderId(event.target.value)} required>
+            <select
+              className="select"
+              value={providerId}
+              onChange={(event) => setProviderId(event.target.value)}
+              required
+            >
               <option value="">Pilih provider</option>
               {providers.map((provider) => (
                 <option key={provider.id} value={provider.id}>
@@ -846,7 +886,9 @@ function TasksTab(): JSX.Element {
                 const text = logs
                   .map((log) => `[${formatDate(log.createdAt)}] ${log.logLevel} ${log.actorType}: ${log.message}`)
                   .join('\n');
-                void copyText(text).then((ok) => push(ok ? 'success' : 'error', ok ? 'Log disalin.' : 'Gagal menyalin log.'));
+                void copyText(text).then((ok) =>
+                  push(ok ? 'success' : 'error', ok ? 'Log disalin.' : 'Gagal menyalin log.')
+                );
               }}
             >
               Salin Log

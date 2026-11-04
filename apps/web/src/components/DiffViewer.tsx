@@ -61,7 +61,11 @@ export function DiffViewer({
           {truncated ? 'diff dipotong 500 KB' : ''}
         </span>
       </div>
-      {error ? <div className="error-banner" style={{ margin: 10 }}>{error}</div> : null}
+      {error ? (
+        <div className="error-banner" style={{ margin: 10 }}>
+          {error}
+        </div>
+      ) : null}
       {loading ? (
         <div className="empty">Memuat diff...</div>
       ) : !diff ? (
@@ -71,7 +75,12 @@ export function DiffViewer({
           {lines.map((line, index) => {
             let className = 'diff-line';
             if (line.startsWith('@@')) className += ' hunk';
-            else if (line.startsWith('+++') || line.startsWith('---') || line.startsWith('diff ') || line.startsWith('index ')) {
+            else if (
+              line.startsWith('+++') ||
+              line.startsWith('---') ||
+              line.startsWith('diff ') ||
+              line.startsWith('index ')
+            ) {
               className += ' meta';
             } else if (line.startsWith('+')) className += ' add';
             else if (line.startsWith('-')) className += ' del';

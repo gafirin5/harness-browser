@@ -136,7 +136,8 @@ try {
 
   await clickText('.project-row', createdProject.name);
   await page.waitForFunction(
-    (name) => Array.from(document.querySelectorAll('.worktree-row')).some((row) => (row.textContent || '').includes(name)),
+    (name) =>
+      Array.from(document.querySelectorAll('.worktree-row')).some((row) => (row.textContent || '').includes(name)),
     { timeout: 15000 },
     createdWorktree.branch
   );
@@ -168,17 +169,15 @@ try {
 
   await clickText('button', '+ Terminal');
   await page.waitForSelector('.xterm', { timeout: 15000 });
-  await page.waitForFunction(
-    () => ((document.querySelector('.xterm-rows')?.innerText ?? '').trim().length > 0),
-    { timeout: 15000 }
-  );
+  await page.waitForFunction(() => (document.querySelector('.xterm-rows')?.innerText ?? '').trim().length > 0, {
+    timeout: 15000
+  });
   await page.focus('.xterm-helper-textarea');
   await page.keyboard.type('echo chrome93-ok');
   await page.keyboard.press('Enter');
-  await page.waitForFunction(
-    () => document.querySelector('.xterm-rows')?.innerText.includes('chrome93-ok'),
-    { timeout: 10000 }
-  );
+  await page.waitForFunction(() => document.querySelector('.xterm-rows')?.innerText.includes('chrome93-ok'), {
+    timeout: 10000
+  });
   console.log('[chrome93] terminal PTY + WebSocket OK');
 
   await page.waitForSelector('.file-row', { timeout: 15000 });
@@ -195,11 +194,7 @@ try {
   await page.keyboard.press('s');
   await page.keyboard.up('Control');
   await waitText('File disimpan.');
-  const savedFile = await api(
-    `/api/files/content?worktreeId=${createdWorktree.id}&path=README.md`,
-    {},
-    cookie
-  );
+  const savedFile = await api(`/api/files/content?worktreeId=${createdWorktree.id}&path=README.md`, {}, cookie);
   if (!savedFile.body?.data?.content?.includes('edited by chrome93')) {
     throw new Error('File tidak tersimpan melalui editor.');
   }
@@ -207,9 +202,7 @@ try {
 
   await page.waitForFunction(
     () =>
-      Array.from(document.querySelectorAll('.change-row')).some((row) =>
-        (row.textContent || '').includes('README.md')
-      ),
+      Array.from(document.querySelectorAll('.change-row')).some((row) => (row.textContent || '').includes('README.md')),
     { timeout: 15000 }
   );
   await clickText('.change-row', 'README.md');
@@ -377,10 +370,7 @@ try {
   await page.evaluate(() => {
     document.querySelector('button[title="File baru"]')?.click();
   });
-  await page.waitForFunction(
-    () => document.body.innerText.includes('created-by-e2e.txt'),
-    { timeout: 15000 }
-  );
+  await page.waitForFunction(() => document.body.innerText.includes('created-by-e2e.txt'), { timeout: 15000 });
   await page.waitForSelector('.CodeMirror', { timeout: 15000 });
 
   dialogValues.push('renamed-by-e2e.txt');
@@ -390,10 +380,7 @@ try {
     );
     row?.querySelector('button[title="Rename"]')?.click();
   });
-  await page.waitForFunction(
-    () => document.body.innerText.includes('renamed-by-e2e.txt'),
-    { timeout: 15000 }
-  );
+  await page.waitForFunction(() => document.body.innerText.includes('renamed-by-e2e.txt'), { timeout: 15000 });
 
   console.log('[chrome93] file create/rename OK');
 
@@ -402,8 +389,8 @@ try {
   await page.waitForSelector('.orch-panel', { timeout: 15000 });
   await waitText('Agent Aktif');
   await page.evaluate(() => {
-    const button = Array.from(document.querySelectorAll('.orch-tab')).find((item) =>
-      (item.textContent || '').trim() === 'Provider'
+    const button = Array.from(document.querySelectorAll('.orch-tab')).find(
+      (item) => (item.textContent || '').trim() === 'Provider'
     );
     button?.click();
   });
@@ -418,11 +405,7 @@ try {
   await providerInputs[3].type('sk-e2e-12345678');
   // Input tarif sudah terisi default 0.0020.
   await page.click('.orch-form button[type=submit]');
-  await page.waitForFunction(
-    (name) => document.body.innerText.includes(name),
-    { timeout: 15000 },
-    providerName
-  );
+  await page.waitForFunction((name) => document.body.innerText.includes(name), { timeout: 15000 }, providerName);
   console.log('[chrome93] orchestrator provider UI OK');
 
   const providerList = await api(`/api/orchestrator/providers?q=${encodeURIComponent(providerName)}`, {}, cookie);
@@ -496,16 +479,12 @@ try {
   }
 
   await page.evaluate(() => {
-    const button = Array.from(document.querySelectorAll('.orch-tab')).find((item) =>
-      (item.textContent || '').trim() === 'Task'
+    const button = Array.from(document.querySelectorAll('.orch-tab')).find(
+      (item) => (item.textContent || '').trim() === 'Task'
     );
     button?.click();
   });
-  await page.waitForFunction(
-    (code) => document.body.innerText.includes(code),
-    { timeout: 15000 },
-    task.code
-  );
+  await page.waitForFunction((code) => document.body.innerText.includes(code), { timeout: 15000 }, task.code);
   await page.evaluate(() => {
     const row = Array.from(document.querySelectorAll('.orch-table tbody tr')).find((item) =>
       (item.textContent || '').includes('E2E orchestrated task')
@@ -578,13 +557,21 @@ try {
   }
 } catch (error) {
   console.error('[chrome93] GAGAL:', error.message);
-  try { console.error('[chrome93] BODY:', (await page.evaluate(() => document.body.innerText)).slice(-700)); } catch {}
+  try {
+    console.error('[chrome93] BODY:', (await page.evaluate(() => document.body.innerText)).slice(-700));
+  } catch {
+    /* abaikan */
+  }
   await page.screenshot({ path: '/tmp/dorado-chrome93.png', fullPage: true }).catch(() => {});
   console.error('[chrome93] Screenshot: /tmp/dorado-chrome93.png');
   process.exitCode = 1;
 } finally {
   if (mockAgent) {
-    try { mockAgent.kill('SIGTERM'); } catch { /* abaikan */ }
+    try {
+      mockAgent.kill('SIGTERM');
+    } catch {
+      /* abaikan */
+    }
   }
   await browser.close();
   const terminals = await api(`/api/terminals?worktreeId=${createdWorktree.id}`, {}, cookie).catch(() => null);

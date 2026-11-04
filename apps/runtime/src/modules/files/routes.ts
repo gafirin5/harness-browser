@@ -64,7 +64,10 @@ function assertNotIgnored(relativePath: string): void {
   }
 }
 
-async function safeTarget(worktreeId: string, relativeInput: string): Promise<{ root: string; relative: string; target: string }> {
+async function safeTarget(
+  worktreeId: string,
+  relativeInput: string
+): Promise<{ root: string; relative: string; target: string }> {
   const root = resolveWorktree(worktreeId);
   let realRoot: string;
   try {
@@ -186,7 +189,12 @@ filesRouter.put(
     const parent = path.dirname(target);
     try {
       assertWithin(root, await fs.realpath(parent));
-      if (await fs.stat(target).then(() => true).catch(() => false)) {
+      if (
+        await fs
+          .stat(target)
+          .then(() => true)
+          .catch(() => false)
+      ) {
         assertWithin(root, await fs.realpath(target));
       }
     } catch {
@@ -209,7 +217,10 @@ filesRouter.post(
     } catch {
       throw notFound('Folder induk tidak ditemukan.');
     }
-    const exists = await fs.stat(target).then(() => true).catch(() => false);
+    const exists = await fs
+      .stat(target)
+      .then(() => true)
+      .catch(() => false);
     if (exists) throw new AppError(409, 'ALREADY_EXISTS', 'File atau folder sudah ada.');
     if (body.type === 'dir') {
       await fs.mkdir(target);
@@ -237,7 +248,10 @@ filesRouter.post(
     } catch {
       throw notFound('Folder tujuan tidak ditemukan.');
     }
-    const exists = await fs.stat(destination.target).then(() => true).catch(() => false);
+    const exists = await fs
+      .stat(destination.target)
+      .then(() => true)
+      .catch(() => false);
     if (exists) throw new AppError(409, 'ALREADY_EXISTS', 'Tujuan rename sudah ada.');
     await fs.rename(source.target, destination.target);
     res.json({ data: { from: source.relative, to: destination.relative } });

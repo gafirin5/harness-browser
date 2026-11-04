@@ -1,0 +1,8 @@
+node_modules/
+dist/
+data/
+backups/
+coverage/
+package-lock.json
+*.md
+*.d.ts

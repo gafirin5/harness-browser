@@ -43,7 +43,6 @@ export function HistoryDialog({
 
   useEffect(() => {
     void load('', '');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const rerun = async (): Promise<void> => {
@@ -71,7 +70,11 @@ export function HistoryDialog({
           <button className="btn" onClick={onClose} disabled={pending}>
             Tutup
           </button>
-          <button className="btn primary" onClick={() => void rerun()} disabled={!selected || pending || selected.status === 'running'}>
+          <button
+            className="btn primary"
+            onClick={() => void rerun()}
+            disabled={!selected || pending || selected.status === 'running'}
+          >
             {pending ? 'Menjalankan...' : selected?.status === 'running' ? 'Sesi masih berjalan' : 'Rerun Sesi'}
           </button>
         </>

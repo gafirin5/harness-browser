@@ -39,7 +39,15 @@ export function InfoDialog({ onClose }: { onClose: () => void }): JSX.Element {
   };
 
   return (
-    <Modal title="Info Runtime" onClose={onClose} footer={<button className="btn" onClick={onClose}>Tutup</button>}>
+    <Modal
+      title="Info Runtime"
+      onClose={onClose}
+      footer={
+        <button className="btn" onClick={onClose}>
+          Tutup
+        </button>
+      }
+    >
       {error ? <div className="error-banner">{error}</div> : null}
       {!info && !error ? <div className="empty">Memuat info runtime...</div> : null}
       {info ? (

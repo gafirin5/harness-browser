@@ -20,7 +20,7 @@ let total = 0;
 for (const file of files) {
   const relative = path.relative(root, file).replaceAll('\\', '/');
   const compressed = gzipSync(await readFile(file), { level: 9 }).length;
-  const initial = initialRefs.has(relative) || (initialRefs.size === 0);
+  const initial = initialRefs.has(relative) || initialRefs.size === 0;
   if (initial) initialTotal += compressed;
   total += compressed;
   rows.push({ relative, compressed, initial });

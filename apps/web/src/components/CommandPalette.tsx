@@ -40,8 +40,7 @@ export function CommandPalette({
     const needle = query.trim().toLowerCase();
     if (!needle) return commands;
     return commands.filter(
-      (command) =>
-        command.label.toLowerCase().includes(needle) || (command.hint ?? '').toLowerCase().includes(needle)
+      (command) => command.label.toLowerCase().includes(needle) || (command.hint ?? '').toLowerCase().includes(needle)
     );
   }, [commands, query]);
 

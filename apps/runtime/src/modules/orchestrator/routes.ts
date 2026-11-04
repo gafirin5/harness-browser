@@ -16,11 +16,7 @@ import { AppError, asyncHandler } from '../../lib/errors.js';
 import { parseWith } from '../../lib/validation.js';
 import { csrfGuard, rateLimit, requireAuth } from '../auth/middleware.js';
 import { getDashboardSummary } from './dashboard.js';
-import {
-  addClient,
-  broadcastSummaryNow,
-  sendHeartbeat
-} from './hub.js';
+import { addClient, broadcastSummaryNow, sendHeartbeat } from './hub.js';
 import {
   applyAgentResult,
   cancelTask,
@@ -47,7 +43,11 @@ function parseId(value: string): number {
   return id;
 }
 
-function meta(page: number, pageSize: number, total: number): {
+function meta(
+  page: number,
+  pageSize: number,
+  total: number
+): {
   page: number;
   pageSize: number;
   total: number;
@@ -221,4 +221,3 @@ orchestratorAgentRouter.post(
     res.json({ data: result });
   })
 );
-

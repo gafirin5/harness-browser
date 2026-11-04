@@ -226,7 +226,11 @@ export function FileTree({
           </button>
         </span>
       </div>
-      {error ? <div className="empty" style={{ color: 'var(--danger)' }}>{error}</div> : null}
+      {error ? (
+        <div className="empty" style={{ color: 'var(--danger)' }}>
+          {error}
+        </div>
+      ) : null}
       {loading && !entries[''] ? <div className="empty">Memuat file...</div> : null}
       {entries[''] ? <div className="file-tree">{renderLevel('', 0)}</div> : null}
     </div>

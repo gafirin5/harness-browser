@@ -1,12 +1,7 @@
 import { config } from '../../config.js';
 import { getProviderCredentials } from './service.js';
 import type { QueueTask } from './service.js';
-import {
-  claimNextTask,
-  getAgentDispatchConfig,
-  markDispatchFailed,
-  setAgentOffline
-} from './service.js';
+import { claimNextTask, getAgentDispatchConfig, markDispatchFailed, setAgentOffline } from './service.js';
 import { onDispatchRequest } from './events.js';
 import { broadcastTask, scheduleSummaryBroadcast } from './hub.js';
 
@@ -70,7 +65,8 @@ async function dispatchTask(task: QueueTask): Promise<void> {
     if (!response.ok) throw new Error(`Agent merespons HTTP ${response.status}`);
   } catch (error) {
     const name = (error as Error).name;
-    const message = name === 'AbortError' ? `Timeout ${Math.round(config.dispatchTimeoutMs / 1000)} detik` : (error as Error).message;
+    const message =
+      name === 'AbortError' ? `Timeout ${Math.round(config.dispatchTimeoutMs / 1000)} detik` : (error as Error).message;
     const connectivityFailure = name === 'AbortError' || error instanceof TypeError;
     if (connectivityFailure) setAgentOffline(task.agentId, `Dispatch gagal: ${message}`);
     markDispatchFailed(task, message);

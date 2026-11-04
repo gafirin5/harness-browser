@@ -1,7 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import type {
   AgentInfo,
-  PairingTokenInfo,
   Project,
   SessionHistoryItem,
   SessionInfo,
@@ -22,12 +21,7 @@ import { HistoryDialog } from './components/HistoryDialog';
 import { InfoDialog } from './components/InfoDialog';
 import { SearchDialog } from './components/SearchDialog';
 import { SettingsDialog } from './components/SettingsDialog';
-import {
-  AddProjectDialog,
-  NewSessionDialog,
-  NewWorktreeDialog,
-  ShareDialog
-} from './components/Dialogs';
+import { AddProjectDialog, NewSessionDialog, NewWorktreeDialog, ShareDialog } from './components/Dialogs';
 import { Spinner, StatusBadge, useToast } from './components/ui';
 
 const OrchestratorPanel = lazy(() => import('./components/OrchestratorPanel'));
@@ -112,27 +106,30 @@ export function App(): JSX.Element {
     void loadAgents().catch((caught: unknown) => toastError(caught, 'Gagal memuat agent.'));
   }, [user, loadProjects, loadAgents, toastError]);
 
-  const selectProject = useCallback(async (project: Project) => {
-    dataVersion.current += 1;
-    setSelectedProjectId(project.id);
-    setSelectedWorktreeId(null);
-    setWorktrees([]);
-    setTerminals([]);
-    setSessions([]);
-    setActiveTerminalId(null);
-    setOpenFiles([]);
-    setActiveFilePath(null);
-    setOpenDiffs([]);
-    setActiveDiffPath(null);
-    setSplitTerminalIds([]);
-    setDirtyFiles({});
-    try {
-      const response = await apiGet<{ data: Worktree[] }>(`/worktrees?projectId=${encodeURIComponent(project.id)}`);
-      setWorktrees(response.data);
-    } catch (caught) {
-      toastError(caught, 'Gagal memuat worktree.');
-    }
-  }, [toastError]);
+  const selectProject = useCallback(
+    async (project: Project) => {
+      dataVersion.current += 1;
+      setSelectedProjectId(project.id);
+      setSelectedWorktreeId(null);
+      setWorktrees([]);
+      setTerminals([]);
+      setSessions([]);
+      setActiveTerminalId(null);
+      setOpenFiles([]);
+      setActiveFilePath(null);
+      setOpenDiffs([]);
+      setActiveDiffPath(null);
+      setSplitTerminalIds([]);
+      setDirtyFiles({});
+      try {
+        const response = await apiGet<{ data: Worktree[] }>(`/worktrees?projectId=${encodeURIComponent(project.id)}`);
+        setWorktrees(response.data);
+      } catch (caught) {
+        toastError(caught, 'Gagal memuat worktree.');
+      }
+    },
+    [toastError]
+  );
 
   const loadWorktreeData = useCallback(
     async (worktreeId: string, silent = false) => {
@@ -204,9 +201,7 @@ export function App(): JSX.Element {
 
   useEffect(() => {
     setSplitTerminalIds((current) => {
-      const next = current.filter(
-        (id) => id !== activeTerminalId && terminals.some((terminal) => terminal.id === id)
-      );
+      const next = current.filter((id) => id !== activeTerminalId && terminals.some((terminal) => terminal.id === id));
       return next.length === current.length && next.every((id, index) => id === current[index]) ? current : next;
     });
   }, [terminals, activeTerminalId]);
@@ -238,33 +233,35 @@ export function App(): JSX.Element {
   }, [unread]);
 
   const openFile = useCallback((filePath: string, name: string) => {
-    setOpenFiles((current) => (current.some((file) => file.path === filePath) ? current : [...current, { path: filePath, name }]));
+    setOpenFiles((current) =>
+      current.some((file) => file.path === filePath) ? current : [...current, { path: filePath, name }]
+    );
     setActiveFilePath(filePath);
     setActiveDiffPath(null);
     setFileJump(null);
   }, []);
 
-  const openFileAt = useCallback(
-    (filePath: string, line: number) => {
-      setOpenFiles((current) =>
-        current.some((file) => file.path === filePath)
-          ? current
-          : [...current, { path: filePath, name: filePath.split('/').pop() ?? filePath }]
-      );
-      setActiveFilePath(filePath);
-      setActiveDiffPath(null);
-      setFileJump({ path: filePath, line, token: Date.now() });
-      setSearchOpen(false);
-    },
-    []
-  );
+  const openFileAt = useCallback((filePath: string, line: number) => {
+    setOpenFiles((current) =>
+      current.some((file) => file.path === filePath)
+        ? current
+        : [...current, { path: filePath, name: filePath.split('/').pop() ?? filePath }]
+    );
+    setActiveFilePath(filePath);
+    setActiveDiffPath(null);
+    setFileJump({ path: filePath, line, token: Date.now() });
+    setSearchOpen(false);
+  }, []);
 
-  const openDiff = useCallback((filePath: string, staged: boolean) => {
-    setOpenDiffs((current) => (current.includes(filePath) ? current : [...current, filePath]));
-    setActiveDiffPath(filePath);
-    setActiveFilePath(null);
-    if (staged) push('info', 'Menampilkan diff staged.');
-  }, [push]);
+  const openDiff = useCallback(
+    (filePath: string, staged: boolean) => {
+      setOpenDiffs((current) => (current.includes(filePath) ? current : [...current, filePath]));
+      setActiveDiffPath(filePath);
+      setActiveFilePath(null);
+      if (staged) push('info', 'Menampilkan diff staged.');
+    },
+    [push]
+  );
 
   const addSplitPane = useCallback(() => {
     setActiveFilePath(null);
@@ -390,7 +387,9 @@ export function App(): JSX.Element {
       setActiveFilePath(null);
       setActiveDiffPath(null);
       setSplitTerminalIds([]);
-      const worktreeResponse = await apiGet<{ data: Worktree[] }>(`/worktrees?projectId=${encodeURIComponent(project.id)}`);
+      const worktreeResponse = await apiGet<{ data: Worktree[] }>(
+        `/worktrees?projectId=${encodeURIComponent(project.id)}`
+      );
       setWorktrees(worktreeResponse.data);
       await loadWorktreeData(session.worktreeId);
       markMutation();
@@ -463,7 +462,11 @@ export function App(): JSX.Element {
       try {
         await apiDelete(`/worktrees/${worktree.id}`);
       } catch (caught) {
-        if (caught instanceof ApiError && caught.code === 'GIT_ERROR' && window.confirm('Worktree memiliki perubahan yang belum di-commit. Hapus paksa? Data di worktree akan hilang.')) {
+        if (
+          caught instanceof ApiError &&
+          caught.code === 'GIT_ERROR' &&
+          window.confirm('Worktree memiliki perubahan yang belum di-commit. Hapus paksa? Data di worktree akan hilang.')
+        ) {
           await apiDelete(`/worktrees/${worktree.id}?force=1`);
         } else {
           throw caught;
@@ -767,7 +770,10 @@ export function App(): JSX.Element {
                                     }}
                                   >
                                     <span style={{ color: 'var(--accent-2)' }}>✦</span>
-                                    <span className="name">{session.title}{unread[session.id] ? <span className="unread-dot" /> : null}</span>
+                                    <span className="name">
+                                      {session.title}
+                                      {unread[session.id] ? <span className="unread-dot" /> : null}
+                                    </span>
                                     <StatusBadge status={session.status} />
                                     {session.status === 'running' ? (
                                       <button
@@ -814,7 +820,11 @@ export function App(): JSX.Element {
                   onRenamed={handleFileRenamed}
                   onDeleted={handleFileDeleted}
                 />
-                <ChangesPanel key={`changes:${selectedWorktree.id}`} worktreeId={selectedWorktree.id} onOpenDiff={openDiff} />
+                <ChangesPanel
+                  key={`changes:${selectedWorktree.id}`}
+                  worktreeId={selectedWorktree.id}
+                  onOpenDiff={openDiff}
+                />
               </>
             ) : null}
           </div>
@@ -881,7 +891,10 @@ export function App(): JSX.Element {
                 }}
               >
                 <span style={{ color: 'var(--accent-2)' }}>▤</span>
-                <span className="tab-label">{dirtyFiles[file.path] ? '• ' : ''}{file.name}</span>
+                <span className="tab-label">
+                  {dirtyFiles[file.path] ? '• ' : ''}
+                  {file.name}
+                </span>
                 <button
                   className="tab-close"
                   aria-label={`Tutup ${file.name}`}
@@ -1006,20 +1019,33 @@ export function App(): JSX.Element {
                             aria-label={`Terminal pane ${index + 1}`}
                           >
                             {terminals.map((option) => (
-                              <option key={option.id} value={option.id} disabled={paneIds.includes(option.id) && option.id !== terminalId}>
+                              <option
+                                key={option.id}
+                                value={option.id}
+                                disabled={paneIds.includes(option.id) && option.id !== terminalId}
+                              >
                                 {option.title}
                               </option>
                             ))}
                           </select>
                           {index > 0 ? (
-                            <button className="pane-close" onClick={() => removeSplitPane(terminalId)} title="Tutup pane">
+                            <button
+                              className="pane-close"
+                              onClick={() => removeSplitPane(terminalId)}
+                              title="Tutup pane"
+                            >
                               ×
                             </button>
                           ) : null}
                         </div>
                       ) : null}
                       <div className="pane-body">
-                        <TerminalPane key={`${terminalId}:${terminalVersion}`} terminalId={terminalId} active={index === 0} searchNonce={index === 0 ? searchNonce : 0} />
+                        <TerminalPane
+                          key={`${terminalId}:${terminalVersion}`}
+                          terminalId={terminalId}
+                          active={index === 0}
+                          searchNonce={index === 0 ? searchNonce : 0}
+                        />
                       </div>
                     </div>
                   );
@@ -1082,14 +1108,16 @@ export function App(): JSX.Element {
       {infoOpen ? <InfoDialog onClose={() => setInfoOpen(false)} /> : null}
       {githubOpen ? <GitHubDialog worktreeId={selectedWorktreeId} onClose={() => setGithubOpen(false)} /> : null}
       {searchOpen ? (
-        <SearchDialog
-          worktreeId={selectedWorktreeId}
-          onClose={() => setSearchOpen(false)}
-          onOpen={openFileAt}
-        />
+        <SearchDialog worktreeId={selectedWorktreeId} onClose={() => setSearchOpen(false)} onOpen={openFileAt} />
       ) : null}
       {orchestratorOpen ? (
-        <Suspense fallback={<div className="orch-overlay"><div className="empty">Memuat Orchestrator...</div></div>}>
+        <Suspense
+          fallback={
+            <div className="orch-overlay">
+              <div className="empty">Memuat Orchestrator...</div>
+            </div>
+          }
+        >
           <OrchestratorPanel onClose={() => setOrchestratorOpen(false)} />
         </Suspense>
       ) : null}

@@ -17,7 +17,13 @@ const envSchema = z.object({
   COOKIE_SECURE: z
     .union([z.string(), z.boolean()])
     .optional()
-    .transform((value) => (value === undefined ? undefined : typeof value === 'boolean' ? value : ['1', 'true', 'yes', 'on'].includes(value.toLowerCase()))),
+    .transform((value) =>
+      value === undefined
+        ? undefined
+        : typeof value === 'boolean'
+          ? value
+          : ['1', 'true', 'yes', 'on'].includes(value.toLowerCase())
+    ),
   DORADO_AGENTS: z.string().default(''),
   GITHUB_TOKEN: z.string().default(''),
   APP_TIMEZONE: z.string().min(1).default('Asia/Jakarta'),

@@ -20,9 +20,12 @@ const gitRefSchema = (label: string, max = 200) =>
     .min(1, `${label} wajib diisi.`)
     .max(max)
     .regex(/^(?!-)[A-Za-z0-9._/-]+$/, `${label} mengandung karakter tidak valid.`)
-    .refine((value) => !value.includes('..') && !value.endsWith('/') && !value.endsWith('.') && !value.endsWith('.lock'), {
-      message: `${label} bukan nama ref Git yang valid.`
-    });
+    .refine(
+      (value) => !value.includes('..') && !value.endsWith('/') && !value.endsWith('.') && !value.endsWith('.lock'),
+      {
+        message: `${label} bukan nama ref Git yang valid.`
+      }
+    );
 
 export const worktreeCreateSchema = z.object({
   projectId: z.string().min(1),
@@ -46,7 +49,11 @@ export const sessionCreateSchema = z.object({
 
 export const terminalClientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('input'), data: z.string().max(100000) }),
-  z.object({ type: z.literal('resize'), cols: z.number().int().min(20).max(400), rows: z.number().int().min(5).max(200) }),
+  z.object({
+    type: z.literal('resize'),
+    cols: z.number().int().min(20).max(400),
+    rows: z.number().int().min(5).max(200)
+  }),
   z.object({ type: z.literal('ping') })
 ]);
 

@@ -81,13 +81,7 @@ async function ensureMode(language: string): Promise<void> {
   }
 }
 
-export function FileEditor({
-  worktreeId,
-  filePath,
-  onDirtyChange,
-  jumpLine,
-  jumpToken
-}: FileEditorProps): JSX.Element {
+export function FileEditor({ worktreeId, filePath, onDirtyChange, jumpLine, jumpToken }: FileEditorProps): JSX.Element {
   const { push } = useToast();
   const [content, setContent] = useState('');
   const [original, setOriginal] = useState('');
@@ -127,7 +121,6 @@ export function FileEditor({
 
   useEffect(() => {
     void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worktreeId, filePath]);
 
   const save = async (): Promise<void> => {
@@ -221,7 +214,11 @@ export function FileEditor({
           {saving ? 'Menyimpan...' : 'Simpan'}
         </button>
       </div>
-      {error ? <div className="error-banner" style={{ margin: 10 }}>{error}</div> : null}
+      {error ? (
+        <div className="error-banner" style={{ margin: 10 }}>
+          {error}
+        </div>
+      ) : null}
       {loading ? (
         <div className="empty">Memuat file...</div>
       ) : meta?.binary ? (

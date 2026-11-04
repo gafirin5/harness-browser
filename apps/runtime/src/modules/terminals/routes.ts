@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { terminalCreateSchema } from '@dorado/shared';
-import { AppError, asyncHandler, notFound } from '../../lib/errors.js';
+import { asyncHandler, notFound } from '../../lib/errors.js';
 import { parseWith } from '../../lib/validation.js';
 import { csrfGuard, requireAuth } from '../auth/middleware.js';
 import { terminalManager } from './manager.js';
@@ -30,7 +30,11 @@ terminalsRouter.post('/', (req, res) => {
 terminalsRouter.post('/:id/restart', (req, res) => {
   const cols = Number(req.body?.cols ?? 120);
   const rows = Number(req.body?.rows ?? 32);
-  const terminal = terminalManager.restart(String(req.params.id ?? ''), Number.isFinite(cols) ? cols : 120, Number.isFinite(rows) ? rows : 32);
+  const terminal = terminalManager.restart(
+    String(req.params.id ?? ''),
+    Number.isFinite(cols) ? cols : 120,
+    Number.isFinite(rows) ? rows : 32
+  );
   res.json({ data: terminal });
 });
 

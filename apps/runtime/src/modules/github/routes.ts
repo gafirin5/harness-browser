@@ -230,9 +230,9 @@ githubRouter.get(
     const remote = await remoteUrl(query.worktreeId);
     const ref = remote ? parseGitHubRemote(remote) : null;
     if (!ref) throw new AppError(422, 'NOT_GITHUB', 'Remote bukan repository GitHub.');
-    const pull = await github<PullResponse & { body: string | null; additions: number; deletions: number; changed_files: number }>(
-      `/repos/${ref.owner}/${ref.repo}/pulls/${query.number}`
-    );
+    const pull = await github<
+      PullResponse & { body: string | null; additions: number; deletions: number; changed_files: number }
+    >(`/repos/${ref.owner}/${ref.repo}/pulls/${query.number}`);
     res.json({
       data: {
         number: pull.number,

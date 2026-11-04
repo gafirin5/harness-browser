@@ -20,9 +20,14 @@ function handle(chunk) {
   const match = /https:\/\/[a-z0-9-]+\.trycloudflare\.com/.exec(text);
   if (match) {
     found = true;
-    fs.writeFileSync('.dorado-tunnel.json', JSON.stringify({ url: match[0], port: Number(port), createdAt: new Date().toISOString() }, null, 2));
+    fs.writeFileSync(
+      '.dorado-tunnel.json',
+      JSON.stringify({ url: match[0], port: Number(port), createdAt: new Date().toISOString() }, null, 2)
+    );
     console.log(`\n[dorado] Quick tunnel: ${match[0]}`);
-    console.log(`[dorado] Pairing URL akan memakai PUBLIC_BASE_URL. Set PUBLIC_BASE_URL=${match[0]} lalu restart runtime.\n`);
+    console.log(
+      `[dorado] Pairing URL akan memakai PUBLIC_BASE_URL. Set PUBLIC_BASE_URL=${match[0]} lalu restart runtime.\n`
+    );
   }
 }
 

@@ -205,7 +205,12 @@ export function NewSessionDialog({
           <button className="btn" onClick={onClose} disabled={pending}>
             Batal
           </button>
-          <button className="btn primary" type="submit" form="session-form" disabled={pending || installed.length === 0}>
+          <button
+            className="btn primary"
+            type="submit"
+            form="session-form"
+            disabled={pending || installed.length === 0}
+          >
             {pending ? 'Menjalankan...' : 'Jalankan Agent'}
           </button>
         </>
@@ -294,8 +299,8 @@ export function ShareDialog({ onClose }: { onClose: () => void }): JSX.Element {
     >
       {error ? <div className="error-banner">{error}</div> : null}
       <p className="hint" style={{ marginTop: 0 }}>
-        Pairing token memberi akses penuh ke runtime. Gunakan hanya untuk browser yang Anda percaya dan cabut bila
-        tidak dipakai.
+        Pairing token memberi akses penuh ke runtime. Gunakan hanya untuk browser yang Anda percaya dan cabut bila tidak
+        dipakai.
       </p>
       <button className="btn primary" onClick={() => void create()} disabled={pending}>
         {pending ? 'Membuat...' : 'Buat Pairing Token'}
@@ -309,13 +314,17 @@ export function ShareDialog({ onClose }: { onClose: () => void }): JSX.Element {
             <button
               className="btn"
               onClick={() => {
-                void copyText(created.pairUrl).then((ok) => push(ok ? 'success' : 'error', ok ? 'Pairing URL disalin.' : 'Gagal menyalin.'));
+                void copyText(created.pairUrl).then((ok) =>
+                  push(ok ? 'success' : 'error', ok ? 'Pairing URL disalin.' : 'Gagal menyalin.')
+                );
               }}
             >
               Salin
             </button>
           </div>
-          <div className="hint">Token: <span className="mono">{created.token}</span></div>
+          <div className="hint">
+            Token: <span className="mono">{created.token}</span>
+          </div>
         </div>
       ) : null}
 

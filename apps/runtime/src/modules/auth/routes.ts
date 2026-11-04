@@ -38,9 +38,9 @@ authRouter.post(
     rateLimit(`pair:${req.ip ?? 'unknown'}`, 15, 60_000);
     const body = parseWith(pairSchema, req.body);
     const hash = sha256(body.token);
-    const row = db
-      .prepare('SELECT id, expires_at, revoked_at FROM pairing_tokens WHERE token_hash = ?')
-      .get(hash) as { id: string; expires_at: string; revoked_at: string | null } | undefined;
+    const row = db.prepare('SELECT id, expires_at, revoked_at FROM pairing_tokens WHERE token_hash = ?').get(hash) as
+      | { id: string; expires_at: string; revoked_at: string | null }
+      | undefined;
     if (!row || row.revoked_at || new Date(row.expires_at).getTime() <= Date.now()) {
       throw new AppError(401, 'UNAUTHORIZED', 'Token pairing tidak valid atau sudah kedaluwarsa.');
     }
@@ -106,9 +106,13 @@ pairingRouter.post('/', (req, res) => {
   const id = newId();
   const createdAt = nowIso();
   const expiresAt = new Date(Date.now() + config.pairingTtlMs).toISOString();
-  db.prepare(
-    'INSERT INTO pairing_tokens (id, token_hash, label, created_at, expires_at) VALUES (?, ?, ?, ?, ?)'
-  ).run(id, sha256(token), body.label, createdAt, expiresAt);
+  db.prepare('INSERT INTO pairing_tokens (id, token_hash, label, created_at, expires_at) VALUES (?, ?, ?, ?, ?)').run(
+    id,
+    sha256(token),
+    body.label,
+    createdAt,
+    expiresAt
+  );
   res.status(201).json({
     data: {
       id,

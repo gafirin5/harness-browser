@@ -194,7 +194,11 @@ export const orchProviderCreateSchema = z.object({
     .string()
     .min(ORCH_LIMITS.apiKeyMin, 'API key minimal 8 karakter.')
     .max(ORCH_LIMITS.apiKeyMax, 'API key maksimal 255 karakter.'),
-  defaultModel: z.string().trim().min(2, 'Model default minimal 2 karakter.').max(100, 'Model default maksimal 100 karakter.'),
+  defaultModel: z
+    .string()
+    .trim()
+    .min(2, 'Model default minimal 2 karakter.')
+    .max(100, 'Model default maksimal 100 karakter.'),
   costPer1kTokens: decimal4String
 });
 
@@ -234,12 +238,7 @@ export const orchAgentUpdateSchema = z
     name: z.string().trim().min(ORCH_LIMITS.agentNameMin).max(ORCH_LIMITS.agentNameMax).optional(),
     endpointUrl: urlSchema.optional(),
     providerId: idSchema.optional(),
-    maxConcurrency: z.coerce
-      .number()
-      .int()
-      .min(ORCH_LIMITS.concurrencyMin)
-      .max(ORCH_LIMITS.concurrencyMax)
-      .optional(),
+    maxConcurrency: z.coerce.number().int().min(ORCH_LIMITS.concurrencyMin).max(ORCH_LIMITS.concurrencyMax).optional(),
     isActive: z.boolean().optional()
   })
   .refine((data) => Object.keys(data).length > 0, 'Tidak ada perubahan yang dikirim.');
@@ -293,8 +292,14 @@ export const orchTaskListQuerySchema = z.object({
   status: orchTaskStatusSchema.optional(),
   agentId: z.coerce.number().int().positive().optional(),
   providerId: z.coerce.number().int().positive().optional(),
-  dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  dateFrom: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  dateTo: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
   page: z.coerce.number().int().min(1).optional().default(1),
   pageSize: z.coerce.number().int().min(1).max(ORCH_LIMITS.pageSizeMax).optional().default(ORCH_LIMITS.pageSizeDefault)
 });

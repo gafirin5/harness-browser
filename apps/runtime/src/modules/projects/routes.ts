@@ -18,12 +18,16 @@ function mapProject(row: ProjectRow): Project {
 }
 
 export function listProjects(): Project[] {
-  const rows = db.prepare('SELECT id, name, path, created_at FROM projects ORDER BY created_at ASC').all() as unknown as unknown as ProjectRow[];
+  const rows = db
+    .prepare('SELECT id, name, path, created_at FROM projects ORDER BY created_at ASC')
+    .all() as unknown as unknown as ProjectRow[];
   return rows.map(mapProject);
 }
 
 export function getProject(id: string): Project | null {
-  const row = db.prepare('SELECT id, name, path, created_at FROM projects WHERE id = ?').get(id) as unknown as ProjectRow | undefined;
+  const row = db.prepare('SELECT id, name, path, created_at FROM projects WHERE id = ?').get(id) as unknown as
+    | ProjectRow
+    | undefined;
   return row ? mapProject(row) : null;
 }
 

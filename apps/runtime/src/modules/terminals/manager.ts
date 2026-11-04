@@ -80,9 +80,14 @@ function ensureHostFiles(): void {
   if (!fs.existsSync(TMUX_CONF)) {
     fs.writeFileSync(
       TMUX_CONF,
-      ['set -g status off', 'set -g mouse on', 'set -g history-limit 10000', 'set -g default-terminal "xterm-256color"', 'set -g escape-time 10', ''].join(
-        '\n'
-      )
+      [
+        'set -g status off',
+        'set -g mouse on',
+        'set -g history-limit 10000',
+        'set -g default-terminal "xterm-256color"',
+        'set -g escape-time 10',
+        ''
+      ].join('\n')
     );
   }
   if (!fs.existsSync(LAUNCHER)) {
@@ -121,11 +126,9 @@ class TerminalManager {
   }
 
   list(worktreeId?: string): TerminalInfo[] {
-    const rows = (
-      worktreeId
-        ? db.prepare('SELECT * FROM terminals WHERE worktree_id = ? ORDER BY created_at ASC').all(worktreeId)
-        : db.prepare('SELECT * FROM terminals ORDER BY created_at ASC').all()
-    ) as unknown as TerminalRow[];
+    const rows = (worktreeId
+      ? db.prepare('SELECT * FROM terminals WHERE worktree_id = ? ORDER BY created_at ASC').all(worktreeId)
+      : db.prepare('SELECT * FROM terminals ORDER BY created_at ASC').all()) as unknown as TerminalRow[];
     return rows.map(mapTerminal);
   }
 
@@ -206,11 +209,17 @@ class TerminalManager {
       ]);
     } catch (error) {
       const message = (error as { stderr?: string; message?: string }).stderr || (error as Error).message;
-      db.prepare("UPDATE terminals SET status = 'exited', exit_code = 1, updated_at = ? WHERE id = ?").run(nowIso(), id);
+      db.prepare("UPDATE terminals SET status = 'exited', exit_code = 1, updated_at = ? WHERE id = ?").run(
+        nowIso(),
+        id
+      );
       throw new AppError(500, 'TERMINAL_HOST_ERROR', `Gagal menjalankan tmux: ${message.slice(0, 500)}`);
     }
     if (!hasSession(id)) {
-      db.prepare("UPDATE terminals SET status = 'exited', exit_code = 1, updated_at = ? WHERE id = ?").run(nowIso(), id);
+      db.prepare("UPDATE terminals SET status = 'exited', exit_code = 1, updated_at = ? WHERE id = ?").run(
+        nowIso(),
+        id
+      );
       throw new AppError(500, 'TERMINAL_HOST_ERROR', 'Sesi tmux gagal dibuat.');
     }
   }
@@ -397,12 +406,9 @@ class TerminalManager {
         DORADO_TERMINAL_ID: id
       });
     }
-    db.prepare("UPDATE terminals SET status = 'running', exit_code = NULL, cols = ?, rows = ?, updated_at = ? WHERE id = ?").run(
-      cols,
-      rows,
-      nowIso(),
-      id
-    );
+    db.prepare(
+      "UPDATE terminals SET status = 'running', exit_code = NULL, cols = ?, rows = ?, updated_at = ? WHERE id = ?"
+    ).run(cols, rows, nowIso(), id);
     this.attachProcess(runtime, worktree.path, cols, rows);
     const updated = this.getRow(id);
     if (!updated) throw new AppError(500, 'INTERNAL', 'Gagal me-restart terminal.');

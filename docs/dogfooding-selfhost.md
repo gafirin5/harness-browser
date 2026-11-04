@@ -30,3 +30,13 @@ Menguji apakah Dorado dapat dipakai untuk mengembangkan codebase-nya sendiri:
 ## Catatan
 
 Worktree ini dibuat oleh Dorado dari branch `dorado`. Verifikasi dilakukan dari dalam worktree yang sama, menggunakan terminal dan API milik Dorado sendiri.
+
+## Temuan
+
+Saat berpindah dari terminal ke editor, xterm sempat memunculkan error:
+
+```
+TypeError: Cannot read properties of undefined (reading 'dimensions')
+```
+
+Penyebab: callback socket/ResizeObserver masih berjalan setelah terminal di-dispose. Perbaikan: guard `disposed` pada callback socket dan ResizeObserver, lalu verifikasi ulang dengan typecheck, 8 test web, dan UI Chrome 93.

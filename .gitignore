@@ -9,3 +9,6 @@ apps/web/dist/
 apps/runtime/dist/
 packages/shared/dist/
 .dorado-tunnel.json
+test-results/
+playwright-report/
+blob-report/

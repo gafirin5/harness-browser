@@ -6,3 +6,6 @@ coverage/
 package-lock.json
 *.md
 *.d.ts
+test-results/
+playwright-report/
+blob-report/

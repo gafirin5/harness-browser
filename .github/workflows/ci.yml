@@ -61,3 +61,5 @@ jobs:
           BASE_URL: http://127.0.0.1:7788
           DORADO_PASSWORD: ci-password-123
         run: node scripts/e2e-chrome93.mjs
+      - name: Playwright UI smoke
+        run: npx playwright test

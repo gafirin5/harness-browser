@@ -15,7 +15,9 @@
     "dev": "npm run build:shared && concurrently -k -n runtime,web -c cyan,magenta \"npm run dev -w @dorado/runtime\" \"npm run dev -w @dorado/web\"",
     "start": "npm run start -w @dorado/runtime",
     "typecheck": "npm run typecheck -w @dorado/shared && npm run typecheck -w @dorado/runtime && npm run typecheck -w @dorado/web",
-    "test": "npm run test -w @dorado/runtime",
+    "test": "npm run test -w @dorado/runtime && npm run test -w @dorado/web",
+    "test:web": "npm run test -w @dorado/web",
+    "test:e2e:playwright": "npm run build && playwright test",
     "verify": "npm run build:shared && npm run typecheck && npm run lint && npm run format:check && npm run test && npm run build && node scripts/check-syntax.mjs apps/web/dist && node scripts/scan-js.mjs apps/web/dist && node scripts/scan-css.mjs apps/web/dist && node scripts/check-bundle.mjs apps/web/dist",
     "tunnel": "node scripts/tunnel.mjs",
     "mock:orchestrator": "node scripts/mock-orchestrator-agent.mjs",
@@ -29,6 +31,7 @@
     "test:chrome93": "node scripts/e2e-chrome93.mjs"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
     "acorn": "^8.19.0",

@@ -11,6 +11,14 @@ npm test
 
 Hasil: **22 test lulus** — auth/pairing, health check database + header keamanan, ganti password + cabut sesi lain + logout, project/branch, worktree create/delete, terminal create/list/delete, file tree/content/write + path traversal, git stage/commit/push/pull, riwayat sesi, resume sesi dengan mock agent, info runtime, parsing remote GitHub (SSH/HTTPS/git), integrasi GitHub dengan remote non-GitHub (`connected:false`, `NOT_GITHUB`), pencarian kode (match, case sensitivity, batas hasil, regex invalid), agent tidak dikenal, serta Orchestrator (provider + API key tidak bocor, agent token/hash + heartbeat, dispatch task, callback idempoten, biaya half-up `2500 × 0.0020 = 0.0050`, idempotency task, cancel/retry, dan kegagalan dispatcher).
 
+Test frontend (Vitest + Testing Library + jsdom):
+
+```bash
+npm run test:web
+```
+
+Hasil: **5 test lulus** — CommandPalette (filter + Enter + Escape), SettingsDialog (validasi konfirmasi + request ganti password), dan OrchestratorPanel (dashboard summary + tab provider).
+
 ## Gate Chrome 93
 
 ```bash
@@ -26,8 +34,10 @@ npm run verify
 | API JS terlarang | Lulus |
 | CSS terlarang | Lulus |
 | Bundel JS awal | **137,1 KB gzip** (batas 150 KB) |
-| Bundel total + editor & orchestrator lazy | **258,5 KB gzip** (batas 300 KB) |
+| Bundel total + editor & orchestrator lazy | **258,4 KB gzip** (batas 300 KB) |
 | Test API | 22 lulus |
+| Test frontend (Testing Library) | 5 lulus |
+| Playwright E2E | 2 lulus |
 
 ## Smoke Chromium 93
 
@@ -94,6 +104,14 @@ Angka ini pengukuran lokal, bukan benchmark produksi.
 Persistensi terminal divalidasi manual: setelah runtime di-restart, sesi tmux tetap hidup, browser attach kembali, dan perintah `echo survived-restart` berhasil dijalankan di sesi yang sama tanpa ada gibberish terminal.
 
 WebSocket berjalan melalui Cloudflare Quick Tunnel; terminal tetap interaktif.
+
+## Playwright
+
+```bash
+npm run test:e2e:playwright
+```
+
+Hasil: **2 test lulus** di Chrome sistem — login, command palette, panel Orchestrator, dialog Setelan, dan validasi form ganti password. Playwright memakai `channel: chrome` sehingga tidak mengunduh browser tambahan; gate Chromium 93 tetap dijalankan oleh script Puppeteer.
 
 ## Batasan yang Diketahui
 

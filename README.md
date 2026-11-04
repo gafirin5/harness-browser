@@ -211,11 +211,13 @@ Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `ech
 ## Test
 
 ```bash
-npm test            # 22 test integrasi API
-npm run lint        # ESLint
+npm test                 # 22 test API + 5 test frontend (Testing Library)
+npm run test:web         # hanya test frontend (Vitest + Testing Library)
+npm run lint             # ESLint
 npm run format:check
-npm run verify      # typecheck + lint + format + test + build + gate Chrome 93
-npm run e2e:chrome93
+npm run verify           # typecheck + lint + format + test + build + gate Chrome 93
+npm run e2e:chrome93     # E2E Chromium 93
+npm run test:e2e:playwright  # E2E Playwright (Chrome sistem)
 ```
 
 Lihat [`docs/verification-m1.md`](docs/verification-m1.md) untuk hasil verifikasi terakhir.

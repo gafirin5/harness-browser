@@ -13,7 +13,18 @@ module.exports = {
   },
   plugins: ['@typescript-eslint'],
   extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended'],
-  ignorePatterns: ['node_modules/', 'dist/', 'data/', 'backups/', 'coverage/', '*.d.ts', 'package-lock.json'],
+  ignorePatterns: [
+    'node_modules/',
+    'dist/',
+    'data/',
+    'backups/',
+    'coverage/',
+    '*.d.ts',
+    'package-lock.json',
+    'test-results/',
+    'playwright-report/',
+    'blob-report/'
+  ],
   rules: {
     'no-undef': 'off',
     'no-console': 'off',

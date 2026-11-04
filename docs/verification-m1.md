@@ -17,7 +17,7 @@ Test frontend (Vitest + Testing Library + jsdom):
 npm run test:web
 ```
 
-Hasil: **10 test lulus** — CommandPalette (filter + Enter + Escape), SettingsDialog (validasi konfirmasi + request ganti password + mode viewer + setup/konfirmasi 2FA), OrchestratorPanel (dashboard summary + tab provider), AuditDialog (label aksi + target + detail), dan InfoDialog (ringkasan runtime + tombol Salin Ringkasan).
+Hasil: **13 test lulus** — CommandPalette (filter + Enter + Escape), SettingsDialog (validasi konfirmasi + request ganti password + mode viewer + setup/konfirmasi 2FA), OrchestratorPanel (dashboard summary + tab provider), AuditDialog (label aksi + target + detail), InfoDialog (ringkasan runtime + tombol Salin Ringkasan), dan Modal (fokus field body, tidak merebut fokus saat onClose berubah, Escape).
 
 ## Gate Chrome 93
 
@@ -36,7 +36,7 @@ npm run verify
 | Bundel JS awal | **139,2 KB gzip** (batas 150 KB) |
 | Bundel total + editor & orchestrator lazy | **262,4 KB gzip** (batas 300 KB) |
 | Test API | 27 lulus |
-| Test frontend (Testing Library) | 10 lulus |
+| Test frontend (Testing Library) | 13 lulus |
 | Playwright E2E | 3 lulus |
 
 ## Smoke Chromium 93

@@ -60,20 +60,31 @@ export function Modal({
   wide?: boolean;
 }): JSX.Element {
   const panel = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') onCloseRef.current();
     };
     document.addEventListener('keydown', onKey);
     const timer = window.setTimeout(() => {
-      panel.current?.querySelector<HTMLElement>('input, textarea, select, button')?.focus();
+      // Fokuskan field di body, bukan tombol × di header. Efek ini hanya
+      // berjalan saat mount agar parent re-render tidak merebut fokus.
+      const target =
+        panel.current?.querySelector<HTMLElement>(
+          '.modal-body input:not([disabled]), .modal-body textarea:not([disabled]), .modal-body select:not([disabled])'
+        ) ??
+        panel.current?.querySelector<HTMLElement>(
+          '.modal-foot button:not([disabled]), .modal-body button:not([disabled])'
+        );
+      target?.focus();
     }, 20);
     return () => {
       document.removeEventListener('keydown', onKey);
       window.clearTimeout(timer);
     };
-  }, [onClose]);
+  }, []);
 
   return createPortal(
     <div

@@ -217,7 +217,7 @@ Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `ech
 ## Test
 
 ```bash
-npm test                 # 27 test API + 10 test frontend (Testing Library)
+npm test                 # 27 test API + 13 test frontend (Testing Library)
 npm run test:web         # hanya test frontend (Vitest + Testing Library)
 npm run lint             # ESLint
 npm run format:check

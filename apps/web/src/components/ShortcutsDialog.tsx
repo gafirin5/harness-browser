@@ -13,6 +13,7 @@ const SHORTCUTS: Array<{ keys: string; label: string }> = [
   { keys: 'Alt+A', label: 'Jalankan agent' },
   { keys: 'Alt+O', label: 'Buka Orchestrator' },
   { keys: 'Alt+G', label: 'Buka GitHub' },
+  { keys: 'Alt+Shift+G', label: 'Buka Git Graph' },
   { keys: 'Alt+H', label: 'Riwayat sesi' },
   { keys: 'Alt+S', label: 'Setelan' },
   { keys: 'Alt+/', label: 'Daftar shortcut ini' },

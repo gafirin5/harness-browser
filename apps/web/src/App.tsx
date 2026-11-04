@@ -29,6 +29,9 @@ import { Spinner, StatusBadge, useToast } from './components/ui';
 
 const OrchestratorPanel = lazy(() => import('./components/OrchestratorPanel'));
 const AuditDialog = lazy(() => import('./components/AuditDialog'));
+const GitGraphPanel = lazy(() =>
+  import('./components/GitGraphPanel').then((module) => ({ default: module.GitGraphPanel }))
+);
 
 type DialogState =
   | { type: 'project' }
@@ -69,6 +72,7 @@ export function App(): JSX.Element {
   const [quickOpen, setQuickOpen] = useState(false);
   const [jumpOpen, setJumpOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [gitGraphOpen, setGitGraphOpen] = useState(false);
   const shortcutRef = useRef({
     selectedWorktree: null as Worktree | null,
     terminals: [] as TerminalInfo[],
@@ -269,7 +273,8 @@ export function App(): JSX.Element {
         setOrchestratorOpen(true);
       } else if (key === 'g') {
         event.preventDefault();
-        setGithubOpen(true);
+        if (event.shiftKey) setGitGraphOpen(true);
+        else setGithubOpen(true);
       } else if (key === 'h') {
         event.preventDefault();
         setHistoryOpen(true);
@@ -741,6 +746,12 @@ export function App(): JSX.Element {
       run: () => setShortcutsOpen(true)
     },
     {
+      id: 'git-graph',
+      label: 'Git Graph',
+      hint: 'Riwayat commit project dan detail per commit (Alt+Shift+G)',
+      run: () => setGitGraphOpen(true)
+    },
+    {
       id: 'github',
       label: 'GitHub Repository',
       hint: 'Pull request dan issue untuk worktree aktif',
@@ -905,9 +916,19 @@ export function App(): JSX.Element {
 
                   {project.id === selectedProjectId ? (
                     <>
-                      <div style={{ padding: '4px 8px' }}>
+                      <div style={{ padding: '4px 8px', display: 'flex', gap: 6 }}>
                         <button className="btn tiny" onClick={() => setDialog({ type: 'worktree', project })}>
                           + Worktree
+                        </button>
+                        <button
+                          className="btn tiny"
+                          onClick={() => {
+                            void selectProject(project);
+                            setGitGraphOpen(true);
+                          }}
+                          title="Git Graph (Alt+Shift+G)"
+                        >
+                          Graph
                         </button>
                       </div>
                       <div className="worktree-list">
@@ -1336,6 +1357,17 @@ export function App(): JSX.Element {
           }
         >
           <AuditDialog onClose={() => setAuditOpen(false)} />
+        </Suspense>
+      ) : null}
+      {gitGraphOpen ? (
+        <Suspense
+          fallback={
+            <div className="orch-overlay">
+              <div className="empty">Memuat Git Graph...</div>
+            </div>
+          }
+        >
+          <GitGraphPanel project={selectedProject} onClose={() => setGitGraphOpen(false)} />
         </Suspense>
       ) : null}
 

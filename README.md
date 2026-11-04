@@ -29,6 +29,7 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **Quick Open** (`Alt+P`) untuk melompat ke file berdasarkan nama, dan **Jump Palette** (`Alt+J`) untuk pindah cepat antar project, worktree, terminal, file, dan diff.
 - **Shortcut keyboard** (`Alt+/` untuk daftar lengkap): `Alt+T/A/O/G/H/S`, `Alt+]`/`Alt+[`, `Alt+W`, serta **Ctrl+Enter** untuk submit form/dialog mana pun.
 - **Sesi agent interaktif tanpa prompt awal**: buka agent lalu ketik instruksi langsung di terminal agent.
+- **Git Graph** (`Alt+Shift+G` atau tombol **Graph** di project): riwayat commit project dengan lane graph, ref branch/tag, detail commit, dan daftar file yang berubah.
 - **Resume sesi** agent dengan konteks percakapan (OpenCode `--continue`), serta stop sesi berjalan.
 - **Persistensi terminal/agent sejati** setelah runtime restart melalui tmux, dengan tombol Restart untuk shell.
 - Hentikan sesi, tutup terminal, hapus worktree (dengan proteksi sesi aktif).

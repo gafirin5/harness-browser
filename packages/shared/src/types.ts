@@ -15,6 +15,48 @@ export interface Worktree {
   createdAt: string;
 }
 
+export interface GitGraphCommit {
+  hash: string;
+  shortHash: string;
+  parents: string[];
+  author: string;
+  email: string;
+  timestamp: number;
+  subject: string;
+  refs: string[];
+  lane: number;
+}
+
+export interface GitGraphEdge {
+  from: number;
+  to: number;
+  fromLane: number;
+  toLane: number;
+}
+
+export interface GitGraph {
+  commits: GitGraphCommit[];
+  edges: GitGraphEdge[];
+  maxLane: number;
+  truncated: boolean;
+}
+
+export interface GitCommitFile {
+  path: string;
+  status: string;
+}
+
+export interface GitCommitDetail {
+  hash: string;
+  shortHash: string;
+  author: string;
+  email: string;
+  timestamp: number;
+  subject: string;
+  body: string;
+  files: GitCommitFile[];
+}
+
 export type TerminalKind = 'shell' | 'agent';
 export type TerminalStatus = 'running' | 'exited' | 'stopped';
 

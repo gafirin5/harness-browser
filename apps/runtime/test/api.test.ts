@@ -312,6 +312,27 @@ describe('files', () => {
   });
 });
 
+describe('git graph', () => {
+  it('menampilkan commit, lane, dan detail file', async () => {
+    const graph = await api.get(`/api/git/graph?projectId=${projectId}`);
+    expect(graph.status).toBe(200);
+    expect(graph.body.data.commits.length).toBeGreaterThan(0);
+    const first = graph.body.data.commits[0];
+    expect(first.shortHash).toHaveLength(7);
+    expect(typeof first.lane).toBe('number');
+    expect(graph.body.data.maxLane).toBeGreaterThanOrEqual(0);
+    expect(Array.isArray(graph.body.data.edges)).toBe(true);
+
+    const detail = await api.get(`/api/git/graph/commit?projectId=${projectId}&hash=${first.hash}`);
+    expect(detail.status).toBe(200);
+    expect(detail.body.data.hash).toBe(first.hash);
+    expect(detail.body.data.files.length).toBeGreaterThan(0);
+
+    const invalid = await api.get(`/api/git/graph/commit?projectId=${projectId}&hash=not-a-hash`);
+    expect(invalid.status).toBe(422);
+  });
+});
+
 describe('session history', () => {
   it('mencari sesi berdasarkan judul/prompt dan filter status', async () => {
     const worktree = await api.post('/api/worktrees').send({

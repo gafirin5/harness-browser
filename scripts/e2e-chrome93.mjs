@@ -403,6 +403,20 @@ try {
   await page.waitForFunction(() => !document.querySelector('.quick-open'), { timeout: 10000 });
   console.log('[chrome93] quick open OK');
 
+  await page.keyboard.down('Alt');
+  await page.keyboard.down('Shift');
+  await page.keyboard.press('g');
+  await page.keyboard.up('Shift');
+  await page.keyboard.up('Alt');
+  await page.waitForSelector('.git-graph-panel', { timeout: 15000 });
+  await page.waitForFunction(() => document.querySelectorAll('.git-graph-row').length > 0, { timeout: 15000 });
+  await page.click('.git-graph-row');
+  await page.waitForSelector('.git-commit-title, .git-commit-files-title', { timeout: 15000 });
+  const graphRows = await page.evaluate(() => document.querySelectorAll('.git-graph-row').length);
+  console.log(`[chrome93] git graph OK (${graphRows} commit)`);
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('.git-graph-panel'), { timeout: 10000 });
+
   dialogValues.push('created-by-e2e.txt');
   await page.evaluate(() => {
     document.querySelector('button[title="File baru"]')?.click();

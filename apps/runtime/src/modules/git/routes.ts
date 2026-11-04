@@ -6,7 +6,9 @@ import { AppError, asyncHandler, notFound } from '../../lib/errors.js';
 import { gitRaw } from '../../lib/git-raw.js';
 import { parseWith } from '../../lib/validation.js';
 import { csrfGuard, requireAuth } from '../auth/middleware.js';
+import { getProject } from '../projects/routes.js';
 import { getWorktreeRow } from '../worktrees/routes.js';
+import { readCommitDetail, readGitGraph } from './graph.js';
 
 const statusQuery = z.object({ worktreeId: z.string().min(1) });
 const diffQuery = z.object({
@@ -21,6 +23,22 @@ const stageSchema = z.object({
 });
 
 const syncSchema = z.object({ worktreeId: z.string().min(1) });
+
+const graphQuery = z.object({
+  projectId: z.string().min(1),
+  limit: z.coerce.number().int().min(1).max(500).optional().default(150)
+});
+
+const commitQuery = z.object({
+  projectId: z.string().min(1),
+  hash: z.string().regex(/^[0-9a-f]{7,40}$/i, 'Hash commit tidak valid.')
+});
+
+function resolveProject(projectId: string): string {
+  const project = getProject(projectId);
+  if (!project) throw notFound('Project tidak ditemukan.');
+  return project.path;
+}
 
 const commitSchema = z.object({
   worktreeId: z.string().min(1),
@@ -150,6 +168,26 @@ gitRouter.get(
         truncated
       }
     });
+  })
+);
+
+gitRouter.get(
+  '/graph',
+  asyncHandler(async (req, res) => {
+    const query = parseWith(graphQuery, req.query);
+    const cwd = resolveProject(query.projectId);
+    const graph = await readGitGraph(cwd, query.limit);
+    res.json({ data: graph });
+  })
+);
+
+gitRouter.get(
+  '/graph/commit',
+  asyncHandler(async (req, res) => {
+    const query = parseWith(commitQuery, req.query);
+    const cwd = resolveProject(query.projectId);
+    const detail = await readCommitDetail(cwd, query.hash);
+    res.json({ data: detail });
   })
 );
 

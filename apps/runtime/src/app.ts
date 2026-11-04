@@ -9,6 +9,7 @@ import { rateLimit } from './modules/auth/middleware.js';
 import { authRouter, pairingRouter } from './modules/auth/routes.js';
 import { getSessionFromRequest } from './modules/auth/session.js';
 import { usersRouter } from './modules/auth/users.routes.js';
+import { auditRouter } from './modules/audit/routes.js';
 import { projectsRouter } from './modules/projects/routes.js';
 import { worktreesRouter } from './modules/worktrees/routes.js';
 import { terminalsRouter } from './modules/terminals/routes.js';
@@ -107,6 +108,7 @@ export function createApp(): express.Express {
 
   app.use('/api/auth', authRouter);
   app.use('/api/users', usersRouter);
+  app.use('/api/audit', auditRouter);
   app.use('/api/pairing', pairingRouter);
   app.use('/api/projects', projectsRouter);
   app.use('/api/worktrees', worktreesRouter);

@@ -28,6 +28,12 @@ test('login, command palette, orchestrator, dan settings', async ({ page }) => {
   await expect(page.getByText('Sesi berlaku 8 jam tanpa aktivitas')).toBeVisible();
   await page.locator('.modal button[aria-label="Tutup"]').click();
   await expect(page.locator('.modal')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Audit' }).click();
+  await expect(page.getByRole('dialog', { name: 'Audit Log' })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Login' })).toBeVisible();
+  await page.locator('.modal button[aria-label="Tutup"]').click();
+  await expect(page.locator('.modal')).toHaveCount(0);
 });
 
 test('admin membuat viewer dan viewer masuk mode read-only', async ({ page }) => {

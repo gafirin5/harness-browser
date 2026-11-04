@@ -8,6 +8,7 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 
 - Login multi-user (`ADMIN`/`VIEWER`) dengan password bcrypt + sesi server-side, plus **pairing token** untuk akses browser lain.
 - **2FA TOTP**: aktifkan lewat QR authenticator, wajibkan kode 6 digit saat login, dan reset 2FA oleh admin.
+- **Audit log**: riwayat login/gagal login, logout, perubahan password, 2FA, user management, dan pairing token (admin saja).
 - **Pengaturan keamanan**: ganti password, cabut sesi browser lain, kelola user, dan atur 2FA. Viewer bersifat read-only.
 - Tambah project dari path repository Git lokal.
 - Daftar branch dan pembuatan **git worktree** paralel.
@@ -197,6 +198,7 @@ Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `ech
 - Role: **ADMIN** dapat melakukan semua aksi; **VIEWER** hanya bisa membaca (mutasi HTTP ditolak 403 dan input terminal dinonaktifkan).
 - User management hanya untuk admin; aksi menonaktifkan/menurunkan admin terakhir ditolak.
 - **2FA TOTP** opsional per user: secret disimpan terenkripsi, kode diverifikasi dengan window 1 langkah, dan kode yang sudah dipakai ditolak (anti-replay).
+- **Audit log** menyimpan aktor, aksi, target, detail, IP, dan waktu; hanya admin yang dapat membacanya. Password, token, dan secret tidak dicatat.
 - Sesi disimpan server-side sebagai hash token: idle **8 jam**, maksimal **24 jam**, dapat dicabut, dan otomatis dibersihkan setelah 7 hari.
 - Ganti password mencabut semua sesi lain; tersedia juga tombol **Cabut Sesi Lain**.
 - Pairing token 32 byte, disimpan sebagai SHA-256, dapat dicabut, dan memiliki masa berlaku.
@@ -215,7 +217,7 @@ Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `ech
 ## Test
 
 ```bash
-npm test                 # 26 test API + 7 test frontend (Testing Library)
+npm test                 # 27 test API + 8 test frontend (Testing Library)
 npm run test:web         # hanya test frontend (Vitest + Testing Library)
 npm run lint             # ESLint
 npm run format:check

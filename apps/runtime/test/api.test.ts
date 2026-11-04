@@ -804,6 +804,37 @@ describe('multi-user & role', () => {
   });
 });
 
+describe('audit log', () => {
+  it('mencatat login, user, dan menolak viewer', async () => {
+    const failed = await request(app)
+      .post('/api/auth/login')
+      .send({ username: 'viewer-one', password: 'password-salah' });
+    expect(failed.status).toBe(401);
+
+    const all = await api.get('/api/audit?limit=200');
+    expect(all.status).toBe(200);
+    expect(Array.isArray(all.body.data)).toBe(true);
+    expect(all.body.data.some((entry: { action: string }) => entry.action === 'LOGIN')).toBe(true);
+    expect(all.body.data.some((entry: { action: string }) => entry.action === 'USER_CREATE')).toBe(true);
+    expect(all.body.data.some((entry: { action: string }) => entry.action === 'LOGIN_FAILED')).toBe(true);
+
+    const logins = await api.get('/api/audit?action=LOGIN');
+    expect(logins.status).toBe(200);
+    expect(logins.body.data.length).toBeGreaterThan(0);
+    expect(logins.body.data.every((entry: { action: string }) => entry.action === 'LOGIN')).toBe(true);
+
+    const searched = await api.get('/api/audit?q=viewer-one');
+    expect(searched.status).toBe(200);
+    expect(searched.body.data.some((entry: { username: string }) => entry.username === 'viewer-one')).toBe(true);
+
+    const viewer = request.agent(app);
+    expect(
+      (await viewer.post('/api/auth/login').send({ username: 'viewer-one', password: 'viewer-pass-123' })).status
+    ).toBe(200);
+    expect((await viewer.get('/api/audit')).status).toBe(403);
+  });
+});
+
 describe('two-factor authentication', () => {
   it('setup TOTP, login dengan kode, menolak replay, dan reset oleh admin', async () => {
     const created = await api.post('/api/users').send({

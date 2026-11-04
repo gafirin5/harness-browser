@@ -241,6 +241,7 @@ Lalu jalankan runtime dengan `DATA_DIR=/tmp/dorado-perf` di port terpisah dan uk
 - [ ] `SESSION_SECRET` dan `APP_ENCRYPTION_KEY` diganti dan disimpan aman.
 - [ ] 2FA TOTP diaktifkan untuk akun admin dari **Setelan**.
 - [ ] Pairing token hanya dibuat bila diperlukan; token ini tidak meminta kode TOTP.
+- [ ] Audit log diperiksa berkala untuk login gagal dan perubahan user/2FA.
 - [ ] HTTPS aktif dan `COOKIE_SECURE=true`.
 - [ ] Runtime bind `127.0.0.1`, hanya reverse proxy yang publik.
 - [ ] Backup harian berjalan dan restore pernah diuji.

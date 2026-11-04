@@ -25,6 +25,7 @@ import { AddProjectDialog, NewSessionDialog, NewWorktreeDialog, ShareDialog } fr
 import { Spinner, StatusBadge, useToast } from './components/ui';
 
 const OrchestratorPanel = lazy(() => import('./components/OrchestratorPanel'));
+const AuditDialog = lazy(() => import('./components/AuditDialog'));
 
 type DialogState =
   | { type: 'project' }
@@ -61,6 +62,7 @@ export function App(): JSX.Element {
   const [searchOpen, setSearchOpen] = useState(false);
   const [orchestratorOpen, setOrchestratorOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [auditOpen, setAuditOpen] = useState(false);
   const [fileJump, setFileJump] = useState<{ path: string; line: number; token: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [terminalVersion, setTerminalVersion] = useState(0);
@@ -618,6 +620,16 @@ export function App(): JSX.Element {
       hint: 'Ganti password dan cabut sesi lain',
       run: () => setSettingsOpen(true)
     },
+    ...(user?.role === 'ADMIN'
+      ? [
+          {
+            id: 'audit',
+            label: 'Audit Log',
+            hint: 'Riwayat login dan perubahan keamanan',
+            run: () => setAuditOpen(true)
+          }
+        ]
+      : []),
     {
       id: 'share',
       label: 'Share / Pairing Token',
@@ -663,6 +675,11 @@ export function App(): JSX.Element {
         <button className="btn tiny" onClick={() => setDialog({ type: 'share' })}>
           Share
         </button>
+        {user?.role === 'ADMIN' ? (
+          <button className="btn tiny" onClick={() => setAuditOpen(true)}>
+            Audit
+          </button>
+        ) : null}
         <button className="btn tiny" onClick={() => setSettingsOpen(true)}>
           Setelan
         </button>
@@ -1127,6 +1144,17 @@ export function App(): JSX.Element {
           currentUser={user}
           onUserUpdated={(next) => setUser(next)}
         />
+      ) : null}
+      {auditOpen ? (
+        <Suspense
+          fallback={
+            <div className="orch-overlay">
+              <div className="empty">Memuat Audit Log...</div>
+            </div>
+          }
+        >
+          <AuditDialog onClose={() => setAuditOpen(false)} />
+        </Suspense>
       ) : null}
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />

@@ -113,8 +113,22 @@ db.exec(`
     user_agent   TEXT
   );
 
+  CREATE TABLE IF NOT EXISTS audit_logs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER,
+    username    TEXT,
+    action      TEXT NOT NULL,
+    target_type TEXT,
+    target_id   TEXT,
+    detail      TEXT,
+    ip          TEXT,
+    created_at  TEXT NOT NULL
+  );
+
   CREATE INDEX IF NOT EXISTS auth_sessions_token_ix ON auth_sessions(token_hash);
   CREATE INDEX IF NOT EXISTS auth_sessions_expiry_ix ON auth_sessions(expires_at);
+  CREATE INDEX IF NOT EXISTS audit_logs_created_ix ON audit_logs(created_at DESC);
+  CREATE INDEX IF NOT EXISTS audit_logs_action_ix ON audit_logs(action, created_at DESC);
 
   -- Orchestrator: provider, agent pekerja, task, dan log.
   CREATE TABLE IF NOT EXISTS providers (

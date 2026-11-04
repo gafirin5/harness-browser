@@ -1,6 +1,6 @@
 # Verifikasi M1
 
-Tanggal: 2026-11-03
+Tanggal: 2026-11-04
 Lingkungan: Ubuntu 24.04, Node.js 24.19.0, Chromium 93.0.4577.0, cloudflared 2026.10.1.
 
 ## Test API
@@ -9,7 +9,7 @@ Lingkungan: Ubuntu 24.04, Node.js 24.19.0, Chromium 93.0.4577.0, cloudflared 202
 npm test
 ```
 
-Hasil: **13 test lulus** — auth/pairing, project/branch, worktree create/delete, terminal create/list/delete, file tree/content/write + path traversal, git stage/commit/push/pull, riwayat sesi, resume sesi dengan mock agent, info runtime, parsing remote GitHub (SSH/HTTPS/git), integrasi GitHub dengan remote non-GitHub (`connected:false`, `NOT_GITHUB`), pencarian kode (match, case sensitivity, batas hasil, regex invalid), dan agent tidak dikenal.
+Hasil: **19 test lulus** — auth/pairing, project/branch, worktree create/delete, terminal create/list/delete, file tree/content/write + path traversal, git stage/commit/push/pull, riwayat sesi, resume sesi dengan mock agent, info runtime, parsing remote GitHub (SSH/HTTPS/git), integrasi GitHub dengan remote non-GitHub (`connected:false`, `NOT_GITHUB`), pencarian kode (match, case sensitivity, batas hasil, regex invalid), agent tidak dikenal, serta Orchestrator (provider + API key tidak bocor, agent token/hash + heartbeat, dispatch task, callback idempoten, biaya half-up `2500 × 0.0020 = 0.0050`, idempotency task, cancel/retry, dan kegagalan dispatcher).
 
 ## Gate Chrome 93
 
@@ -20,12 +20,12 @@ npm run verify
 | Gate | Hasil |
 |---|---|
 | Typecheck shared/runtime/web | Lulus |
-| Sintaks ES2020 | Lulus — 13 file |
+| Sintaks ES2020 | Lulus — semua chunk |
 | API JS terlarang | Lulus |
 | CSS terlarang | Lulus |
-| Bundel JS awal | **136,3 KB gzip** (batas 150 KB) |
-| Bundel total + editor lazy | **238,9 KB gzip** (batas 300 KB) |
-| Test API | 13 lulus |
+| Bundel JS awal | **136,6 KB gzip** (batas 150 KB) |
+| Bundel total + editor & orchestrator lazy | **257,7 KB gzip** (batas 300 KB) |
+| Test API | 19 lulus |
 
 ## Smoke Chromium 93
 
@@ -50,11 +50,12 @@ Alur yang diuji:
 10. Buka dialog Info Runtime dan verifikasi data runtime.
 11. Buka dialog GitHub pada worktree dengan remote non-GitHub dan verifikasi state "Remote bukan repository GitHub".
 12. Buat dan rename file lewat file explorer.
-13. Buka command palette (`Ctrl+Shift+P`), cari perintah, lalu tutup dengan Escape.
-14. Buka dialog riwayat sesi dan verifikasi pencarian/filter.
-15. Buka dialog Share dan buat pairing token.
-16. Buka pairing URL di incognito context → auto-login.
-17. Nol error konsol/pageerror.
+13. Buka **Orchestrator**, buat provider lewat form UI, daftarkan agent lewat API, jalankan mock worker, buat task, dan verifikasi task berubah `COMPLETED` dengan biaya `$0.0050`; buka detail task dan konfirmasi log "Task selesai".
+14. Buka command palette (`Ctrl+Shift+P`), cari perintah, lalu tutup dengan Escape.
+15. Buka dialog riwayat sesi dan verifikasi pencarian/filter.
+16. Buka dialog Share dan buat pairing token.
+17. Buka pairing URL di incognito context → auto-login.
+18. Nol error konsol/pageerror.
 
 Git push/pull divalidasi melalui test API dengan remote bare lokal; tombol UI tersedia di panel Changes.
 
@@ -68,6 +69,8 @@ WebSocket berjalan melalui Cloudflare Quick Tunnel; terminal tetap interaktif.
 - Log terminal berupa file append-only tanpa rotasi otomatis.
 - Integrasi GitHub read-only; belum ada komentar, review, atau merge dari UI, dan bergantung pada rate limit/token GitHub.
 - Pencarian kode mengikuti `.gitignore`; fallback `git grep` hanya mencari file tracked dan hasil dibatasi 100 match.
+- Orchestrator memakai satu admin; worker agent harus dapat dijangkau runtime, dan `AGENT_KEY_DELIVERY=payload` mengirim API key provider ke worker. Gunakan HTTPS/trusted network atau set `none`.
+- UI Orchestrator saat ini mendukung create provider/agent, toggle aktif, rotasi token, create/cancel/retry task; edit detail provider/agent belum disediakan.
 - Belum ada Electron, mobile, cloud relay, Linear, browser/design mode, SSH worktree, atau multi-user.
 - Quick tunnel bersifat sementara dan URL berubah saat proses dijalankan ulang.
 - Pairing token memberi akses shell penuh; cabut token yang tidak dipakai.

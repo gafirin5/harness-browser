@@ -4,7 +4,7 @@
  * Pemakaian: BASE_URL=http://127.0.0.1:7788 node scripts/e2e-chrome93.mjs
  */
 import { createRequire } from 'node:module';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -28,6 +28,7 @@ if (puppeteerDir) {
 }
 
 const repoDir = fs.mkdtempSync('/tmp/dorado-e2e-');
+let mockAgent = null;
 execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: repoDir });
 execFileSync('git', ['config', 'user.email', 'e2e@dorado.local'], { cwd: repoDir });
 execFileSync('git', ['config', 'user.name', 'E2E'], { cwd: repoDir });
@@ -396,6 +397,128 @@ try {
 
   console.log('[chrome93] file create/rename OK');
 
+  const providerName = `E2E Provider ${Date.now()}`;
+  await clickText('button', 'Orchestrator');
+  await page.waitForSelector('.orch-panel', { timeout: 15000 });
+  await waitText('Agent Aktif');
+  await page.evaluate(() => {
+    const button = Array.from(document.querySelectorAll('.orch-tab')).find((item) =>
+      (item.textContent || '').trim() === 'Provider'
+    );
+    button?.click();
+  });
+  await page.waitForSelector('.orch-table', { timeout: 10000 });
+  await clickText('button', '+ Provider');
+  await page.waitForSelector('.orch-form', { timeout: 10000 });
+  const providerInputs = await page.$$('.orch-form input');
+  if (providerInputs.length < 5) throw new Error('Form provider tidak lengkap.');
+  await providerInputs[0].type(providerName);
+  await providerInputs[1].type('http://127.0.0.1:9999/v1');
+  await providerInputs[2].type('gpt-4o-mini');
+  await providerInputs[3].type('sk-e2e-12345678');
+  // Input tarif sudah terisi default 0.0020.
+  await page.click('.orch-form button[type=submit]');
+  await page.waitForFunction(
+    (name) => document.body.innerText.includes(name),
+    { timeout: 15000 },
+    providerName
+  );
+  console.log('[chrome93] orchestrator provider UI OK');
+
+  const providerList = await api(`/api/orchestrator/providers?q=${encodeURIComponent(providerName)}`, {}, cookie);
+  const provider = providerList.body?.data?.[0];
+  if (!provider) throw new Error('Provider hasil UI tidak ditemukan.');
+
+  const mockPort = 19101 + (Date.now() % 500);
+  const agentCode = `AGT-E2E-${Date.now() % 100000}`;
+  const agentCreated = await api(
+    '/api/orchestrator/agents',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        code: agentCode,
+        name: 'E2E Worker',
+        endpointUrl: `http://127.0.0.1:${mockPort}`,
+        providerId: provider.id,
+        maxConcurrency: 1
+      })
+    },
+    cookie
+  );
+  if (agentCreated.status !== 201) throw new Error(`Gagal membuat agent: ${JSON.stringify(agentCreated.body)}`);
+  const agent = agentCreated.body.data;
+  const agentToken = agentCreated.body.agentToken;
+
+  mockAgent = spawn(process.execPath, ['scripts/mock-orchestrator-agent.mjs'], {
+    env: { ...process.env, AGENT_TOKEN: agentToken, PORT: String(mockPort), MOCK_DELAY_MS: '250' },
+    stdio: 'ignore'
+  });
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    try {
+      const health = await fetch(`http://127.0.0.1:${mockPort}/health`, {
+        headers: { authorization: `Bearer ${agentToken}` }
+      });
+      if (health.ok) break;
+    } catch {
+      // belum siap
+    }
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+
+  const taskCreated = await api(
+    '/api/orchestrator/tasks',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        title: 'E2E orchestrated task',
+        agentId: agent.id,
+        providerId: provider.id,
+        priority: 2,
+        prompt: 'jalankan task e2e orchestrator minimal sepuluh karakter'
+      })
+    },
+    cookie
+  );
+  if (taskCreated.status !== 201) throw new Error(`Gagal membuat task: ${JSON.stringify(taskCreated.body)}`);
+  const task = taskCreated.body.data;
+  let completedTask = null;
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    const current = await api(`/api/orchestrator/tasks/${task.id}`, {}, cookie);
+    if (current.body?.data?.status === 'COMPLETED') {
+      completedTask = current.body.data;
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  if (!completedTask) throw new Error('Task orchestrator tidak selesai.');
+  if (completedTask.costUsd !== '0.0050') {
+    throw new Error(`Biaya task tidak sesuai: ${completedTask.costUsd}`);
+  }
+
+  await page.evaluate(() => {
+    const button = Array.from(document.querySelectorAll('.orch-tab')).find((item) =>
+      (item.textContent || '').trim() === 'Task'
+    );
+    button?.click();
+  });
+  await page.waitForFunction(
+    (code) => document.body.innerText.includes(code),
+    { timeout: 15000 },
+    task.code
+  );
+  await page.evaluate(() => {
+    const row = Array.from(document.querySelectorAll('.orch-table tbody tr')).find((item) =>
+      (item.textContent || '').includes('E2E orchestrated task')
+    );
+    row?.click();
+  });
+  await page.waitForSelector('.orch-detail', { timeout: 10000 });
+  await waitText('Task selesai');
+  await page.screenshot({ path: '/tmp/dorado-orchestrator.png' });
+  await page.click('.orch-head button[aria-label="Tutup"]');
+  await page.waitForFunction(() => !document.querySelector('.orch-panel'), { timeout: 10000 });
+  console.log('[chrome93] orchestrator task end-to-end OK');
+
   await clickText('button', 'History');
   await waitText('Riwayat Sesi Agent');
   await page.click('button[aria-label="Tutup"]');
@@ -441,6 +564,9 @@ try {
   console.error('[chrome93] Screenshot: /tmp/dorado-chrome93.png');
   process.exitCode = 1;
 } finally {
+  if (mockAgent) {
+    try { mockAgent.kill('SIGTERM'); } catch { /* abaikan */ }
+  }
   await browser.close();
   const terminals = await api(`/api/terminals?worktreeId=${createdWorktree.id}`, {}, cookie).catch(() => null);
   for (const terminal of terminals?.body?.data ?? []) {

@@ -11,7 +11,15 @@ interface Info {
   timezone: string;
   tmux: string | null;
   agents: AgentInfo[];
-  counts: { projects: number; worktrees: number; terminals: number; sessions: number };
+  counts: {
+    projects: number;
+    worktrees: number;
+    terminals: number;
+    sessions: number;
+    providers: number;
+    agents: number;
+    tasks: number;
+  };
 }
 
 export function InfoDialog({ onClose }: { onClose: () => void }): JSX.Element {
@@ -71,6 +79,12 @@ export function InfoDialog({ onClose }: { onClose: () => void }): JSX.Element {
             <span className="k">Terminals / Sessions</span>
             <span className="v">
               {info.counts.terminals} / {info.counts.sessions}
+            </span>
+          </div>
+          <div className="kv">
+            <span className="k">Providers / Agents / Tasks</span>
+            <span className="v">
+              {info.counts.providers} / {info.counts.agents} / {info.counts.tasks}
             </span>
           </div>
           <div className="section-label">Agent CLI</div>

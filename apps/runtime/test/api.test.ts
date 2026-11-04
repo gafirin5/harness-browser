@@ -1,11 +1,17 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import http from 'node:http';
+import type { AddressInfo } from 'node:net';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { db } from '../src/db/index.js';
 import { parseGitHubRemote } from '../src/modules/github/routes.js';
+import { getDashboardSummary } from '../src/modules/orchestrator/dashboard.js';
+import { pump } from '../src/modules/orchestrator/dispatcher.js';
+import { heartbeatOnce } from '../src/modules/orchestrator/heartbeat.js';
+import { applyAgentResult, findAgentByToken } from '../src/modules/orchestrator/service.js';
 import { terminalManager } from '../src/modules/terminals/manager.js';
 
 const app = createApp();
@@ -400,5 +406,243 @@ describe('terminals', () => {
     expect(response.status).toBe(422);
     expect(response.body.error.code).toBe('UNKNOWN_AGENT');
     await api.delete(`/api/worktrees/${worktree.body.data.id}`);
+  });
+});
+
+describe('orchestrator', () => {
+  let mockServer: http.Server;
+  let providerId = 0;
+  let agentId = 0;
+  let agentToken = '';
+  const requests: Array<{ method: string; url: string; body: unknown }> = [];
+
+  function clearOrchestratorTables(): void {
+    // Retry task mereferensikan task lain; nonaktifkan FK sebentar untuk cleanup test.
+    db.exec(
+      'PRAGMA foreign_keys = OFF; DELETE FROM task_logs; DELETE FROM tasks; DELETE FROM agents; DELETE FROM providers; DELETE FROM task_code_sequences; PRAGMA foreign_keys = ON;'
+    );
+  }
+
+  beforeAll(async () => {
+    clearOrchestratorTables();
+    mockServer = http.createServer((req, res) => {
+      let raw = '';
+      req.on('data', (chunk) => {
+        raw += chunk;
+      });
+      req.on('end', () => {
+        let body: unknown = null;
+        try {
+          body = raw ? JSON.parse(raw) : null;
+        } catch {
+          body = null;
+        }
+        requests.push({ method: req.method ?? '', url: req.url ?? '', body });
+        if (req.method === 'GET' && req.url === '/health') {
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.end('{"status":"ok","version":"test"}');
+          return;
+        }
+        if (req.method === 'POST' && req.url === '/tasks') {
+          res.writeHead(202, { 'content-type': 'application/json' });
+          res.end('{"accepted":true}');
+          return;
+        }
+        if (req.method === 'POST' && req.url?.includes('/cancel')) {
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.end('{"cancelled":true}');
+          return;
+        }
+        res.writeHead(404);
+        res.end();
+      });
+    });
+    await new Promise<void>((resolve) => mockServer.listen(0, '127.0.0.1', () => resolve()));
+  });
+
+  afterAll(async () => {
+    await new Promise<void>((resolve) => mockServer.close(() => resolve()));
+    clearOrchestratorTables();
+  });
+
+  function mockPort(): number {
+    return (mockServer.address() as AddressInfo).port;
+  }
+
+  async function waitForTask(id: number, status: string, timeout = 4000): Promise<Record<string, unknown>> {
+    const started = Date.now();
+    let last = '';
+    while (Date.now() - started < timeout) {
+      const response = await api.get(`/api/orchestrator/tasks/${id}`);
+      last = response.body?.data?.status ?? '';
+      if (last === status) return response.body.data as Record<string, unknown>;
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    }
+    throw new Error(`Task ${id} tidak mencapai ${status}; status terakhir ${last}`);
+  }
+
+  it('mengelola provider tanpa membocorkan API key', async () => {
+    const created = await api.post('/api/orchestrator/providers').send({
+      name: 'Test Provider',
+      providerType: 'LITELLM',
+      baseUrl: 'http://127.0.0.1:9999/v1',
+      apiKey: 'sk-test-12345678',
+      defaultModel: 'gpt-4o-mini',
+      costPer1kTokens: '0.0020'
+    });
+    expect(created.status).toBe(201);
+    providerId = created.body.data.id;
+    expect(created.body.data.apiKeyLast4).toBe('5678');
+    expect(created.body.data.hasApiKey).toBe(true);
+    expect(JSON.stringify(created.body)).not.toContain('sk-test-12345678');
+
+    const list = await api.get('/api/orchestrator/providers?q=test');
+    expect(list.status).toBe(200);
+    expect(list.body.data).toHaveLength(1);
+    expect(JSON.stringify(list.body)).not.toContain('sk-test-12345678');
+  });
+
+  it('mendaftarkan agent, menyimpan token hash, dan heartbeat', async () => {
+    const created = await api.post('/api/orchestrator/agents').send({
+      code: 'AGT-TEST-01',
+      name: 'Mock Agent',
+      endpointUrl: `http://127.0.0.1:${mockPort()}`,
+      providerId,
+      maxConcurrency: 1
+    });
+    expect(created.status).toBe(201);
+    agentId = created.body.data.id;
+    agentToken = created.body.agentToken;
+    expect(agentToken).toMatch(/^orca_agt_/);
+    expect(created.body.data.status).toBe('IDLE');
+    expect(findAgentByToken(agentToken)?.id).toBe(agentId);
+
+    const list = await api.get('/api/orchestrator/agents');
+    expect(list.status).toBe(200);
+    expect(JSON.stringify(list.body)).not.toContain(agentToken);
+
+    await heartbeatOnce();
+    const after = await api.get(`/api/orchestrator/agents/${agentId}`);
+    expect(after.body.data.lastHeartbeatAt).toBeTruthy();
+    expect(after.body.data.lastError).toBeNull();
+  });
+
+  it('mendispatch task, menerima callback, dan menghitung biaya half-up', async () => {
+    const created = await api.post('/api/orchestrator/tasks').send({
+      title: 'Task uji dispatch',
+      agentId,
+      providerId,
+      priority: 2,
+      prompt: 'jalankan task uji minimal sepuluh karakter'
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.data.status).toBe('QUEUED');
+    const taskId = created.body.data.id as number;
+    const taskCode = created.body.data.code as string;
+    expect(taskCode).toMatch(/^TSK-\d{8}-\d{4}$/);
+
+    await pump();
+    const running = await waitForTask(taskId, 'RUNNING');
+    expect(running.status).toBe('RUNNING');
+
+    const dispatched = requests.find((item) => item.method === 'POST' && item.url === '/tasks') as
+      | { body: { schema?: string; task?: { code?: string } } }
+      | undefined;
+    expect(dispatched?.body.schema).toBe('orca.task.v1');
+    expect(dispatched?.body.task?.code).toBe(taskCode);
+
+    const result = applyAgentResult(agentId, taskCode, {
+      status: 'COMPLETED',
+      tokenUsed: 2500,
+      result: 'selesai'
+    });
+    expect(result.noop).toBe(false);
+
+    const completed = await waitForTask(taskId, 'COMPLETED');
+    expect(completed.tokenUsed).toBe(2500);
+    expect(completed.costUsd).toBe('0.0050');
+    expect(completed.result).toBe('selesai');
+
+    const noop = applyAgentResult(agentId, taskCode, { status: 'COMPLETED', tokenUsed: 2500 });
+    expect(noop.noop).toBe(true);
+
+    const summary = getDashboardSummary();
+    expect(summary.tasksRunning).toBe(0);
+    expect(summary.costTodayUsd).toBe('0.0050');
+  });
+
+  it('idempoten membuat task dan menolak transisi yang salah', async () => {
+    const key = '5d9c0a1e-6f5f-4f6f-9b0f-1a2b3c4d5e6f';
+    const payload = {
+      title: 'Task idempoten',
+      agentId,
+      providerId,
+      priority: 1,
+      prompt: 'prompt idempoten minimal sepuluh karakter'
+    };
+    const first = await api.post('/api/orchestrator/tasks').set('Idempotency-Key', key).send(payload);
+    const second = await api.post('/api/orchestrator/tasks').set('Idempotency-Key', key).send(payload);
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(201);
+    expect(second.body.data.id).toBe(first.body.data.id);
+    expect(second.body.idempotent).toBe(true);
+
+    expect(() =>
+      applyAgentResult(agentId, first.body.data.code as string, { status: 'COMPLETED', tokenUsed: 10 })
+    ).toThrow();
+
+    await api
+      .post(`/api/orchestrator/tasks/${first.body.data.id}/cancel`)
+      .send({ reason: 'bersihkan task idempoten' });
+  });
+
+  it('membatalkan task RUNNING lalu retry menjadi QUEUED', async () => {
+    const created = await api.post('/api/orchestrator/tasks').send({
+      title: 'Task cancel',
+      agentId,
+      providerId,
+      priority: 3,
+      prompt: 'task untuk diuji pembatalan minimal sepuluh karakter'
+    });
+    expect(created.status).toBe(201);
+    const taskId = created.body.data.id as number;
+    await pump();
+    await waitForTask(taskId, 'RUNNING');
+
+    const cancelled = await api
+      .post(`/api/orchestrator/tasks/${taskId}/cancel`)
+      .send({ reason: 'batalkan untuk pengujian' });
+    expect(cancelled.status).toBe(200);
+    expect(cancelled.body.data.status).toBe('CANCELLED');
+
+    const retried = await api.post(`/api/orchestrator/tasks/${taskId}/retry`);
+    expect(retried.status).toBe(201);
+    expect(retried.body.data.status).toBe('QUEUED');
+    expect(retried.body.data.retryOfTaskId).toBe(taskId);
+    await api
+      .post(`/api/orchestrator/tasks/${retried.body.data.id}/cancel`)
+      .send({ reason: 'bersihkan task retry' });
+  });
+
+  it('menandai task FAILED bila endpoint agent tidak dapat dihubungi', async () => {
+    const updated = await api.patch(`/api/orchestrator/agents/${agentId}`).send({
+      endpointUrl: 'http://127.0.0.1:1'
+    });
+    expect(updated.status).toBe(200);
+    const created = await api.post('/api/orchestrator/tasks').send({
+      title: 'Task gagal dispatch',
+      agentId,
+      providerId,
+      priority: 2,
+      prompt: 'task untuk menguji kegagalan dispatcher minimal sepuluh karakter'
+    });
+    expect(created.status).toBe(201);
+    await pump();
+    const failed = await waitForTask(created.body.data.id as number, 'FAILED');
+    expect(failed.status).toBe('FAILED');
+    expect(String(failed.errorMessage ?? '').length).toBeGreaterThan(0);
+
+    const agent = await api.get(`/api/orchestrator/agents/${agentId}`);
+    expect(agent.body.data.status).toBe('OFFLINE');
   });
 });

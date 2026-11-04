@@ -34,7 +34,10 @@ infoRouter.get('/', requireAuth, (_req, res) => {
         projects: count('projects'),
         worktrees: count('worktrees'),
         terminals: count('terminals'),
-        sessions: count('sessions')
+        sessions: count('sessions'),
+        providers: count('providers'),
+        agents: count('agents'),
+        tasks: count('tasks')
       }
     }
   });

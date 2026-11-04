@@ -19,7 +19,14 @@ const envSchema = z.object({
     .optional()
     .transform((value) => (value === undefined ? undefined : typeof value === 'boolean' ? value : ['1', 'true', 'yes', 'on'].includes(value.toLowerCase()))),
   DORADO_AGENTS: z.string().default(''),
-  GITHUB_TOKEN: z.string().default('')
+  GITHUB_TOKEN: z.string().default(''),
+  APP_TIMEZONE: z.string().min(1).default('Asia/Jakarta'),
+  APP_ENCRYPTION_KEY: z.string().default('MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY='),
+  AGENT_DISPATCH_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
+  AGENT_HEALTH_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
+  HEARTBEAT_INTERVAL_MS: z.coerce.number().int().positive().default(30000),
+  TASK_MAX_DURATION_MS: z.coerce.number().int().positive().default(3_600_000),
+  AGENT_KEY_DELIVERY: z.enum(['payload', 'none']).default('payload')
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -39,6 +46,13 @@ if (env.NODE_ENV === 'production') {
 
 const dataDir = path.resolve(env.DATA_DIR.startsWith('~') ? env.DATA_DIR.replace('~', os.homedir()) : env.DATA_DIR);
 const publicOrigin = new URL(env.PUBLIC_BASE_URL).origin;
+const encryptionKey = Buffer.from(env.APP_ENCRYPTION_KEY, 'base64');
+if (encryptionKey.length !== 32) {
+  throw new Error('APP_ENCRYPTION_KEY harus berupa base64 dari tepat 32 byte.');
+}
+if (env.NODE_ENV === 'production' && env.APP_ENCRYPTION_KEY === 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=') {
+  throw new Error('APP_ENCRYPTION_KEY default tidak boleh dipakai di produksi.');
+}
 
 interface ExtraAgent {
   id: string;
@@ -94,5 +108,12 @@ export const config = {
     'http://127.0.0.1:5174'
   ],
   extraAgents: parseExtraAgents(env.DORADO_AGENTS),
-  githubToken: env.GITHUB_TOKEN
+  githubToken: env.GITHUB_TOKEN,
+  appTimezone: env.APP_TIMEZONE,
+  encryptionKey,
+  dispatchTimeoutMs: env.AGENT_DISPATCH_TIMEOUT_MS,
+  healthTimeoutMs: env.AGENT_HEALTH_TIMEOUT_MS,
+  heartbeatIntervalMs: env.HEARTBEAT_INTERVAL_MS,
+  taskMaxDurationMs: env.TASK_MAX_DURATION_MS,
+  agentKeyDelivery: env.AGENT_KEY_DELIVERY
 } as const;

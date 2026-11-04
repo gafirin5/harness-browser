@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import type {
   AgentInfo,
   PairingTokenInfo,
@@ -28,6 +28,8 @@ import {
   ShareDialog
 } from './components/Dialogs';
 import { Spinner, StatusBadge, useToast } from './components/ui';
+
+const OrchestratorPanel = lazy(() => import('./components/OrchestratorPanel'));
 
 type DialogState =
   | { type: 'project' }
@@ -62,6 +64,7 @@ export function App(): JSX.Element {
   const [infoOpen, setInfoOpen] = useState(false);
   const [githubOpen, setGithubOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [orchestratorOpen, setOrchestratorOpen] = useState(false);
   const [fileJump, setFileJump] = useState<{ path: string; line: number; token: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [terminalVersion, setTerminalVersion] = useState(0);
@@ -581,6 +584,12 @@ export function App(): JSX.Element {
       run: () => setHistoryOpen(true)
     },
     {
+      id: 'orchestrator',
+      label: 'Orchestrator',
+      hint: 'Dashboard, provider, agent, dan task',
+      run: () => setOrchestratorOpen(true)
+    },
+    {
       id: 'search',
       label: 'Cari Kode',
       hint: 'Pencarian teks/regex di seluruh worktree',
@@ -624,6 +633,9 @@ export function App(): JSX.Element {
         </span>
         <button className="btn tiny" onClick={() => setPaletteOpen(true)} title="Command palette (Ctrl+Shift+P)">
           ⌘K
+        </button>
+        <button className="btn tiny" onClick={() => setOrchestratorOpen(true)}>
+          Orchestrator
         </button>
         <button className="btn tiny" onClick={() => setSearchOpen(true)} title="Cari kode (Ctrl+Shift+F)">
           Cari
@@ -1064,6 +1076,11 @@ export function App(): JSX.Element {
           onClose={() => setSearchOpen(false)}
           onOpen={openFileAt}
         />
+      ) : null}
+      {orchestratorOpen ? (
+        <Suspense fallback={<div className="orch-overlay"><div className="empty">Memuat Orchestrator...</div></div>}>
+          <OrchestratorPanel onClose={() => setOrchestratorOpen(false)} />
+        </Suspense>
       ) : null}
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />

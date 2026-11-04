@@ -21,7 +21,8 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **Notifikasi sesi** saat agent selesai/gagal + penanda unread di sidebar dan judul tab.
 - **Info Runtime**: versi, Node, tmux, data directory, agent CLI, dan jumlah data.
 - **Integrasi GitHub read-only**: info repository, pull request, dan issue per worktree; link keluar ke GitHub, caching 60 detik, token opsional.
-- **Command palette** (`Ctrl+Shift+P` atau `Ctrl+K`): terminal, agent, worktree, split, search, refresh, history, github, info, share.
+- **Orchestrator terintegrasi**: dashboard realtime (SSE + fallback polling), provider LLM dengan API key terenkripsi, agent worker dengan token/heartbeat, antrean task berprioritas, dispatcher, callback worker, cancel/retry, log, dan perhitungan biaya.
+- **Command palette** (`Ctrl+Shift+P` atau `Ctrl+K`): terminal, agent, worktree, split, orchestrator, search, refresh, history, github, info, share.
 - **Resume sesi** agent dengan konteks percakapan (OpenCode `--continue`), serta stop sesi berjalan.
 - **Persistensi terminal/agent sejati** setelah runtime restart melalui tmux, dengan tombol Restart untuk shell.
 - Hentikan sesi, tutup terminal, hapus worktree (dengan proteksi sesi aktif).
@@ -95,6 +96,32 @@ PUBLIC_BASE_URL=https://<acak>.trycloudflare.com node apps/runtime/dist/server.j
 Pairing URL yang dibuat setelah restart akan memakai domain tunnel. WebSocket juga berjalan melalui tunnel, sehingga terminal tetap interaktif.
 
 > Tunnel publik memberi akses shell ke host ini. Gunakan pairing token, jangan bagikan URL sembarangan, dan hentikan tunnel setelah selesai.
+
+## Orchestrator
+
+Buka tombol **Orchestrator** di topbar atau lewat command palette. Panel berisi:
+
+1. **Dashboard** — kartu agent aktif, task berjalan, task gagal hari ini, biaya hari ini, peringatan, dan aktivitas terbaru. Data diperbarui lewat SSE; jika stream terputus, UI beralih ke polling 2 detik.
+2. **Provider** — endpoint LLM, model default, tarif per 1K token, dan API key yang disimpan terenkripsi AES-256-GCM. API key tidak pernah dikembalikan utuh; hanya 4 karakter terakhir.
+3. **Agent** — worker agent dengan kode unik, endpoint, provider default, dan batas konkurensi. Token agent ditampilkan sekali saat dibuat/dirotasi.
+4. **Task** — antrean berprioritas, dispatcher otomatis, log, cancel, retry, dan detail biaya.
+
+Worker agent menerima `POST /tasks` dengan bearer token lalu mengirim callback ke:
+
+```text
+POST /api/orchestrator/agent/tasks/:code/result
+Authorization: Bearer <token agent>
+```
+
+Untuk pengembangan, jalankan mock worker:
+
+```bash
+AGENT_TOKEN=orca_agt_... PORT=9101 node scripts/mock-orchestrator-agent.mjs
+```
+
+Lalu daftarkan agent dengan endpoint `http://127.0.0.1:9101`. Callback memakai `PUBLIC_BASE_URL`, jadi saat memakai tunnel pastikan URL publik dapat dijangkau worker.
+
+Konfigurasi penting: `APP_TIMEZONE`, `APP_ENCRYPTION_KEY` (base64 32 byte, wajib diganti di production), `AGENT_DISPATCH_TIMEOUT_MS`, `AGENT_HEALTH_TIMEOUT_MS`, `HEARTBEAT_INTERVAL_MS`, `TASK_MAX_DURATION_MS`, dan `AGENT_KEY_DELIVERY`.
 
 ## Integrasi GitHub
 
@@ -178,7 +205,7 @@ Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `ech
 ## Test
 
 ```bash
-npm test          # 13 test integrasi API
+npm test          # 19 test integrasi API
 npm run verify    # typecheck + test + build + gate Chrome 93
 npm run e2e:chrome93
 ```
@@ -189,6 +216,8 @@ Lihat [`docs/verification-m1.md`](docs/verification-m1.md) untuk hasil verifikas
 
 Belum termasuk: Electron desktop, mobile, cloud relay, Linear, browser/design mode, SSH worktree, multi-user, dan recursive delete. Integrasi GitHub bersifat read-only (belum ada komentar, review, atau merge dari UI). Pencarian kode mengikuti `.gitignore`; file ignored/untracked tidak ikut dicari saat memakai fallback `git grep`.
 
+Orchestrator memakai satu admin, worker agent harus dapat dijangkau dari runtime, dan `AGENT_KEY_DELIVERY=payload` mengirim API key provider ke worker (gunakan HTTPS/trusted network atau ubah ke `none`). Arsip otomatis setelah satu tahun belum termasuk MVP.
+
 ## Branch Lama
 
-Aplikasi PRD sebelumnya disimpan di branch `legacy/prd-orchestrator` (commit `snapshot: legacy PRD orchestrator before Dorado rebuild`). Branch aktif `dorado` berisi implementasi baru.
+Aplikasi Orca Orchestrator sebelumnya disimpan di branch `gafirin5/dorado` (commit `7c40ab4`, `snapshot: legacy PRD orchestrator before Dorado rebuild`). Branch aktif `dorado` sekarang menggabungkan workspace Dorado dengan modul Orchestrator di satu aplikasi.

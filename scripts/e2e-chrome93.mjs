@@ -264,6 +264,16 @@ try {
   }
   console.log('[chrome93] file explorer + editor OK');
 
+  await clickText('button', 'Preview');
+  await page.waitForSelector('.markdown-preview h1', { timeout: 15000 });
+  await page.waitForFunction(
+    () => (document.querySelector('.markdown-preview h1')?.textContent ?? '').includes('edited by chrome93'),
+    { timeout: 10000 }
+  );
+  await clickText('button', 'Raw');
+  await page.waitForFunction(() => !document.querySelector('.markdown-preview'), { timeout: 10000 });
+  console.log('[chrome93] markdown preview OK');
+
   await page.waitForFunction(
     () =>
       Array.from(document.querySelectorAll('.change-row')).some((row) => (row.textContent || '').includes('README.md')),

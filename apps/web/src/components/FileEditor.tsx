@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type CodeMirror from 'codemirror';
 import { ApiError, apiGet, request } from '../lib/api';
 import { useToast } from './ui';
+
+const MarkdownPreview = lazy(() => import('./MarkdownPreview'));
 
 interface FileContentResponse {
   data: {
@@ -89,6 +91,7 @@ export function FileEditor({ worktreeId, filePath, onDirtyChange, jumpLine, jump
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editorReady, setEditorReady] = useState(false);
+  const [preview, setPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<CodeMirror.Editor | null>(null);
@@ -121,6 +124,10 @@ export function FileEditor({ worktreeId, filePath, onDirtyChange, jumpLine, jump
 
   useEffect(() => {
     void load();
+  }, [worktreeId, filePath]);
+
+  useEffect(() => {
+    setPreview(false);
   }, [worktreeId, filePath]);
 
   const save = async (): Promise<void> => {
@@ -207,6 +214,15 @@ export function FileEditor({ worktreeId, filePath, onDirtyChange, jumpLine, jump
           {meta?.language ?? ''} {sizeLabel ? `· ${sizeLabel}` : ''} {dirty ? '· belum disimpan' : ''}
         </span>
         <span className="spacer" />
+        {meta?.language === 'markdown' && !meta.binary ? (
+          <button
+            className={`btn tiny ${preview ? 'primary' : ''}`}
+            onClick={() => setPreview((value) => !value)}
+            title={preview ? 'Tampilkan editor mentah' : 'Tampilkan preview markdown'}
+          >
+            {preview ? 'Raw' : 'Preview'}
+          </button>
+        ) : null}
         <button className="btn tiny" onClick={() => void load()} disabled={loading || saving}>
           Muat Ulang
         </button>
@@ -225,8 +241,13 @@ export function FileEditor({ worktreeId, filePath, onDirtyChange, jumpLine, jump
         <div className="empty">File biner tidak dapat ditampilkan di editor teks.</div>
       ) : (
         <>
-          <div className="editor-cm" ref={hostRef} />
-          {!editorReady ? <div className="empty">Menyiapkan editor...</div> : null}
+          <div className="editor-cm" ref={hostRef} style={preview ? { display: 'none' } : undefined} />
+          {!preview && !editorReady ? <div className="empty">Menyiapkan editor...</div> : null}
+          {preview ? (
+            <Suspense fallback={<div className="empty">Memuat preview...</div>}>
+              <MarkdownPreview content={content} />
+            </Suspense>
+          ) : null}
         </>
       )}
     </div>

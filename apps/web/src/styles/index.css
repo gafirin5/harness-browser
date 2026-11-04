@@ -1132,6 +1132,159 @@ button:disabled {
   overflow: hidden;
 }
 
+.markdown-preview {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 20px 40px;
+  background: var(--terminal);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.md-toc {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 18px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 7px;
+  background: var(--panel-2);
+}
+
+.md-toc-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 11.5px;
+}
+
+.md-toc-link:hover {
+  text-decoration: underline;
+}
+
+.md-content h1,
+.md-content h2,
+.md-content h3,
+.md-content h4,
+.md-content h5,
+.md-content h6 {
+  margin: 1.2em 0 0.5em;
+  line-height: 1.25;
+}
+
+.md-content h1 {
+  font-size: 22px;
+  border-bottom: 1px solid var(--border-soft);
+  padding-bottom: 6px;
+}
+
+.md-content h2 {
+  font-size: 18px;
+  border-bottom: 1px solid var(--border-soft);
+  padding-bottom: 4px;
+}
+
+.md-content h3 {
+  font-size: 15px;
+}
+
+.md-content p {
+  margin: 0 0 12px;
+}
+
+.md-content ul,
+.md-content ol {
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+
+.md-content li {
+  margin: 2px 0;
+}
+
+.md-content a {
+  color: var(--accent);
+}
+
+.md-content img {
+  max-width: 100%;
+  border-radius: 6px;
+  border: 1px solid var(--border-soft);
+}
+
+.md-content blockquote {
+  margin: 0 0 12px;
+  padding: 6px 12px;
+  border-left: 3px solid var(--accent);
+  background: var(--panel-2);
+  color: var(--muted);
+}
+
+.md-content code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--panel-3);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.md-code {
+  position: relative;
+  margin: 0 0 14px;
+  padding: 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.24);
+  overflow: auto;
+}
+
+.md-code code {
+  padding: 0;
+  background: transparent;
+  font-size: 12px;
+  white-space: pre;
+}
+
+.md-code-lang {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  color: var(--muted-2);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.md-table-wrap {
+  margin: 0 0 14px;
+  overflow: auto;
+}
+
+.md-content table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+}
+
+.md-content th,
+.md-content td {
+  border: 1px solid var(--border-soft);
+  padding: 5px 8px;
+  text-align: left;
+}
+
+.md-content th {
+  background: var(--panel-2);
+}
+
+.md-content hr {
+  border: none;
+  border-top: 1px solid var(--border-soft);
+  margin: 16px 0;
+}
+
 .editor-cm .CodeMirror {
   height: 100%;
   background: var(--terminal);

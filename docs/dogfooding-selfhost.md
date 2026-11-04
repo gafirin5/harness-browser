@@ -40,3 +40,7 @@ TypeError: Cannot read properties of undefined (reading 'dimensions')
 ```
 
 Penyebab: callback socket/ResizeObserver masih berjalan setelah terminal di-dispose. Perbaikan: guard `disposed` pada callback socket dan ResizeObserver, lalu verifikasi ulang dengan typecheck, 8 test web, dan UI Chrome 93.
+
+## Temuan Tambahan: Build dari Terminal Aplikasi
+
+Terminal Dorado mewarisi `NODE_ENV=development` dari runtime. Build web dari terminal sempat menghasilkan React development (vendor ~313 KB raw). Perbaikan: script build web memaksa `NODE_ENV=production`. Verifikasi: build dengan `NODE_ENV=development` tetap menghasilkan vendor production **140.957 byte (45,29 KB gzip)**.

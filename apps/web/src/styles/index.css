@@ -606,6 +606,11 @@ button:disabled {
   height: 100%;
 }
 
+.keymap-input {
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+
 .statusbar {
   height: 26px;
   flex: 0 0 26px;

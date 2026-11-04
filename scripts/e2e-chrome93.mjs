@@ -200,6 +200,22 @@ try {
   });
   console.log('[chrome93] terminal PTY + WebSocket OK');
 
+  await clickText('button', 'Tampilan');
+  await waitText('Terminal & Keymap');
+  await page.select('select[aria-label="Ukuran font terminal"]', '16');
+  await clickText('button', 'Simpan');
+  await page.waitForFunction(() => !document.body.innerText.includes('Terminal & Keymap'), { timeout: 10000 });
+  const terminalPrefs = await page.evaluate(() => {
+    try {
+      return JSON.parse(window.localStorage.getItem('dorado-terminal-prefs') || '{}');
+    } catch {
+      return {};
+    }
+  });
+  if (terminalPrefs.fontSize !== 16) throw new Error('Preferensi terminal tidak tersimpan.');
+  await clickText('button', 'Reset');
+  console.log('[chrome93] terminal settings + reset OK');
+
   await clickText('button', 'Commands');
   await page.waitForSelector('.quick-command-form input', { timeout: 10000 });
   await page.type('.quick-command-form input', 'E2E Command');

@@ -2,18 +2,25 @@ import { useEffect, useRef, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { SearchAddon } from '@xterm/addon-search';
-import { terminalWsUrl } from '../lib/api';
+import { copyText, terminalWsUrl } from '../lib/api';
+import { FONT_FAMILIES, TERMINAL_THEMES, matchesCombo, type TerminalPrefs } from '../lib/terminal-prefs';
 
 export function TerminalPane({
   terminalId,
   active = true,
-  searchNonce = 0
+  searchNonce = 0,
+  resetNonce = 0,
+  prefs
 }: {
   terminalId: string;
   active?: boolean;
   searchNonce?: number;
+  resetNonce?: number;
+  prefs: TerminalPrefs;
 }): JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null);
+  const terminalRef = useRef<Terminal | null>(null);
+  const fitRef = useRef<FitAddon | null>(null);
   const searchRef = useRef<SearchAddon | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -24,44 +31,63 @@ export function TerminalPane({
     if (!host) return undefined;
 
     const terminal = new Terminal({
-      fontFamily: "'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
-      fontSize: 13,
+      fontFamily: FONT_FAMILIES[prefs.fontFamily],
+      fontSize: prefs.fontSize,
       lineHeight: 1.25,
-      cursorBlink: true,
+      cursorBlink: prefs.cursorBlink,
       scrollback: 8000,
       allowTransparency: true,
-      theme: {
-        background: '#060a0f',
-        foreground: '#dce8f5',
-        cursor: '#f0b45c',
-        cursorAccent: '#060a0f',
-        selectionBackground: 'rgba(240, 180, 92, 0.25)',
-        black: '#1a2430',
-        red: '#ef7272',
-        green: '#5fd18a',
-        yellow: '#f0b45c',
-        blue: '#6aa8ff',
-        magenta: '#c792ea',
-        cyan: '#59c7ba',
-        white: '#dce8f5',
-        brightBlack: '#5d7186',
-        brightRed: '#ff9a9a',
-        brightGreen: '#86e6aa',
-        brightYellow: '#ffd08a',
-        brightBlue: '#9cc4ff',
-        brightMagenta: '#ddb4f2',
-        brightCyan: '#8de3d8',
-        brightWhite: '#ffffff'
-      }
+      theme: TERMINAL_THEMES[prefs.theme]
     });
+    terminalRef.current = terminal;
     const fit = new FitAddon();
     terminal.loadAddon(fit);
+    fitRef.current = fit;
     const search = new SearchAddon();
     terminal.loadAddon(search);
     searchRef.current = search;
     terminal.open(host);
     fit.fit();
     terminal.focus();
+
+    const linkDisposable = terminal.registerLinkProvider({
+      provideLinks: (lineNumber, callback) => {
+        const bufferLine = terminal.buffer.active.getLine(lineNumber - 1);
+        if (!bufferLine) {
+          callback(undefined);
+          return;
+        }
+        const text = bufferLine.translateToString(true);
+        const links: Array<{
+          range: { start: { x: number; y: number }; end: { x: number; y: number } };
+          text: string;
+          activate: () => void;
+        }> = [];
+        const regex = /https?:\/\/[^\s)]+/g;
+        let match = regex.exec(text);
+        while (match) {
+          const url = match[0];
+          const start = match.index + 1;
+          links.push({
+            range: { start: { x: start, y: lineNumber }, end: { x: start + url.length - 1, y: lineNumber } },
+            text: url,
+            activate: () => {
+              window.open(url, '_blank', 'noopener,noreferrer');
+            }
+          });
+          match = regex.exec(text);
+        }
+        callback(links.length > 0 ? links : undefined);
+      }
+    });
+
+    const onContextMenu = (event: MouseEvent): void => {
+      const selection = terminal.getSelection();
+      if (!selection) return;
+      event.preventDefault();
+      void copyText(selection);
+    };
+    host.addEventListener('contextmenu', onContextMenu);
 
     let disposed = false;
     let socket: WebSocket | null = null;
@@ -140,8 +166,12 @@ export function TerminalPane({
       if (resizeTimer) window.clearTimeout(resizeTimer);
       inputDisposable.dispose();
       resizeDisposable.dispose();
+      linkDisposable.dispose();
+      host.removeEventListener('contextmenu', onContextMenu);
       socket?.close();
       searchRef.current = null;
+      fitRef.current = null;
+      terminalRef.current = null;
       terminal.dispose();
     };
   }, [terminalId]);
@@ -149,13 +179,43 @@ export function TerminalPane({
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
       if (!active) return;
-      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'f') return;
-      event.preventDefault();
-      setSearchOpen(true);
+      if (matchesCombo(event, prefs.searchKey)) {
+        event.preventDefault();
+        setSearchOpen(true);
+      } else if (matchesCombo(event, prefs.copyKey)) {
+        const selection = terminalRef.current?.getSelection();
+        if (selection) {
+          event.preventDefault();
+          void copyText(selection);
+        }
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [active]);
+  }, [active, prefs.searchKey, prefs.copyKey]);
+
+  useEffect(() => {
+    const terminal = terminalRef.current;
+    if (!terminal) return;
+    terminal.options.fontSize = prefs.fontSize;
+    terminal.options.fontFamily = FONT_FAMILIES[prefs.fontFamily];
+    terminal.options.cursorBlink = prefs.cursorBlink;
+    terminal.options.theme = TERMINAL_THEMES[prefs.theme];
+    window.setTimeout(() => {
+      try {
+        fitRef.current?.fit();
+      } catch {
+        // abaikan saat layout transisi
+      }
+    }, 20);
+  }, [prefs.fontSize, prefs.fontFamily, prefs.cursorBlink, prefs.theme]);
+
+  useEffect(() => {
+    if (resetNonce > 0) {
+      terminalRef.current?.reset();
+      terminalRef.current?.focus();
+    }
+  }, [resetNonce]);
 
   useEffect(() => {
     if (searchOpen) {

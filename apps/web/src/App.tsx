@@ -10,6 +10,7 @@ import type {
 } from '@dorado/shared';
 import { ApiError, apiDelete, apiGet, apiPost } from './lib/api';
 import { submitOnCtrlEnter } from './lib/keyboard';
+import { loadTerminalPrefs, saveTerminalPrefs, type TerminalPrefs } from './lib/terminal-prefs';
 import { Login } from './components/Login';
 import { TerminalPane } from './components/TerminalPane';
 import { FileEditor } from './components/FileEditor';
@@ -43,6 +44,9 @@ const QuickCommandsDialog = lazy(() =>
 );
 const AutomationsDialog = lazy(() =>
   import('./components/AutomationsDialog').then((module) => ({ default: module.AutomationsDialog }))
+);
+const TerminalSettingsDialog = lazy(() =>
+  import('./components/TerminalSettingsDialog').then((module) => ({ default: module.TerminalSettingsDialog }))
 );
 
 type DialogState =
@@ -87,6 +91,9 @@ export function App(): JSX.Element {
   const [gitGraphOpen, setGitGraphOpen] = useState(false);
   const [quickCommandsOpen, setQuickCommandsOpen] = useState(false);
   const [automationsOpen, setAutomationsOpen] = useState(false);
+  const [terminalSettingsOpen, setTerminalSettingsOpen] = useState(false);
+  const [terminalPrefs, setTerminalPrefs] = useState<TerminalPrefs>(() => loadTerminalPrefs());
+  const [resetNonce, setResetNonce] = useState(0);
   const [dashboardOpen, setDashboardOpen] = useState(false);
   const [dashboardTab, setDashboardTab] = useState<'board' | 'inbox'>('board');
   const [dashboardSessions, setDashboardSessions] = useState<SessionHistoryItem[]>([]);
@@ -1362,6 +1369,24 @@ export function App(): JSX.Element {
               <button className="btn tiny" onClick={() => setQuickCommandsOpen(true)} title="Quick commands">
                 Commands
               </button>
+              <button
+                className="btn tiny"
+                onClick={() => {
+                  setResetNonce((value) => value + 1);
+                  setSearchNonce(0);
+                }}
+                disabled={!activeTerminal}
+                title="Reset terminal"
+              >
+                Reset
+              </button>
+              <button
+                className="btn tiny"
+                onClick={() => setTerminalSettingsOpen(true)}
+                title="Tema, font, dan keymap terminal"
+              >
+                Tampilan
+              </button>
             </div>
           </div>
 
@@ -1444,6 +1469,8 @@ export function App(): JSX.Element {
                           terminalId={terminalId}
                           active={index === 0}
                           searchNonce={index === 0 ? searchNonce : 0}
+                          resetNonce={index === 0 ? resetNonce : 0}
+                          prefs={terminalPrefs}
                         />
                       </div>
                     </div>
@@ -1636,6 +1663,24 @@ export function App(): JSX.Element {
             onRan={() => {
               if (selectedWorktree) void loadWorktreeData(selectedWorktree.id);
               void loadDashboardSessions(true);
+            }}
+          />
+        </Suspense>
+      ) : null}
+      {terminalSettingsOpen ? (
+        <Suspense
+          fallback={
+            <div className="orch-overlay">
+              <div className="empty">Memuat pengaturan terminal...</div>
+            </div>
+          }
+        >
+          <TerminalSettingsDialog
+            prefs={terminalPrefs}
+            onClose={() => setTerminalSettingsOpen(false)}
+            onSave={(next) => {
+              setTerminalPrefs(next);
+              saveTerminalPrefs(next);
             }}
           />
         </Suspense>

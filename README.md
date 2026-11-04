@@ -6,8 +6,8 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 
 ## Fitur M1
 
-- Login admin (password bcrypt + sesi server-side) dan **pairing token** untuk akses browser lain.
-- **Pengaturan keamanan**: ganti password dan cabut sesi browser lain.
+- Login multi-user (`ADMIN`/`VIEWER`) dengan password bcrypt + sesi server-side, plus **pairing token** untuk akses browser lain.
+- **Pengaturan keamanan**: ganti password, cabut sesi browser lain, dan kelola user (admin saja). Viewer bersifat read-only.
 - Tambah project dari path repository Git lokal.
 - Daftar branch dan pembuatan **git worktree** paralel.
 - **Terminal PTY** per worktree dengan xterm.js, resize, replay buffer, dan reconnect.
@@ -75,7 +75,7 @@ npm run dev
 
 ## Alur Dasar
 
-1. Login dengan password admin.
+1. Login dengan username (default `admin`) dan password.
 2. **+** di sidebar → tambahkan path repo Git.
 3. **+ Worktree** → tentukan branch baru dan base ref.
 4. **+ Terminal** → shell interaktif di worktree.
@@ -192,7 +192,9 @@ Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `ech
 ## Keamanan
 
 - Runtime bind ke `127.0.0.1` secara default; gunakan tunnel/reverse proxy untuk akses remote.
-- Password admin di-hash dengan **bcrypt** dan disimpan di database; password awal di-seed dari `ADMIN_PASSWORD`.
+- Password user di-hash dengan **bcrypt** dan disimpan di database; admin pertama di-seed dari `ADMIN_PASSWORD` dengan username `admin`.
+- Role: **ADMIN** dapat melakukan semua aksi; **VIEWER** hanya bisa membaca (mutasi HTTP ditolak 403 dan input terminal dinonaktifkan).
+- User management hanya untuk admin; aksi menonaktifkan/menurunkan admin terakhir ditolak.
 - Sesi disimpan server-side sebagai hash token: idle **8 jam**, maksimal **24 jam**, dapat dicabut, dan otomatis dibersihkan setelah 7 hari.
 - Ganti password mencabut semua sesi lain; tersedia juga tombol **Cabut Sesi Lain**.
 - Pairing token 32 byte, disimpan sebagai SHA-256, dapat dicabut, dan memiliki masa berlaku.
@@ -211,7 +213,7 @@ Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `ech
 ## Test
 
 ```bash
-npm test                 # 22 test API + 5 test frontend (Testing Library)
+npm test                 # 25 test API + 6 test frontend (Testing Library)
 npm run test:web         # hanya test frontend (Vitest + Testing Library)
 npm run lint             # ESLint
 npm run format:check

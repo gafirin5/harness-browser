@@ -78,6 +78,19 @@ db.exec(`
     value TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS users (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    username      TEXT NOT NULL,
+    name          TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    role          TEXT NOT NULL DEFAULT 'VIEWER' CHECK (role IN ('ADMIN','VIEWER')),
+    is_active     INTEGER NOT NULL DEFAULT 1,
+    created_at    TEXT NOT NULL,
+    updated_at    TEXT NOT NULL
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower_ux ON users(lower(username));
+
+  -- Tabel lama; dipertahankan agar database lama bisa dimigrasikan ke users.
   CREATE TABLE IF NOT EXISTS admin_credentials (
     id            INTEGER PRIMARY KEY CHECK (id = 1),
     password_hash TEXT NOT NULL,
@@ -86,6 +99,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS auth_sessions (
     id           TEXT PRIMARY KEY,
+    user_id      INTEGER NOT NULL DEFAULT 1 REFERENCES users(id) ON DELETE CASCADE,
     token_hash   TEXT NOT NULL UNIQUE,
     created_at   TEXT NOT NULL,
     last_seen_at TEXT NOT NULL,
@@ -185,6 +199,13 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS terminals_worktree_ix ON terminals(worktree_id);
   CREATE INDEX IF NOT EXISTS sessions_worktree_ix ON sessions(worktree_id);
 `);
+
+// Migrasi database lama: auth_sessions belum memiliki user_id.
+const authSessionColumns = db.prepare('PRAGMA table_info(auth_sessions)').all() as Array<{ name: string }>;
+if (!authSessionColumns.some((column) => column.name === 'user_id')) {
+  db.exec('ALTER TABLE auth_sessions ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1');
+}
+db.exec('CREATE INDEX IF NOT EXISTS auth_sessions_user_ix ON auth_sessions(user_id)');
 
 export function newId(): string {
   return crypto.randomUUID().replaceAll('-', '').slice(0, 24);

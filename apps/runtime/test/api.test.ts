@@ -707,3 +707,93 @@ describe('auth security', () => {
     expect((await agent.get('/api/auth/me')).status).toBe(401);
   });
 });
+
+describe('multi-user & role', () => {
+  it('admin membuat viewer dan viewer hanya bisa membaca', async () => {
+    const created = await api.post('/api/users').send({
+      username: 'viewer-one',
+      name: 'Viewer Satu',
+      password: 'viewer-pass-123',
+      role: 'VIEWER'
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.data.role).toBe('VIEWER');
+
+    const viewer = request.agent(app);
+    const login = await viewer.post('/api/auth/login').send({ username: 'viewer-one', password: 'viewer-pass-123' });
+    expect(login.status).toBe(200);
+    expect(login.body.data.user.role).toBe('VIEWER');
+    expect(login.body.data.user.username).toBe('viewer-one');
+    expect((await viewer.get('/api/auth/me')).body.data.user.username).toBe('viewer-one');
+    expect((await viewer.get('/api/projects')).status).toBe(200);
+    expect((await viewer.get('/api/orchestrator/summary')).status).toBe(200);
+
+    const blockedProject = await viewer.post('/api/projects').send({ name: 'Blocked', path: '/tmp' });
+    expect(blockedProject.status).toBe(403);
+    expect(blockedProject.body.error.code).toBe('FORBIDDEN');
+
+    const blockedUser = await viewer.post('/api/users').send({
+      username: 'viewer-two',
+      name: 'Viewer Dua',
+      password: 'viewer-pass-123',
+      role: 'VIEWER'
+    });
+    expect(blockedUser.status).toBe(403);
+
+    const blockedPairing = await viewer.post('/api/pairing').send({ label: 'Viewer' });
+    expect(blockedPairing.status).toBe(403);
+    expect((await viewer.get('/api/pairing')).status).toBe(403);
+  });
+
+  it('admin dapat menonaktifkan viewer dan mereset password', async () => {
+    const created = await api.post('/api/users').send({
+      username: 'viewer-two',
+      name: 'Viewer Dua',
+      password: 'viewer-pass-123',
+      role: 'VIEWER'
+    });
+    expect(created.status).toBe(201);
+    const userId = created.body.data.id as number;
+
+    const viewer = request.agent(app);
+    expect(
+      (await viewer.post('/api/auth/login').send({ username: 'viewer-two', password: 'viewer-pass-123' })).status
+    ).toBe(200);
+
+    const disabled = await api.patch(`/api/users/${userId}`).send({ isActive: false });
+    expect(disabled.status).toBe(200);
+    expect(disabled.body.data.isActive).toBe(false);
+    expect((await viewer.get('/api/auth/me')).status).toBe(401);
+
+    const loginDisabled = await request(app)
+      .post('/api/auth/login')
+      .send({ username: 'viewer-two', password: 'viewer-pass-123' });
+    expect(loginDisabled.status).toBe(401);
+
+    const enabled = await api.patch(`/api/users/${userId}`).send({ isActive: true });
+    expect(enabled.status).toBe(200);
+
+    const reset = await api.post(`/api/users/${userId}/reset-password`).send({ newPassword: 'viewer-new-pass' });
+    expect(reset.status).toBe(200);
+
+    const loginOld = await request(app)
+      .post('/api/auth/login')
+      .send({ username: 'viewer-two', password: 'viewer-pass-123' });
+    expect(loginOld.status).toBe(401);
+    const loginNew = await request(app)
+      .post('/api/auth/login')
+      .send({ username: 'viewer-two', password: 'viewer-new-pass' });
+    expect(loginNew.status).toBe(200);
+    expect(loginNew.body.data.user.role).toBe('VIEWER');
+  });
+
+  it('mencegah menonaktifkan atau menurunkan admin terakhir', async () => {
+    const demote = await api.patch('/api/users/1').send({ role: 'VIEWER' });
+    expect(demote.status).toBe(422);
+    expect(demote.body.error.code).toBe('LAST_ADMIN');
+
+    const disable = await api.patch('/api/users/1').send({ isActive: false });
+    expect(disable.status).toBe(422);
+    expect(disable.body.error.code).toBe('LAST_ADMIN');
+  });
+});

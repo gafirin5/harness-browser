@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const loginSchema = z.object({
+  username: z.string().trim().min(1, 'Username wajib diisi.').max(60).default('admin'),
   password: z.string().min(1, 'Password wajib diisi.').max(200)
 });
 
@@ -78,3 +79,31 @@ export const changePasswordSchema = z
     message: 'Password baru harus berbeda dari password saat ini.',
     path: ['newPassword']
   });
+
+const usernameSchema = z
+  .string()
+  .trim()
+  .min(3, 'Username minimal 3 karakter.')
+  .max(40, 'Username maksimal 40 karakter.')
+  .regex(/^[a-zA-Z0-9._-]+$/, 'Username hanya boleh berisi huruf, angka, titik, garis bawah, atau tanda hubung.');
+
+export const userRoleSchema = z.enum(['ADMIN', 'VIEWER']);
+
+export const userCreateSchema = z.object({
+  username: usernameSchema,
+  name: z.string().trim().min(1, 'Nama wajib diisi.').max(80),
+  password: z.string().min(8, 'Password minimal 8 karakter.').max(200),
+  role: userRoleSchema.default('VIEWER')
+});
+
+export const userUpdateSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80).optional(),
+    role: userRoleSchema.optional(),
+    isActive: z.boolean().optional()
+  })
+  .refine((data) => Object.keys(data).length > 0, 'Tidak ada perubahan yang dikirim.');
+
+export const userResetPasswordSchema = z.object({
+  newPassword: z.string().min(8, 'Password minimal 8 karakter.').max(200)
+});

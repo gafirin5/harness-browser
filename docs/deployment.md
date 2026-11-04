@@ -37,7 +37,7 @@ Salin `.env.example` menjadi `.env` dan sesuaikan.
 | `HOST` | `127.0.0.1` | Bind address; gunakan reverse proxy |
 | `PUBLIC_BASE_URL` | `http://localhost:7788` | Origin publik; dipakai callback worker dan CSRF |
 | `DATA_DIR` | `./data` | SQLite, log terminal, worktree |
-| `ADMIN_PASSWORD` | `dorado` | Seed awal password; wajib diganti di production |
+| `ADMIN_PASSWORD` | `dorado` | Seed awal password admin (`admin`); wajib diganti di production |
 | `SESSION_SECRET` | dev | Minimal 32 karakter; wajib diganti |
 | `APP_ENCRYPTION_KEY` | dev | Base64 32 byte; wajib diganti, dipakai enkripsi API key provider |
 | `PAIRING_TOKEN_TTL_HOURS` | `168` | Masa berlaku pairing token |
@@ -66,7 +66,14 @@ NODE_ENV=production \
 node apps/runtime/dist/server.js
 ```
 
-Buka `PUBLIC_BASE_URL`. Login memakai `ADMIN_PASSWORD` hanya saat database belum memiliki `admin_credentials`; setelah itu ganti password dari **Setelan**.
+Buka `PUBLIC_BASE_URL`. Login memakai username `admin` dan `ADMIN_PASSWORD` hanya saat database belum memiliki user; setelah itu ganti password dari **Setelan**.
+
+Role yang tersedia:
+
+- `ADMIN` — akses penuh, termasuk user management dan pairing token.
+- `VIEWER` — read-only: mutasi HTTP ditolak `403`, input/resize terminal dinonaktifkan, tetapi dashboard, file, git, dan orchestrator tetap dapat dilihat.
+
+Admin dapat menambah user, mereset password, dan menonaktifkan user dari **Setelan → Pengguna**. Sistem menolak menonaktifkan atau menurunkan admin terakhir.
 
 ## Systemd
 

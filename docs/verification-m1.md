@@ -9,7 +9,7 @@ Lingkungan: Ubuntu 24.04, Node.js 24.19.0, Chromium 93.0.4577.0, cloudflared 202
 npm test
 ```
 
-Hasil: **22 test lulus** — auth/pairing, health check database + header keamanan, ganti password + cabut sesi lain + logout, project/branch, worktree create/delete, terminal create/list/delete, file tree/content/write + path traversal, git stage/commit/push/pull, riwayat sesi, resume sesi dengan mock agent, info runtime, parsing remote GitHub (SSH/HTTPS/git), integrasi GitHub dengan remote non-GitHub (`connected:false`, `NOT_GITHUB`), pencarian kode (match, case sensitivity, batas hasil, regex invalid), agent tidak dikenal, serta Orchestrator (provider + API key tidak bocor, agent token/hash + heartbeat, dispatch task, callback idempoten, biaya half-up `2500 × 0.0020 = 0.0050`, idempotency task, cancel/retry, dan kegagalan dispatcher).
+Hasil: **25 test lulus** — auth/pairing, health check database + header keamanan, ganti password + cabut sesi lain + logout, project/branch, worktree create/delete, terminal create/list/delete, file tree/content/write + path traversal, git stage/commit/push/pull, riwayat sesi, resume sesi dengan mock agent, info runtime, parsing remote GitHub (SSH/HTTPS/git), integrasi GitHub dengan remote non-GitHub (`connected:false`, `NOT_GITHUB`), pencarian kode (match, case sensitivity, batas hasil, regex invalid), agent tidak dikenal, multi-user & role (viewer read-only, admin menonaktifkan/mereset password viewer, proteksi admin terakhir), serta Orchestrator (provider + API key tidak bocor, agent token/hash + heartbeat, dispatch task, callback idempoten, biaya half-up `2500 × 0.0020 = 0.0050`, idempotency task, cancel/retry, dan kegagalan dispatcher).
 
 Test frontend (Vitest + Testing Library + jsdom):
 
@@ -17,7 +17,7 @@ Test frontend (Vitest + Testing Library + jsdom):
 npm run test:web
 ```
 
-Hasil: **5 test lulus** — CommandPalette (filter + Enter + Escape), SettingsDialog (validasi konfirmasi + request ganti password), dan OrchestratorPanel (dashboard summary + tab provider).
+Hasil: **6 test lulus** — CommandPalette (filter + Enter + Escape), SettingsDialog (validasi konfirmasi + request ganti password + mode viewer), dan OrchestratorPanel (dashboard summary + tab provider).
 
 ## Gate Chrome 93
 
@@ -33,11 +33,11 @@ npm run verify
 | Sintaks ES2020 | Lulus — semua chunk |
 | API JS terlarang | Lulus |
 | CSS terlarang | Lulus |
-| Bundel JS awal | **137,1 KB gzip** (batas 150 KB) |
-| Bundel total + editor & orchestrator lazy | **258,4 KB gzip** (batas 300 KB) |
-| Test API | 22 lulus |
-| Test frontend (Testing Library) | 5 lulus |
-| Playwright E2E | 2 lulus |
+| Bundel JS awal | **137,9 KB gzip** (batas 150 KB) |
+| Bundel total + editor & orchestrator lazy | **259,3 KB gzip** (batas 300 KB) |
+| Test API | 25 lulus |
+| Test frontend (Testing Library) | 6 lulus |
+| Playwright E2E | 3 lulus |
 
 ## Smoke Chromium 93
 
@@ -111,7 +111,7 @@ WebSocket berjalan melalui Cloudflare Quick Tunnel; terminal tetap interaktif.
 npm run test:e2e:playwright
 ```
 
-Hasil: **2 test lulus** di Chrome sistem — login, command palette, panel Orchestrator, dialog Setelan, dan validasi form ganti password. Playwright memakai `channel: chrome` sehingga tidak mengunduh browser tambahan; gate Chromium 93 tetap dijalankan oleh script Puppeteer.
+Hasil: **3 test lulus** di Chrome sistem — login, command palette, panel Orchestrator, dialog Setelan, validasi form ganti password, serta admin membuat viewer dan login viewer dalam mode read-only. Playwright memakai `channel: chrome`/`CHROME_BIN` sehingga tidak mengunduh browser tambahan; gate Chromium 93 tetap dijalankan oleh script Puppeteer.
 
 ## Batasan yang Diketahui
 
@@ -121,7 +121,7 @@ Hasil: **2 test lulus** di Chrome sistem — login, command palette, panel Orche
 - Pencarian kode mengikuti `.gitignore`; fallback `git grep` hanya mencari file tracked dan hasil dibatasi 100 match.
 - Orchestrator memakai satu admin; worker agent harus dapat dijangkau runtime, dan `AGENT_KEY_DELIVERY=payload` mengirim API key provider ke worker. Gunakan HTTPS/trusted network atau set `none`.
 - UI Orchestrator saat ini mendukung create provider/agent, toggle aktif, rotasi token, create/cancel/retry task; edit detail provider/agent belum disediakan.
-- Auth masih satu admin (belum multi-user/role), belum ada 2FA, dan password awal tetap di-seed dari `ADMIN_PASSWORD` saat database kosong.
+- Auth mendukung dua role (`ADMIN`/`VIEWER`), tetapi belum ada 2FA, grup/team, atau audit log khusus perubahan user. Password admin pertama di-seed dari `ADMIN_PASSWORD` saat database kosong.
 - Belum ada Electron, mobile, cloud relay, Linear, browser/design mode, SSH worktree, atau multi-user.
 - Quick tunnel bersifat sementara dan URL berubah saat proses dijalankan ulang.
 - Pairing token memberi akses shell penuh; cabut token yang tidak dipakai.

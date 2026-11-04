@@ -3,6 +3,7 @@ import type { UserInfo } from '@dorado/shared';
 import { ApiError, apiPost } from '../lib/api';
 
 export function Login({ onLoggedIn }: { onLoggedIn: (user: UserInfo) => void }): JSX.Element {
+  const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('');
   const [token, setToken] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +31,7 @@ export function Login({ onLoggedIn }: { onLoggedIn: (user: UserInfo) => void }):
     setError(null);
     setPending(true);
     try {
-      const response = await apiPost<{ data: { user: UserInfo } }>('/auth/login', { password });
+      const response = await apiPost<{ data: { user: UserInfo } }>('/auth/login', { username, password });
       onLoggedIn(response.data.user);
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : 'Login gagal.');
@@ -71,7 +72,19 @@ export function Login({ onLoggedIn }: { onLoggedIn: (user: UserInfo) => void }):
 
         <form onSubmit={(event) => void submitPassword(event)}>
           <div className="field">
-            <label htmlFor="password">Password admin</label>
+            <label htmlFor="username">Username</label>
+            <input
+              id="username"
+              className="input"
+              type="text"
+              autoComplete="username"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              required
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="password">Password</label>
             <input
               id="password"
               className="input"

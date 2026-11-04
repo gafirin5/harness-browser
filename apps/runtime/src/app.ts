@@ -4,9 +4,11 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import { db } from './db/index.js';
-import { errorHandler } from './lib/errors.js';
+import { AppError, errorHandler } from './lib/errors.js';
 import { rateLimit } from './modules/auth/middleware.js';
 import { authRouter, pairingRouter } from './modules/auth/routes.js';
+import { getSessionFromRequest } from './modules/auth/session.js';
+import { usersRouter } from './modules/auth/users.routes.js';
 import { projectsRouter } from './modules/projects/routes.js';
 import { worktreesRouter } from './modules/worktrees/routes.js';
 import { terminalsRouter } from './modules/terminals/routes.js';
@@ -63,7 +65,48 @@ export function createApp(): express.Express {
     }
   });
 
+  app.use('/api', (req, res, next) => {
+    if (req.path === '/auth/login' || req.path === '/auth/pair') {
+      next();
+      return;
+    }
+    if (req.path.startsWith('/orchestrator/agent/')) {
+      next();
+      return;
+    }
+    const session = getSessionFromRequest(req);
+    if (!session) {
+      next(new AppError(401, 'UNAUTHORIZED', 'Silakan masuk terlebih dahulu.'));
+      return;
+    }
+    res.locals.user = session.user;
+    res.locals.sessionId = session.id;
+    next();
+  });
+
+  app.use('/api', (req, res, next) => {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+      next();
+      return;
+    }
+    if (req.path.startsWith('/auth/')) {
+      next();
+      return;
+    }
+    if (req.path.startsWith('/orchestrator/agent/')) {
+      next();
+      return;
+    }
+    const user = res.locals.user as { role?: string } | undefined;
+    if (!user || user.role !== 'ADMIN') {
+      next(new AppError(403, 'FORBIDDEN', 'Mode viewer tidak diizinkan melakukan perubahan.'));
+      return;
+    }
+    next();
+  });
+
   app.use('/api/auth', authRouter);
+  app.use('/api/users', usersRouter);
   app.use('/api/pairing', pairingRouter);
   app.use('/api/projects', projectsRouter);
   app.use('/api/worktrees', worktreesRouter);

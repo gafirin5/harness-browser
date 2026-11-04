@@ -1,11 +1,28 @@
 import type { NextFunction, Request, Response } from 'express';
+import type { UserInfo } from '@dorado/shared';
 import { config } from '../../config.js';
 import { AppError } from '../../lib/errors.js';
-import { readSession } from './session.js';
+import { getSessionFromRequest } from './session.js';
 
-export function requireAuth(req: Request, _res: Response, next: NextFunction): void {
-  if (!readSession(req)) {
+export function requireAuth(req: Request, res: Response, next: NextFunction): void {
+  if (res.locals.user) {
+    next();
+    return;
+  }
+  const session = getSessionFromRequest(req);
+  if (!session) {
     next(new AppError(401, 'UNAUTHORIZED', 'Silakan masuk terlebih dahulu.'));
+    return;
+  }
+  res.locals.user = session.user;
+  res.locals.sessionId = session.id;
+  next();
+}
+
+export function requireAdmin(_req: Request, res: Response, next: NextFunction): void {
+  const user = res.locals.user as UserInfo | undefined;
+  if (!user || user.role !== 'ADMIN') {
+    next(new AppError(403, 'FORBIDDEN', 'Hanya admin yang dapat melakukan tindakan ini.'));
     return;
   }
   next();

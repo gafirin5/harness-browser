@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { UserInfo } from '@dorado/shared';
 import { ToastProvider } from '../src/components/ui';
 import { SettingsDialog } from '../src/components/SettingsDialog';
 import { request } from '../src/lib/api';
@@ -15,10 +16,18 @@ vi.mock('../src/lib/api', async (importOriginal) => {
 
 const mockedRequest = vi.mocked(request);
 
-function renderDialog(): ReturnType<typeof render> {
+const adminUser: UserInfo = {
+  id: 1,
+  username: 'admin',
+  name: 'Admin',
+  role: 'ADMIN',
+  isActive: true
+};
+
+function renderDialog(currentUser: UserInfo = adminUser): ReturnType<typeof render> {
   return render(
     <ToastProvider>
-      <SettingsDialog onClose={() => undefined} />
+      <SettingsDialog onClose={() => undefined} currentUser={currentUser} />
     </ToastProvider>
   );
 }
@@ -26,9 +35,13 @@ function renderDialog(): ReturnType<typeof render> {
 describe('SettingsDialog', () => {
   beforeEach(() => {
     mockedRequest.mockReset();
+    mockedRequest.mockImplementation((async (path: string) => {
+      if (path === '/users') return { data: [] };
+      return { data: { revokedSessions: 2 } };
+    }) as never);
   });
 
-  it('menolak konfirmasi password yang berbeda tanpa memanggil API', async () => {
+  it('menolak konfirmasi password yang berbeda tanpa memanggil API password', async () => {
     const user = userEvent.setup();
     renderDialog();
     const dialog = screen.getByRole('dialog', { name: 'Pengaturan Keamanan' });
@@ -39,11 +52,10 @@ describe('SettingsDialog', () => {
     await user.click(screen.getByRole('button', { name: 'Simpan Password' }));
 
     expect(screen.getByText('Konfirmasi password tidak sama.')).toBeInTheDocument();
-    expect(mockedRequest).not.toHaveBeenCalled();
+    expect(mockedRequest).not.toHaveBeenCalledWith('/auth/password', expect.anything());
   });
 
   it('mengirim permintaan ganti password dan menampilkan toast', async () => {
-    mockedRequest.mockResolvedValue({ data: { revokedSessions: 2 } });
     const user = userEvent.setup();
     renderDialog();
     const dialog = screen.getByRole('dialog', { name: 'Pengaturan Keamanan' });
@@ -58,5 +70,10 @@ describe('SettingsDialog', () => {
       body: { currentPassword: 'password-lama', newPassword: 'password-baru-123' }
     });
     expect(await screen.findByText('Password diperbarui. 2 sesi lain dicabut.')).toBeInTheDocument();
+  });
+
+  it('menampilkan mode viewer tanpa form pengguna', () => {
+    renderDialog({ ...adminUser, id: 2, username: 'viewer', role: 'VIEWER' });
+    expect(screen.getByText('Mode viewer: pengelolaan user hanya tersedia untuk admin.')).toBeInTheDocument();
   });
 });

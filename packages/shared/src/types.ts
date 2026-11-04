@@ -68,9 +68,14 @@ export interface PairingTokenInfo {
   revokedAt: string | null;
 }
 
+export type UserRole = 'ADMIN' | 'VIEWER';
+
 export interface UserInfo {
   id: number;
+  username: string;
   name: string;
+  role: UserRole;
+  isActive: boolean;
 }
 
 export interface ApiErrorBody {

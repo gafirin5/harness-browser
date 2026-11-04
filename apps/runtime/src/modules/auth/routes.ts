@@ -6,8 +6,7 @@ import { db, newId, nowIso } from '../../db/index.js';
 import { AppError } from '../../lib/errors.js';
 import { asyncHandler } from '../../lib/errors.js';
 import { parseWith, sha256 } from '../../lib/validation.js';
-import { verifyAdminPassword, updateAdminPassword } from './credentials.js';
-import { csrfGuard, rateLimit, requireAuth } from './middleware.js';
+import { csrfGuard, rateLimit, requireAdmin, requireAuth } from './middleware.js';
 import {
   clearSessionCookie,
   createSession,
@@ -15,20 +14,23 @@ import {
   revokeCurrentSession,
   revokeOtherSessions
 } from './session.js';
+import { ensureAdminUser, getUserById, updateUserPassword, verifyUserPassword } from './users.js';
 
 export const authRouter = Router();
 authRouter.use(csrfGuard);
+ensureAdminUser();
 
 authRouter.post(
   '/login',
   asyncHandler(async (req, res) => {
     rateLimit(`login:${req.ip ?? 'unknown'}`, 15, 60_000);
     const body = parseWith(loginSchema, req.body);
-    if (!verifyAdminPassword(body.password)) {
-      throw new AppError(401, 'UNAUTHORIZED', 'Password salah.');
+    const user = verifyUserPassword(body.username, body.password);
+    if (!user) {
+      throw new AppError(401, 'UNAUTHORIZED', 'Username atau password salah.');
     }
-    createSession(req, res);
-    res.json({ data: { user: { id: 1, name: 'Admin' } } });
+    createSession(req, res, user.id);
+    res.json({ data: { user } });
   })
 );
 
@@ -45,8 +47,10 @@ authRouter.post(
       throw new AppError(401, 'UNAUTHORIZED', 'Token pairing tidak valid atau sudah kedaluwarsa.');
     }
     db.prepare('UPDATE pairing_tokens SET last_used_at = ? WHERE id = ?').run(nowIso(), row.id);
-    createSession(req, res);
-    res.json({ data: { user: { id: 1, name: 'Admin' } } });
+    const admin = getUserById(1);
+    if (!admin) throw new AppError(500, 'INTERNAL', 'Admin tidak tersedia.');
+    createSession(req, res, admin.id);
+    res.json({ data: { user: admin } });
   })
 );
 
@@ -57,7 +61,7 @@ authRouter.post('/logout', (req, res) => {
 });
 
 authRouter.get('/me', requireAuth, (_req, res) => {
-  res.json({ data: { user: { id: 1, name: 'Admin' } } });
+  res.json({ data: { user: res.locals.user } });
 });
 
 authRouter.patch(
@@ -65,10 +69,11 @@ authRouter.patch(
   requireAuth,
   asyncHandler(async (req, res) => {
     const body = parseWith(changePasswordSchema, req.body);
-    if (!verifyAdminPassword(body.currentPassword)) {
+    const current = res.locals.user as { id: number; username: string } | undefined;
+    if (!current || !verifyUserPassword(current.username, body.currentPassword)) {
       throw new AppError(401, 'UNAUTHORIZED', 'Password saat ini salah.');
     }
-    updateAdminPassword(body.newPassword);
+    updateUserPassword(current.id, body.newPassword);
     const session = getSessionFromRequest(req);
     const revoked = session ? revokeOtherSessions(session.id) : 0;
     res.json({ data: { updated: true, revokedSessions: revoked }, message: 'Password berhasil diperbarui.' });
@@ -83,7 +88,7 @@ authRouter.post('/sessions/revoke-others', requireAuth, (req, res) => {
 });
 
 export const pairingRouter = Router();
-pairingRouter.use(csrfGuard, requireAuth);
+pairingRouter.use(csrfGuard, requireAuth, requireAdmin);
 
 pairingRouter.get('/', (_req, res) => {
   const rows = db

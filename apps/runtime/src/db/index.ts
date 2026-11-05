@@ -107,6 +107,13 @@ db.exec(`
     finished_at   TEXT
   );
 
+  CREATE TABLE IF NOT EXISTS inbox_reads (
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    read_at    TEXT NOT NULL,
+    PRIMARY KEY (user_id, session_id)
+  );
+
   CREATE TABLE IF NOT EXISTS pairing_tokens (
     id           TEXT PRIMARY KEY,
     token_hash   TEXT NOT NULL UNIQUE,

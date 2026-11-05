@@ -1607,6 +1607,16 @@ button:disabled {
   font-size: 11.5px;
 }
 
+.diff-send-group + .diff-send-group {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.diff-send-group .section-label {
+  margin: 2px 0 4px;
+}
+
 .diff-send-item input {
   margin-top: 2px;
 }
@@ -2698,6 +2708,40 @@ button:disabled {
   display: flex;
   justify-content: flex-end;
   gap: 6px;
+}
+
+.gh-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 6px;
+  padding: 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  background: var(--panel);
+  max-height: 240px;
+  overflow: auto;
+}
+
+.gh-thread-item {
+  border-left: 2px solid var(--border);
+  padding-left: 8px;
+}
+
+.gh-thread-item.review {
+  border-left-color: var(--accent);
+}
+
+.gh-thread-meta {
+  color: var(--muted);
+  font-size: 10px;
+  margin-bottom: 2px;
+}
+
+.gh-thread-body {
+  font-size: 11.5px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .gh-item-head {

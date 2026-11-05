@@ -30,6 +30,18 @@ const mergeSchema = numberSchema.extend({
   method: z.enum(['merge', 'squash', 'rebase']).default('merge')
 });
 
+const threadQuerySchema = numberSchema.extend({
+  kind: z.enum(['pull', 'issue']).default('pull')
+});
+
+const closeSchema = numberSchema.extend({
+  kind: z.enum(['pull', 'issue']).default('issue')
+});
+
+const labelsSchema = numberSchema.extend({
+  labels: z.array(z.string().trim().min(1).max(50)).max(50)
+});
+
 export interface GitHubRepoRef {
   owner: string;
   repo: string;
@@ -117,7 +129,7 @@ async function github<T>(path: string): Promise<T> {
 
 export async function githubWrite<T>(
   path: string,
-  method: 'POST' | 'PUT',
+  method: 'POST' | 'PUT' | 'PATCH',
   body: unknown,
   token = config.githubToken
 ): Promise<T> {
@@ -359,5 +371,67 @@ githubRouter.post(
       merge_method: body.method
     });
     res.json({ data: { ok: true, method: body.method, number: body.number } });
+  })
+);
+
+githubRouter.get(
+  '/thread',
+  asyncHandler(async (req, res) => {
+    const query = parseWith(threadQuerySchema, req.query);
+    const ref = await resolveRepo(query.worktreeId);
+    const comments = await github<
+      Array<{ id: number; body: string | null; user: { login: string } | null; created_at: string }>
+    >(`/repos/${ref.owner}/${ref.repo}/issues/${query.number}/comments?per_page=50`);
+    const reviews =
+      query.kind === 'pull'
+        ? await github<
+            Array<{
+              id: number;
+              state: string;
+              body: string | null;
+              user: { login: string } | null;
+              submitted_at: string | null;
+            }>
+          >(`/repos/${ref.owner}/${ref.repo}/pulls/${query.number}/reviews?per_page=50`)
+        : [];
+    res.json({
+      data: {
+        comments: comments.map((comment) => ({
+          id: comment.id,
+          author: comment.user?.login ?? 'ghost',
+          body: comment.body ?? '',
+          createdAt: comment.created_at
+        })),
+        reviews: reviews.map((review) => ({
+          id: review.id,
+          author: review.user?.login ?? 'ghost',
+          state: review.state,
+          body: review.body ?? '',
+          submittedAt: review.submitted_at
+        }))
+      }
+    });
+  })
+);
+
+githubRouter.post(
+  '/close',
+  asyncHandler(async (req, res) => {
+    const body = parseWith(closeSchema, req.body);
+    const ref = await resolveRepo(body.worktreeId);
+    await githubWrite(`/repos/${ref.owner}/${ref.repo}/issues/${body.number}`, 'PATCH', { state: 'closed' });
+    res.json({ data: { ok: true, kind: body.kind, number: body.number } });
+  })
+);
+
+githubRouter.post(
+  '/labels',
+  asyncHandler(async (req, res) => {
+    const body = parseWith(labelsSchema, req.body);
+    const ref = await resolveRepo(body.worktreeId);
+    await githubWrite(`/repos/${ref.owner}/${ref.repo}/issues/${body.number}/labels`, 'PUT', {
+      labels: body.labels
+    });
+    res.json({ data: { ok: true, number: body.number, labels: body.labels } });
   })
 );

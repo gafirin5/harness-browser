@@ -74,6 +74,9 @@ const transcriptQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).default(200)
 });
 
+const inboxReadSchema = z.object({ sessionId: z.string().min(1) });
+const inboxReadAllSchema = z.object({ sessionIds: z.array(z.string().min(1)).max(200) });
+
 function stripAnsi(input: string): string {
   return input
     .replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, '')
@@ -179,6 +182,55 @@ sessionsRouter.get(
     });
   })
 );
+
+sessionsRouter.get('/inbox', (req, res) => {
+  const user = res.locals.user as { id?: number } | undefined;
+  const userId = Number(user?.id ?? 0);
+  const rows = db.prepare("SELECT id FROM sessions WHERE status IN ('completed','failed')").all() as unknown as Array<{
+    id: string;
+  }>;
+  const readIds = db
+    .prepare(
+      `SELECT r.session_id FROM inbox_reads r
+       JOIN sessions s ON s.id = r.session_id
+       WHERE r.user_id = ? AND s.status IN ('completed','failed')`
+    )
+    .all(userId) as unknown as Array<{ session_id: string }>;
+  const readSet = new Set(readIds.map((row) => row.session_id));
+  res.json({
+    data: {
+      total: rows.length,
+      unreadCount: rows.filter((row) => !readSet.has(row.id)).length,
+      readIds: Array.from(readSet)
+    }
+  });
+});
+
+sessionsRouter.post('/inbox/read', (req, res) => {
+  const body = parseWith(inboxReadSchema, req.body);
+  const user = res.locals.user as { id?: number } | undefined;
+  const userId = Number(user?.id ?? 0);
+  const exists = db.prepare('SELECT id FROM sessions WHERE id = ?').get(body.sessionId);
+  if (!exists) throw notFound('Sesi tidak ditemukan.');
+  db.prepare('INSERT OR IGNORE INTO inbox_reads (user_id, session_id, read_at) VALUES (?, ?, ?)').run(
+    userId,
+    body.sessionId,
+    nowIso()
+  );
+  res.json({ data: { ok: true } });
+});
+
+sessionsRouter.post('/inbox/read-all', (req, res) => {
+  const body = parseWith(inboxReadAllSchema, req.body);
+  const user = res.locals.user as { id?: number } | undefined;
+  const userId = Number(user?.id ?? 0);
+  const now = nowIso();
+  const insert = db.prepare('INSERT OR IGNORE INTO inbox_reads (user_id, session_id, read_at) VALUES (?, ?, ?)');
+  for (const sessionId of body.sessionIds) {
+    insert.run(userId, sessionId, now);
+  }
+  res.json({ data: { ok: true, count: body.sessionIds.length } });
+});
 
 sessionsRouter.get('/', (req, res) => {
   const worktreeId = typeof req.query.worktreeId === 'string' ? req.query.worktreeId : null;

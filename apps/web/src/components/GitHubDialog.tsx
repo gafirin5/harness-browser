@@ -80,13 +80,23 @@ export function GitHubDialog({ worktreeId, onClose }: { worktreeId: string | nul
   const [compose, setCompose] = useState<{
     kind: 'pull' | 'issue';
     number: number;
-    mode: 'comment' | 'review' | 'merge';
+    mode: 'comment' | 'review' | 'merge' | 'labels';
   } | null>(null);
+  const [labels, setLabels] = useState('');
   const [body, setBody] = useState('');
   const [reviewEvent, setReviewEvent] = useState<'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT'>('COMMENT');
   const [mergeMethod, setMergeMethod] = useState<'merge' | 'squash' | 'rebase'>('squash');
   const [pending, setPending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [threadFor, setThreadFor] = useState<string | null>(null);
+  const [threadLoading, setThreadLoading] = useState(false);
+  const [threadError, setThreadError] = useState<string | null>(null);
+  const [threadComments, setThreadComments] = useState<
+    Array<{ id: number; author: string; body: string; createdAt: string }>
+  >([]);
+  const [threadReviews, setThreadReviews] = useState<
+    Array<{ id: number; author: string; state: string; body: string; submittedAt: string | null }>
+  >([]);
 
   const loadInfo = useCallback(async (): Promise<void> => {
     if (!worktreeId) return;
@@ -138,9 +148,14 @@ export function GitHubDialog({ worktreeId, onClose }: { worktreeId: string | nul
 
   const list = tab === 'pulls' ? pulls : issues;
 
-  const openCompose = (kind: 'pull' | 'issue', number: number, mode: 'comment' | 'review' | 'merge'): void => {
+  const openCompose = (
+    kind: 'pull' | 'issue',
+    number: number,
+    mode: 'comment' | 'review' | 'merge' | 'labels'
+  ): void => {
     setCompose({ kind, number, mode });
     setBody('');
+    setLabels('');
     setReviewEvent('COMMENT');
     setMergeMethod('squash');
     setActionError(null);
@@ -148,8 +163,12 @@ export function GitHubDialog({ worktreeId, onClose }: { worktreeId: string | nul
 
   const submitAction = async (): Promise<void> => {
     if (!compose || !worktreeId) return;
-    if (compose.mode !== 'merge' && !body.trim()) {
+    if ((compose.mode === 'comment' || compose.mode === 'review') && !body.trim()) {
       setActionError('Isi komentar terlebih dahulu.');
+      return;
+    }
+    if (compose.mode === 'labels' && labels.trim().length === 0) {
+      setActionError('Isi minimal satu label.');
       return;
     }
     setPending(true);
@@ -171,6 +190,18 @@ export function GitHubDialog({ worktreeId, onClose }: { worktreeId: string | nul
           body
         });
         push('success', `Review ${reviewEvent.toLowerCase()} dikirim untuk #${compose.number}.`);
+      } else if (compose.mode === 'labels') {
+        const parsed = labels
+          .split(',')
+          .map((label) => label.trim())
+          .filter(Boolean);
+        await apiPost('/github/labels', {
+          worktreeId,
+          number: compose.number,
+          labels: parsed
+        });
+        push('success', `Label #${compose.number} diperbarui.`);
+        await loadList(tab, state);
       } else {
         await apiPost('/github/merge', {
           worktreeId,
@@ -186,6 +217,46 @@ export function GitHubDialog({ worktreeId, onClose }: { worktreeId: string | nul
       setActionError(caught instanceof ApiError ? caught.message : 'Aksi GitHub gagal.');
     } finally {
       setPending(false);
+    }
+  };
+
+  const closeTicket = async (kind: 'pull' | 'issue', number: number): Promise<void> => {
+    if (!worktreeId) return;
+    if (!window.confirm(`Tutup #${number}?`)) return;
+    try {
+      await apiPost('/github/close', { worktreeId, number, kind });
+      push('success', `#${number} ditutup.`);
+      await loadList(tab, state);
+    } catch (caught) {
+      setListError(caught instanceof ApiError ? caught.message : 'Gagal menutup item GitHub.');
+    }
+  };
+
+  const loadThread = async (kind: 'pull' | 'issue', number: number): Promise<void> => {
+    const key = `${kind}:${number}`;
+    if (threadFor === key) {
+      setThreadFor(null);
+      return;
+    }
+    if (!worktreeId) return;
+    setThreadFor(key);
+    setThreadLoading(true);
+    setThreadError(null);
+    try {
+      const response = await apiGet<{
+        data: {
+          comments: Array<{ id: number; author: string; body: string; createdAt: string }>;
+          reviews: Array<{ id: number; author: string; state: string; body: string; submittedAt: string | null }>;
+        };
+      }>(`/github/thread?worktreeId=${encodeURIComponent(worktreeId)}&number=${number}&kind=${kind}`);
+      setThreadComments(response.data.comments);
+      setThreadReviews(response.data.reviews);
+    } catch (caught) {
+      setThreadError(caught instanceof ApiError ? caught.message : 'Gagal memuat diskusi GitHub.');
+      setThreadComments([]);
+      setThreadReviews([]);
+    } finally {
+      setThreadLoading(false);
     }
   };
 
@@ -240,6 +311,15 @@ export function GitHubDialog({ worktreeId, onClose }: { worktreeId: string | nul
             <p className="hint">Pull request akan di-merge menggunakan token GitHub yang dikonfigurasi.</p>
           </>
         ) : null}
+        {compose.mode === 'labels' ? (
+          <input
+            className="input"
+            placeholder="Label dipisah koma, mis. bug, ui"
+            value={labels}
+            onChange={(event) => setLabels(event.target.value)}
+            aria-label="Label GitHub"
+          />
+        ) : null}
         <div className="gh-compose-actions">
           <button className="btn tiny" onClick={() => setCompose(null)} disabled={pending}>
             Batal
@@ -251,9 +331,40 @@ export function GitHubDialog({ worktreeId, onClose }: { worktreeId: string | nul
                 ? 'Kirim Komentar'
                 : compose.mode === 'review'
                   ? 'Kirim Review'
-                  : 'Merge Sekarang'}
+                  : compose.mode === 'labels'
+                    ? 'Simpan Label'
+                    : 'Merge Sekarang'}
           </button>
         </div>
+      </div>
+    );
+  };
+
+  const renderThread = (kind: 'pull' | 'issue', number: number): JSX.Element | null => {
+    if (threadFor !== `${kind}:${number}`) return null;
+    return (
+      <div className="gh-thread">
+        {threadError ? <div className="error-banner">{threadError}</div> : null}
+        {threadLoading ? <div className="empty">Memuat diskusi...</div> : null}
+        {!threadLoading && threadComments.length === 0 && threadReviews.length === 0 ? (
+          <div className="empty">Belum ada komentar atau review.</div>
+        ) : null}
+        {threadReviews.map((review) => (
+          <div className="gh-thread-item review" key={`review-${review.id}`}>
+            <div className="gh-thread-meta">
+              @{review.author} · review {review.state.toLowerCase()} · {formatDate(review.submittedAt ?? '')}
+            </div>
+            <div className="gh-thread-body">{review.body || '(tanpa catatan)'}</div>
+          </div>
+        ))}
+        {threadComments.map((comment) => (
+          <div className="gh-thread-item" key={`comment-${comment.id}`}>
+            <div className="gh-thread-meta">
+              @{comment.author} · {formatDate(comment.createdAt)}
+            </div>
+            <div className="gh-thread-body">{comment.body}</div>
+          </div>
+        ))}
       </div>
     );
   };
@@ -371,16 +482,28 @@ export function GitHubDialog({ worktreeId, onClose }: { worktreeId: string | nul
                         <button className="btn tiny" onClick={() => openCompose('pull', pull.number, 'review')}>
                           Review
                         </button>
+                        <button className="btn tiny" onClick={() => openCompose('pull', pull.number, 'labels')}>
+                          Label
+                        </button>
+                        <button className="btn tiny" onClick={() => void loadThread('pull', pull.number)}>
+                          Diskusi
+                        </button>
                         {pull.state === 'open' ? (
-                          <button className="btn tiny" onClick={() => openCompose('pull', pull.number, 'merge')}>
-                            Merge
-                          </button>
+                          <>
+                            <button className="btn tiny" onClick={() => openCompose('pull', pull.number, 'merge')}>
+                              Merge
+                            </button>
+                            <button className="btn tiny ghost" onClick={() => void closeTicket('pull', pull.number)}>
+                              Tutup
+                            </button>
+                          </>
                         ) : null}
                         <a className="btn tiny ghost" href={pull.htmlUrl} target="_blank" rel="noreferrer">
                           Buka ↗
                         </a>
                       </div>
                       {renderComposer('pull', pull.number)}
+                      {renderThread('pull', pull.number)}
                     </div>
                   ))
                 : issues.map((issue) => (
@@ -415,11 +538,23 @@ export function GitHubDialog({ worktreeId, onClose }: { worktreeId: string | nul
                         <button className="btn tiny" onClick={() => openCompose('issue', issue.number, 'comment')}>
                           Komentar
                         </button>
+                        <button className="btn tiny" onClick={() => openCompose('issue', issue.number, 'labels')}>
+                          Label
+                        </button>
+                        <button className="btn tiny" onClick={() => void loadThread('issue', issue.number)}>
+                          Diskusi
+                        </button>
+                        {issue.state === 'open' ? (
+                          <button className="btn tiny ghost" onClick={() => void closeTicket('issue', issue.number)}>
+                            Tutup
+                          </button>
+                        ) : null}
                         <a className="btn tiny ghost" href={issue.htmlUrl} target="_blank" rel="noreferrer">
                           Buka ↗
                         </a>
                       </div>
                       {renderComposer('issue', issue.number)}
+                      {renderThread('issue', issue.number)}
                     </div>
                   ))}
             </div>

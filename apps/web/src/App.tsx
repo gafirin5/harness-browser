@@ -102,15 +102,7 @@ export function App(): JSX.Element {
   const [dashboardTab, setDashboardTab] = useState<'board' | 'inbox'>('board');
   const [dashboardSessions, setDashboardSessions] = useState<SessionHistoryItem[]>([]);
   const [dashboardLoading, setDashboardLoading] = useState(false);
-  const [inboxRead, setInboxRead] = useState<string[]>(() => {
-    try {
-      const raw = window.localStorage.getItem('dorado-inbox-read');
-      const parsed: unknown = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === 'string') : [];
-    } catch {
-      return [];
-    }
-  });
+  const [inboxRead, setInboxRead] = useState<string[]>([]);
   const shortcutRef = useRef({
     selectedWorktree: null as Worktree | null,
     terminals: [] as TerminalInfo[],
@@ -271,13 +263,20 @@ export function App(): JSX.Element {
     return () => window.clearInterval(timer);
   }, [booted, loadDashboardSessions]);
 
-  useEffect(() => {
+  const loadInboxReads = useCallback(async () => {
     try {
-      window.localStorage.setItem('dorado-inbox-read', JSON.stringify(inboxRead.slice(-500)));
+      const response = await apiGet<{ data: { readIds: string[] } }>('/sessions/inbox');
+      setInboxRead(response.data.readIds);
     } catch {
-      // localStorage bisa diblokir; abaikan.
+      // Abaikan; inbox tetap menampilkan status belum dibaca.
     }
-  }, [inboxRead]);
+  }, []);
+
+  useEffect(() => {
+    if (!booted) return undefined;
+    void loadInboxReads();
+    return undefined;
+  }, [booted, loadInboxReads]);
 
   const unreadInboxCount = useMemo(() => {
     const read = new Set(inboxRead);
@@ -632,6 +631,7 @@ export function App(): JSX.Element {
 
   const markInboxRead = (id: string): void => {
     setInboxRead((current) => (current.includes(id) ? current : [...current, id]));
+    void apiPost('/sessions/inbox/read', { sessionId: id }).catch(() => undefined);
   };
 
   const markInboxAllRead = (ids: string[]): void => {
@@ -640,6 +640,7 @@ export function App(): JSX.Element {
       for (const id of ids) next.add(id);
       return Array.from(next);
     });
+    void apiPost('/sessions/inbox/read-all', { sessionIds: ids }).catch(() => undefined);
   };
 
   const createTerminal = async (): Promise<void> => {

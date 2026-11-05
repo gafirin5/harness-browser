@@ -101,6 +101,10 @@ export function createApp(): express.Express {
       next();
       return;
     }
+    if (req.path.startsWith('/sessions/inbox')) {
+      next();
+      return;
+    }
     const user = res.locals.user as { role?: string } | undefined;
     if (!user || user.role !== 'ADMIN') {
       next(new AppError(403, 'FORBIDDEN', 'Mode viewer tidak diizinkan melakukan perubahan.'));

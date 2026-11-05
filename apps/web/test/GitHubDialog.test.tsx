@@ -54,6 +54,9 @@ describe('GitHubDialog write actions', () => {
           ]
         };
       }
+      if (path.startsWith('/github/thread')) {
+        return { data: { comments: [], reviews: [] } };
+      }
       return { data: [] };
     });
     mockedApiPost.mockResolvedValue({ data: { ok: true } });
@@ -91,5 +94,20 @@ describe('GitHubDialog write actions', () => {
         method: 'squash'
       })
     );
+
+    fireEvent.click(screen.getByText('Label'));
+    const labelsInput = await screen.findByLabelText('Label GitHub');
+    fireEvent.change(labelsInput, { target: { value: 'bug, ui' } });
+    fireEvent.click(screen.getByText('Simpan Label'));
+    await waitFor(() =>
+      expect(mockedApiPost).toHaveBeenCalledWith('/github/labels', {
+        worktreeId: 'wt-1',
+        number: 7,
+        labels: ['bug', 'ui']
+      })
+    );
+
+    fireEvent.click(screen.getByText('Diskusi'));
+    await waitFor(() => expect(screen.getByText('Belum ada komentar atau review.')).toBeTruthy());
   });
 });

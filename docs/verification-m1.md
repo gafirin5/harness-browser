@@ -9,7 +9,7 @@ Lingkungan: Ubuntu 24.04, Node.js 24.19.0, Chromium 93.0.4577.0, cloudflared 202
 npm test
 ```
 
-Hasil: **51 test lulus** — auth/pairing, health check database + header keamanan, ganti password + cabut sesi lain + logout, project/branch, worktree create/delete + checkpoint, terminal create/list/input/delete, file tree/content/write + path traversal, git stage/commit/push/pull, git graph + detail commit, quick commands, komentar diff + resolve, riwayat sesi, hapus/purge sesi, transcript search, resume sesi dengan mock agent, info runtime, parsing remote GitHub (SSH/HTTPS/git), integrasi GitHub dengan remote non-GitHub (`connected:false`, `NOT_GITHUB`, aksi tulis ditolak), pencarian kode (match, case sensitivity, batas hasil, regex invalid), agent tidak dikenal, automations (CRUD + run manual + retry + zona waktu), multi-user & role (viewer read-only, admin menonaktifkan/mereset password viewer, proteksi admin terakhir), 2FA (setup QR, konfirmasi, login wajib kode, anti-replay, reset oleh admin), audit log (login/gagal login/user create + viewer ditolak), serta Orchestrator (provider + API key tidak bocor, agent token/hash + heartbeat, dispatch task, callback idempoten, biaya half-up `2500 × 0.0020 = 0.0050`, idempotency task, cancel/retry, dan kegagalan dispatcher).
+Hasil: **52 test lulus** — auth/pairing, health check database + header keamanan, ganti password + cabut sesi lain + logout, project/branch, worktree create/delete + checkpoint, terminal create/list/input/delete, file tree/content/write + path traversal, git stage/commit/push/pull, git graph + detail commit, quick commands, komentar diff + resolve + multi-file, inbox read per user, riwayat sesi, hapus/purge sesi, transcript search, resume sesi dengan mock agent, info runtime, parsing remote GitHub (SSH/HTTPS/git), integrasi GitHub dengan remote non-GitHub (`connected:false`, `NOT_GITHUB`, aksi tulis ditolak), pencarian kode (match, case sensitivity, batas hasil, regex invalid), agent tidak dikenal, automations (CRUD + run manual + retry + zona waktu), multi-user & role (viewer read-only, admin menonaktifkan/mereset password viewer, proteksi admin terakhir), 2FA (setup QR, konfirmasi, login wajib kode, anti-replay, reset oleh admin), audit log (login/gagal login/user create + viewer ditolak), serta Orchestrator (provider + API key tidak bocor, agent token/hash + heartbeat, dispatch task, callback idempoten, biaya half-up `2500 × 0.0020 = 0.0050`, idempotency task, cancel/retry, dan kegagalan dispatcher).
 
 Test frontend (Vitest + Testing Library + jsdom):
 
@@ -17,7 +17,7 @@ Test frontend (Vitest + Testing Library + jsdom):
 npm run test:web
 ```
 
-Hasil: **50 test lulus** — CommandPalette, SettingsDialog, OrchestratorPanel, AuditDialog, InfoDialog, Modal, QuickOpenDialog, ShortcutsDialog, keyboard Ctrl+Enter, GitGraphPanel, AgentDashboard, QuickCommandsDialog, DiffViewer annotate, HistoryDialog, WorktreeCheckpoint, AutomationsDialog, MarkdownPreview, GitHubDialog write actions, preferensi/keymap terminal, dan keymap global.
+Hasil: **50 test lulus** — CommandPalette, SettingsDialog, OrchestratorPanel, AuditDialog, InfoDialog, Modal, QuickOpenDialog, ShortcutsDialog, keyboard Ctrl+Enter, GitGraphPanel, AgentDashboard, QuickCommandsDialog, DiffViewer annotate, HistoryDialog, WorktreeCheckpoint, AutomationsDialog, MarkdownPreview, GitHubDialog write actions (comment/review/merge/label/close/thread), preferensi/keymap terminal, dan keymap global.
 
 ## Gate Chrome 93
 
@@ -33,9 +33,9 @@ npm run verify
 | Sintaks ES2020 | Lulus — semua chunk |
 | API JS terlarang | Lulus |
 | CSS terlarang | Lulus |
-| Bundel JS awal | **144,6 KB gzip** (batas 150 KB) |
-| Bundel total + editor & orchestrator lazy | **285,4 KB gzip** (batas 300 KB) |
-| Test API | 51 lulus |
+| Bundel JS awal | **145,1 KB gzip** (batas 150 KB) |
+| Bundel total + editor & orchestrator lazy | **286,2 KB gzip** (batas 300 KB) |
+| Test API | 52 lulus |
 | Test frontend (Testing Library) | 50 lulus |
 | Playwright E2E | 3 lulus |
 
@@ -127,7 +127,6 @@ Hasil: **3 test lulus** di Chrome sistem — login, command palette, panel Orche
 - Log terminal berupa file append-only tanpa rotasi otomatis.
 - Integrasi GitHub write (komentar/review/merge) membutuhkan `GITHUB_TOKEN` dengan scope write; tanpa token, aksi tulis ditolak dengan pesan yang jelas dan tetap bergantung pada rate limit GitHub.
 - Markdown preview belum mendukung Mermaid/diagram; renderer sengaja dibuat ringan agar bundel tetap kecil. Gambar relatif dilayani lewat `/api/files/raw` (hanya tipe gambar, maksimal 10 MB).
-- Pull request/issue GitHub pada UI belum menampilkan daftar komentar atau review yang sudah ada.
 - Scheduler automations masih in-process; retry memakai jeda 5 menit maksimal 2 kali dan hanya berlaku untuk run terjadwal.
 - Pencarian kode mengikuti `.gitignore`; fallback `git grep` hanya mencari file tracked dan hasil dibatasi 100 match.
 - Orchestrator memakai satu admin; worker agent harus dapat dijangkau runtime, dan `AGENT_KEY_DELIVERY=payload` mengirim API key provider ke worker. Gunakan HTTPS/trusted network atau set `none`.

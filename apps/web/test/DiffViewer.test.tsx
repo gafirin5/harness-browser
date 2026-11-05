@@ -54,7 +54,9 @@ describe('DiffViewer annotate', () => {
   it('menyimpan komentar baris lalu mengirimkannya ke agent', async () => {
     mockedApiGet.mockImplementation(async (path: string) => {
       if (path.startsWith('/git/diff')) return { data: { diff, truncated: false } };
-      if (path.startsWith('/review')) return { data: [] };
+      if (path.startsWith('/review')) {
+        return { data: path.includes('path=') ? [] : [comment] };
+      }
       if (path === '/agents') {
         return {
           data: [{ id: 'opencode', name: 'OpenCode', command: 'opencode', args: [], installed: true }]

@@ -45,16 +45,23 @@ export function parseDiffLines(diff: string): DiffLine[] {
   });
 }
 
-function buildPrompt(filePath: string, comments: DiffComment[]): string {
-  const sorted = [...comments].sort((a, b) => a.line - b.line);
-  const lines = sorted.map((comment) => `- Baris ${comment.line}: ${comment.body}`);
-  return [
-    `Tolong tangani komentar review berikut pada file ${filePath}:`,
-    '',
-    ...lines,
-    '',
-    'Perbaiki kode sesuai komentar tersebut, lalu jelaskan perubahan yang dibuat.'
-  ].join('\n');
+function buildPrompt(comments: DiffComment[]): string {
+  const groups = new Map<string, DiffComment[]>();
+  for (const comment of comments) {
+    const list = groups.get(comment.path) ?? [];
+    list.push(comment);
+    groups.set(comment.path, list);
+  }
+  const lines: string[] = ['Tolong tangani komentar review berikut:', ''];
+  for (const [filePath, list] of groups) {
+    lines.push(`File ${filePath}:`);
+    for (const comment of [...list].sort((a, b) => a.line - b.line)) {
+      lines.push(`- Baris ${comment.line}: ${comment.body}`);
+    }
+    lines.push('');
+  }
+  lines.push('Perbaiki kode sesuai komentar tersebut, lalu jelaskan perubahan yang dibuat.');
+  return lines.join('\n');
 }
 
 function SendToAgentDialog({
@@ -75,8 +82,29 @@ function SendToAgentDialog({
   const [agent, setAgent] = useState('');
   const [title, setTitle] = useState(`Review ${filePath.split('/').pop() ?? filePath}`);
   const [selected, setSelected] = useState<string[]>(comments.map((comment) => comment.id));
+  const [allComments, setAllComments] = useState<DiffComment[]>(comments);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiGet<{ data: DiffComment[] }>(`/review?worktreeId=${encodeURIComponent(worktreeId)}`)
+      .then((response) => {
+        if (cancelled) return;
+        const open = response.data.filter((comment) => !comment.resolvedAt);
+        setAllComments(open);
+        setSelected((current) => {
+          if (current.length > 0) return current;
+          return open.filter((comment) => comment.path === filePath).map((comment) => comment.id);
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setAllComments(comments);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [worktreeId, filePath, comments]);
 
   useEffect(() => {
     let cancelled = false;
@@ -96,7 +124,7 @@ function SendToAgentDialog({
     };
   }, []);
 
-  const chosen = comments.filter((comment) => selected.includes(comment.id));
+  const chosen = allComments.filter((comment) => selected.includes(comment.id));
 
   const submit = async (): Promise<void> => {
     if (!agent) {
@@ -114,7 +142,7 @@ function SendToAgentDialog({
         worktreeId,
         agent,
         title: title.trim() || `Review ${filePath}`,
-        prompt: buildPrompt(filePath, chosen)
+        prompt: buildPrompt(chosen)
       });
       push('success', 'Sesi review dijalankan.');
       onStarted(response.data);
@@ -125,6 +153,13 @@ function SendToAgentDialog({
       setPending(false);
     }
   };
+
+  const grouped = new Map<string, DiffComment[]>();
+  for (const comment of allComments) {
+    const list = grouped.get(comment.path) ?? [];
+    list.push(comment);
+    grouped.set(comment.path, list);
+  }
 
   return (
     <Modal
@@ -160,26 +195,44 @@ function SendToAgentDialog({
       </div>
       <div className="field">
         <label>Komentar yang dikirim ({chosen.length})</label>
+        <div className="row" style={{ justifyContent: 'flex-end', gap: 6, marginBottom: 6 }}>
+          <button
+            className="btn tiny"
+            onClick={() => setSelected(allComments.map((comment) => comment.id))}
+            disabled={allComments.length === 0}
+          >
+            Pilih Semua
+          </button>
+          <button className="btn tiny" onClick={() => setSelected([])} disabled={selected.length === 0}>
+            Kosongkan
+          </button>
+        </div>
         <div className="diff-send-list">
-          {comments.map((comment) => (
-            <label className="diff-send-item" key={comment.id}>
-              <input
-                type="checkbox"
-                checked={selected.includes(comment.id)}
-                onChange={(event) =>
-                  setSelected((current) =>
-                    event.target.checked ? [...current, comment.id] : current.filter((id) => id !== comment.id)
-                  )
-                }
-              />
-              <span className="mono">baris {comment.line}</span>
-              <span>{comment.body}</span>
-            </label>
+          {allComments.length === 0 ? <div className="empty">Belum ada komentar terbuka.</div> : null}
+          {Array.from(grouped.entries()).map(([path, list]) => (
+            <div className="diff-send-group" key={path}>
+              <div className="section-label mono">{path}</div>
+              {list.map((comment) => (
+                <label className="diff-send-item" key={comment.id}>
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(comment.id)}
+                    onChange={(event) =>
+                      setSelected((current) =>
+                        event.target.checked ? [...current, comment.id] : current.filter((id) => id !== comment.id)
+                      )
+                    }
+                  />
+                  <span className="mono">baris {comment.line}</span>
+                  <span>{comment.body}</span>
+                </label>
+              ))}
+            </div>
           ))}
         </div>
       </div>
       <p className="hint" style={{ marginBottom: 0 }}>
-        Agent akan menerima prompt berisi semua komentar terpilih untuk file ini.
+        Agent akan menerima prompt berisi komentar terpilih dari semua file yang dicentang.
       </p>
     </Modal>
   );
@@ -325,8 +378,8 @@ export function DiffViewer({
         <button
           className="btn tiny primary"
           onClick={() => setSendOpen(true)}
-          disabled={openComments.length === 0 || !onSessionStarted}
-          title="Kirim komentar ke agent"
+          disabled={!onSessionStarted}
+          title="Kirim komentar dari file ini atau file lain ke agent"
         >
           Kirim ke Agent
         </button>

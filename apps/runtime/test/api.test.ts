@@ -220,6 +220,26 @@ describe('github integration', () => {
     expect(merge.status).toBe(422);
     expect(merge.body.error.code).toBe('NOT_GITHUB');
 
+    const labels = await api.post('/api/github/labels').send({
+      worktreeId,
+      number: 1,
+      labels: ['bug']
+    });
+    expect(labels.status).toBe(422);
+    expect(labels.body.error.code).toBe('NOT_GITHUB');
+
+    const close = await api.post('/api/github/close').send({
+      worktreeId,
+      number: 1,
+      kind: 'issue'
+    });
+    expect(close.status).toBe(422);
+    expect(close.body.error.code).toBe('NOT_GITHUB');
+
+    const thread = await api.get(`/api/github/thread?worktreeId=${worktreeId}&number=1&kind=pull`);
+    expect(thread.status).toBe(422);
+    expect(thread.body.error.code).toBe('NOT_GITHUB');
+
     await api.delete(`/api/worktrees/${worktreeId}`);
   });
 });
@@ -606,6 +626,47 @@ describe('automations', () => {
     await api.delete(`/api/worktrees/${worktreeId}`);
   });
 });
+describe('inbox reads', () => {
+  it('menyimpan status baca per user di server', async () => {
+    const worktree = await api.post('/api/worktrees').send({
+      projectId,
+      branch: 'agent/inbox-test',
+      baseRef: 'main'
+    });
+    expect(worktree.status).toBe(201);
+    const worktreeId = worktree.body.data.id;
+    const now = new Date().toISOString();
+    db.prepare(
+      `INSERT INTO sessions (id, worktree_id, terminal_id, agent, title, prompt, status, created_at, started_at, ended_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'completed', ?, ?, ?)`
+    ).run('inbox-1', worktreeId, 'inbox-term-1', 'opencode', 'Inbox 1', '', now, now, now);
+    db.prepare(
+      `INSERT INTO sessions (id, worktree_id, terminal_id, agent, title, prompt, status, created_at, started_at, ended_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'failed', ?, ?, ?)`
+    ).run('inbox-2', worktreeId, 'inbox-term-2', 'opencode', 'Inbox 2', '', now, now, now);
+
+    const before = await api.get('/api/sessions/inbox');
+    expect(before.status).toBe(200);
+    expect(before.body.data.readIds).toEqual([]);
+    expect(before.body.data.unreadCount).toBeGreaterThanOrEqual(2);
+
+    const read = await api.post('/api/sessions/inbox/read').send({ sessionId: 'inbox-1' });
+    expect(read.status).toBe(200);
+    const afterOne = await api.get('/api/sessions/inbox');
+    expect(afterOne.body.data.readIds).toContain('inbox-1');
+    expect(afterOne.body.data.unreadCount).toBeGreaterThanOrEqual(1);
+
+    const readAll = await api.post('/api/sessions/inbox/read-all').send({ sessionIds: ['inbox-2'] });
+    expect(readAll.status).toBe(200);
+    const afterAll = await api.get('/api/sessions/inbox');
+    expect(afterAll.body.data.readIds).toEqual(expect.arrayContaining(['inbox-1', 'inbox-2']));
+
+    await api.delete(`/api/sessions/inbox-1`);
+    await api.delete(`/api/sessions/inbox-2`);
+    await api.delete(`/api/worktrees/${worktreeId}`);
+  });
+});
+
 describe('session history', () => {
   it('mencari sesi berdasarkan judul/prompt dan filter status', async () => {
     const worktree = await api.post('/api/worktrees').send({

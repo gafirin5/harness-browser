@@ -118,6 +118,32 @@ describe('HistoryDialog', () => {
     expect(screen.getByText('Belum ada sesi yang cocok.')).toBeTruthy();
   });
 
+  it('memanggil purge untuk sesi nonaktif pada scope project', async () => {
+    mockedApiGet.mockImplementation(async (path: string) => {
+      if (path === '/agents') return { data: [] };
+      return { data: [item], meta: { page: 1, pageSize: 50, total: 1, totalPages: 1 } };
+    });
+    const onPurge = vi.fn(async () => 2);
+
+    render(
+      <ToastProvider>
+        <HistoryDialog
+          onClose={() => undefined}
+          onRerun={async () => undefined}
+          onDelete={async () => true}
+          onPurge={onPurge}
+          selectedProjectId="p-1"
+          selectedWorktreeId={null}
+        />
+      </ToastProvider>
+    );
+
+    await waitFor(() => expect(screen.getByText('Perbaiki graph')).toBeTruthy());
+    fireEvent.click(screen.getByText('Hapus Nonaktif'));
+    await waitFor(() => expect(onPurge).toHaveBeenCalledWith({ projectId: 'p-1' }));
+    await waitFor(() => expect(mockedApiGet.mock.calls.length).toBeGreaterThanOrEqual(3));
+  });
+
   it('mencari transcript sesi', async () => {
     mockedApiGet.mockImplementation(async (path: string) => {
       if (path === '/agents') return { data: [] };

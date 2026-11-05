@@ -17,7 +17,7 @@ Test frontend (Vitest + Testing Library + jsdom):
 npm run test:web
 ```
 
-Hasil: **48 test lulus** — CommandPalette, SettingsDialog, OrchestratorPanel, AuditDialog, InfoDialog, Modal, QuickOpenDialog, ShortcutsDialog, keyboard Ctrl+Enter, GitGraphPanel, AgentDashboard, QuickCommandsDialog, DiffViewer annotate, HistoryDialog, WorktreeCheckpoint, AutomationsDialog, MarkdownPreview, GitHubDialog write actions, preferensi/keymap terminal, dan keymap global.
+Hasil: **50 test lulus** — CommandPalette, SettingsDialog, OrchestratorPanel, AuditDialog, InfoDialog, Modal, QuickOpenDialog, ShortcutsDialog, keyboard Ctrl+Enter, GitGraphPanel, AgentDashboard, QuickCommandsDialog, DiffViewer annotate, HistoryDialog, WorktreeCheckpoint, AutomationsDialog, MarkdownPreview, GitHubDialog write actions, preferensi/keymap terminal, dan keymap global.
 
 ## Gate Chrome 93
 
@@ -36,7 +36,7 @@ npm run verify
 | Bundel JS awal | **144,6 KB gzip** (batas 150 KB) |
 | Bundel total + editor & orchestrator lazy | **285,4 KB gzip** (batas 300 KB) |
 | Test API | 51 lulus |
-| Test frontend (Testing Library) | 48 lulus |
+| Test frontend (Testing Library) | 50 lulus |
 | Playwright E2E | 3 lulus |
 
 ## Smoke Chromium 93

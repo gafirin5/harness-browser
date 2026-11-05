@@ -3,19 +3,21 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { DiffComment } from '@dorado/shared';
 import { DiffViewer, parseDiffLines } from '../src/components/DiffViewer';
 import { ToastProvider } from '../src/components/ui';
-import { apiGet, apiPost } from '../src/lib/api';
+import { apiGet, apiPatch, apiPost } from '../src/lib/api';
 
 vi.mock('../src/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../src/lib/api')>();
   return {
     ...actual,
     apiGet: vi.fn(),
-    apiPost: vi.fn()
+    apiPost: vi.fn(),
+    apiPatch: vi.fn()
   };
 });
 
 const mockedApiGet = vi.mocked(apiGet);
 const mockedApiPost = vi.mocked(apiPost);
+const mockedApiPatch = vi.mocked(apiPatch);
 
 const diff = [
   'diff --git a/README.md b/README.md',
@@ -118,5 +120,29 @@ describe('DiffViewer annotate', () => {
         prompt: expect.stringContaining('Baris 2: Tolong perjelas baris ini.')
       })
     );
+  });
+
+  it('resolve dan reopen komentar lewat API', async () => {
+    mockedApiGet.mockImplementation(async (path: string) => {
+      if (path.startsWith('/git/diff')) return { data: { diff, truncated: false } };
+      if (path.startsWith('/review')) return { data: [comment] };
+      return { data: [] };
+    });
+    mockedApiPatch.mockResolvedValue({
+      data: { ...comment, resolvedAt: '2026-11-05T01:00:00.000Z' }
+    });
+
+    render(
+      <ToastProvider>
+        <DiffViewer worktreeId="wt-1" filePath="README.md" initialStaged={false} />
+      </ToastProvider>
+    );
+
+    await waitFor(() => expect(screen.getByText('Tolong perjelas baris ini.')).toBeTruthy());
+    fireEvent.click(screen.getByLabelText('Tandai komentar baris 2 selesai'));
+
+    await waitFor(() => expect(mockedApiPatch).toHaveBeenCalledWith('/review/c-1', { resolved: true }));
+    await waitFor(() => expect(screen.getByLabelText('Buka kembali komentar baris 2')).toBeTruthy());
+    expect(document.querySelector('.diff-comment.resolved')).toBeTruthy();
   });
 });

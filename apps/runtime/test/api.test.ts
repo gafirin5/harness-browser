@@ -10,6 +10,7 @@ import { createApp } from '../src/app.js';
 import { db } from '../src/db/index.js';
 import { parseGitHubRemote } from '../src/modules/github/routes.js';
 import { getDashboardSummary } from '../src/modules/orchestrator/dashboard.js';
+import { runAutomation } from '../src/modules/automations/service.js';
 import { pump } from '../src/modules/orchestrator/dispatcher.js';
 import { heartbeatOnce } from '../src/modules/orchestrator/heartbeat.js';
 import { applyAgentResult, findAgentByToken } from '../src/modules/orchestrator/service.js';
@@ -380,6 +381,20 @@ describe('files', () => {
     const deleteRenamed = await api.delete(`/api/files?worktreeId=${worktreeId}&path=renamed.txt`);
     expect(deleteRenamed.status).toBe(204);
 
+    fs.writeFileSync(
+      path.join(worktree.body.data.path, 'pixel.png'),
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00])
+    );
+    fs.writeFileSync(path.join(worktree.body.data.path, 'notes.txt'), 'bukan gambar\n');
+    const rawImage = await api.get(`/api/files/raw?worktreeId=${worktreeId}&path=pixel.png`);
+    expect(rawImage.status).toBe(200);
+    expect(rawImage.headers['content-type']).toContain('image/png');
+    const notImage = await api.get(`/api/files/raw?worktreeId=${worktreeId}&path=notes.txt`);
+    expect(notImage.status).toBe(422);
+    expect(notImage.body.error.code).toBe('NOT_IMAGE');
+    const rawTraversal = await api.get(`/api/files/raw?worktreeId=${worktreeId}&path=..%2F..%2Fetc%2Fpasswd`);
+    expect(rawTraversal.status).toBe(422);
+
     await api.delete(`/api/worktrees/${worktreeId}`);
   });
 });
@@ -551,8 +566,46 @@ describe('automations', () => {
     expect(deleted.status).toBe(204);
     await api.delete(`/api/worktrees/${worktreeId}`);
   });
-});
 
+  it('menjadwalkan retry ketika run otomasi gagal', async () => {
+    const worktree = await api.post('/api/worktrees').send({
+      projectId,
+      branch: 'agent/automation-retry-test',
+      baseRef: 'main'
+    });
+    expect(worktree.status).toBe(201);
+    const worktreeId = worktree.body.data.id;
+    const created = await api.post('/api/automations').send({
+      projectId,
+      worktreeId,
+      name: 'Retry test',
+      schedule: '15m',
+      prompt: 'cek',
+      agent: 'tidak-ada',
+      enabled: true
+    });
+    expect(created.status).toBe(201);
+    const id = created.body.data.id;
+
+    const failed = await api.post(`/api/automations/${id}/run`);
+    expect(failed.status).toBe(422);
+
+    const scheduled = await runAutomation(id);
+    expect(scheduled.ok).toBe(false);
+
+    const row = db.prepare('SELECT retry_count, next_run_at FROM automations WHERE id = ?').get(id) as {
+      retry_count: number;
+      next_run_at: string;
+    };
+    expect(row.retry_count).toBe(1);
+    const diff = new Date(row.next_run_at).getTime() - Date.now();
+    expect(diff).toBeGreaterThan(0);
+    expect(diff).toBeLessThanOrEqual(5 * 60_000 + 5_000);
+
+    await api.delete(`/api/automations/${id}`);
+    await api.delete(`/api/worktrees/${worktreeId}`);
+  });
+});
 describe('session history', () => {
   it('mencari sesi berdasarkan judul/prompt dan filter status', async () => {
     const worktree = await api.post('/api/worktrees').send({
@@ -674,6 +727,68 @@ describe('session delete', () => {
     const missing = await api.delete(`/api/sessions/${sessionId}`);
     expect(missing.status).toBe(404);
 
+    await api.delete(`/api/worktrees/${worktreeId}`);
+  });
+});
+
+describe('session purge', () => {
+  it('menghapus semua sesi nonaktif pada worktree', async () => {
+    const worktree = await api.post('/api/worktrees').send({
+      projectId,
+      branch: 'agent/purge-test',
+      baseRef: 'main'
+    });
+    expect(worktree.status).toBe(201);
+    const worktreeId = worktree.body.data.id;
+
+    const first = await api.post('/api/sessions').send({ worktreeId, agent: 'mock', title: 'Purge 1' });
+    const second = await api.post('/api/sessions').send({ worktreeId, agent: 'mock', title: 'Purge 2' });
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(201);
+    await api.post(`/api/sessions/${first.body.data.id}/stop`);
+    await api.post(`/api/sessions/${second.body.data.id}/stop`);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    const purged = await api.post('/api/sessions/purge').send({ worktreeId });
+    expect(purged.status).toBe(200);
+    expect(purged.body.data.deleted).toBe(2);
+
+    const remaining = await api.get(`/api/sessions?worktreeId=${worktreeId}`);
+    expect(remaining.body.data).toHaveLength(0);
+
+    await api.delete(`/api/worktrees/${worktreeId}`);
+  });
+});
+
+describe('session transcript', () => {
+  it('mencari teks pada log terminal sesi', async () => {
+    const worktree = await api.post('/api/worktrees').send({
+      projectId,
+      branch: 'agent/transcript-test',
+      baseRef: 'main'
+    });
+    expect(worktree.status).toBe(201);
+    const worktreeId = worktree.body.data.id;
+    const session = await api.post('/api/sessions').send({
+      worktreeId,
+      agent: 'mock',
+      title: 'Transcript test'
+    });
+    expect(session.status).toBe(201);
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    await api.post(`/api/sessions/${session.body.data.id}/stop`);
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
+    const transcript = await api.get(`/api/sessions/${session.body.data.id}/transcript?q=mock-start`);
+    expect(transcript.status).toBe(200);
+    expect(transcript.body.data.available).toBe(true);
+    expect(transcript.body.data.total).toBeGreaterThan(0);
+    expect(transcript.body.data.lines[0].text).toContain('mock-start');
+
+    const none = await api.get(`/api/sessions/${session.body.data.id}/transcript?q=tidak-ada-di-log`);
+    expect(none.body.data.total).toBe(0);
+
+    await api.delete(`/api/sessions/${session.body.data.id}`);
     await api.delete(`/api/worktrees/${worktreeId}`);
   });
 });

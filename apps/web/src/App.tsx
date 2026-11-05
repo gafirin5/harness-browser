@@ -11,16 +11,15 @@ import type {
 import { ApiError, apiDelete, apiGet, apiPost } from './lib/api';
 import { submitOnCtrlEnter } from './lib/keyboard';
 import { loadTerminalPrefs, saveTerminalPrefs, type TerminalPrefs } from './lib/terminal-prefs';
+import { actionForEvent, loadKeymap, saveKeymap, type Keymap } from './lib/keymap';
 import { Login } from './components/Login';
 import { TerminalPane } from './components/TerminalPane';
 import { FileEditor } from './components/FileEditor';
 import { FileTree } from './components/FileTree';
 import { ChangesPanel } from './components/ChangesPanel';
-import { DiffViewer } from './components/DiffViewer';
 import { CommandPalette, type Command } from './components/CommandPalette';
 import { GitHubDialog } from './components/GitHubDialog';
 import { InfoDialog } from './components/InfoDialog';
-import { QuickOpenDialog } from './components/QuickOpenDialog';
 import { SearchDialog } from './components/SearchDialog';
 import { SettingsDialog } from './components/SettingsDialog';
 import { ShortcutsDialog } from './components/ShortcutsDialog';
@@ -48,6 +47,10 @@ const AutomationsDialog = lazy(() =>
 const TerminalSettingsDialog = lazy(() =>
   import('./components/TerminalSettingsDialog').then((module) => ({ default: module.TerminalSettingsDialog }))
 );
+const QuickOpenDialog = lazy(() =>
+  import('./components/QuickOpenDialog').then((module) => ({ default: module.QuickOpenDialog }))
+);
+const DiffViewer = lazy(() => import('./components/DiffViewer').then((module) => ({ default: module.DiffViewer })));
 
 type DialogState =
   | { type: 'project' }
@@ -93,6 +96,7 @@ export function App(): JSX.Element {
   const [automationsOpen, setAutomationsOpen] = useState(false);
   const [terminalSettingsOpen, setTerminalSettingsOpen] = useState(false);
   const [terminalPrefs, setTerminalPrefs] = useState<TerminalPrefs>(() => loadTerminalPrefs());
+  const [keymap, setKeymap] = useState<Keymap>(() => loadKeymap());
   const [resetNonce, setResetNonce] = useState(0);
   const [dashboardOpen, setDashboardOpen] = useState(false);
   const [dashboardTab, setDashboardTab] = useState<'board' | 'inbox'>('board');
@@ -329,82 +333,96 @@ export function App(): JSX.Element {
         setPaletteOpen(true);
         return;
       }
-      if (!event.altKey || mod || editable) return;
+      if (editable) return;
+      const action = actionForEvent(keymap, event);
+      if (!action) return;
+      event.preventDefault();
 
       const state = shortcutRef.current;
-      const key = event.key.toLowerCase();
-      if (key === 't') {
-        event.preventDefault();
+      if (action === 'terminal') {
         state.createTerminal();
-      } else if (key === 'a') {
-        event.preventDefault();
+        return;
+      }
+      if (action === 'agent') {
         state.openAgent();
-      } else if (key === 'o') {
-        event.preventDefault();
+        return;
+      }
+      if (action === 'orchestrator') {
         setOrchestratorOpen(true);
-      } else if (key === 'g') {
-        event.preventDefault();
-        if (event.shiftKey) setGitGraphOpen(true);
-        else setGithubOpen(true);
-      } else if (key === 'h') {
-        event.preventDefault();
+        return;
+      }
+      if (action === 'github') {
+        setGithubOpen(true);
+        return;
+      }
+      if (action === 'gitGraph') {
+        setGitGraphOpen(true);
+        return;
+      }
+      if (action === 'history') {
         setHistoryOpen(true);
-      } else if (key === 's') {
-        event.preventDefault();
+        return;
+      }
+      if (action === 'settings') {
         setSettingsOpen(true);
-      } else if (key === 'p') {
-        event.preventDefault();
+        return;
+      }
+      if (action === 'quickOpen') {
         setQuickOpen(true);
-      } else if (key === 'j') {
-        event.preventDefault();
+        return;
+      }
+      if (action === 'jump') {
         setJumpOpen(true);
-      } else if (key === '/') {
-        event.preventDefault();
+        return;
+      }
+      if (action === 'shortcuts') {
         setShortcutsOpen(true);
-      } else if (key === ']' || key === '[' || key === 'w') {
-        event.preventDefault();
-        const tabs = [
-          ...state.terminals.map((terminal) => ({ kind: 'terminal' as const, id: terminal.id })),
-          ...state.openFiles.map((file) => ({ kind: 'file' as const, id: file.path })),
-          ...state.openDiffs.map((file) => ({ kind: 'diff' as const, id: file }))
-        ];
-        if (tabs.length === 0) return;
-        const activeIndex = tabs.findIndex((tab) =>
-          tab.kind === 'terminal'
-            ? !state.activeFilePath && !state.activeDiffPath && tab.id === state.activeTerminalId
-            : tab.kind === 'file'
-              ? tab.id === state.activeFilePath
-              : tab.id === state.activeDiffPath
-        );
-        if (key === 'w') {
-          if (state.activeFilePath) state.closeFile(state.activeFilePath);
-          else if (state.activeDiffPath) state.closeDiff(state.activeDiffPath);
-          else {
-            const terminal = state.terminals.find((item) => item.id === state.activeTerminalId);
-            if (terminal) state.closeTerminal(terminal);
-          }
-          return;
+        return;
+      }
+
+      const tabs = [
+        ...state.terminals.map((terminal) => ({ kind: 'terminal' as const, id: terminal.id })),
+        ...state.openFiles.map((file) => ({ kind: 'file' as const, id: file.path })),
+        ...state.openDiffs.map((file) => ({ kind: 'diff' as const, id: file }))
+      ];
+      if (tabs.length === 0) return;
+      const activeIndex = tabs.findIndex((tab) =>
+        tab.kind === 'terminal'
+          ? !state.activeFilePath && !state.activeDiffPath && tab.id === state.activeTerminalId
+          : tab.kind === 'file'
+            ? tab.id === state.activeFilePath
+            : tab.id === state.activeDiffPath
+      );
+      if (action === 'closeTab') {
+        if (state.activeFilePath) state.closeFile(state.activeFilePath);
+        else if (state.activeDiffPath) state.closeDiff(state.activeDiffPath);
+        else {
+          const terminal = state.terminals.find((item) => item.id === state.activeTerminalId);
+          if (terminal) state.closeTerminal(terminal);
         }
-        const nextIndex =
-          key === ']' ? (activeIndex + 1 + tabs.length) % tabs.length : (activeIndex - 1 + tabs.length) % tabs.length;
-        const next = tabs[nextIndex];
-        if (!next) return;
-        if (next.kind === 'terminal') {
-          setActiveTerminalId(next.id);
-          setActiveFilePath(null);
-          setActiveDiffPath(null);
-        } else if (next.kind === 'file') {
-          setActiveFilePath(next.id);
-          setActiveDiffPath(null);
-        } else {
-          setActiveDiffPath(next.id);
-          setActiveFilePath(null);
-        }
+        return;
+      }
+      const nextIndex =
+        action === 'nextTab'
+          ? (activeIndex + 1 + tabs.length) % tabs.length
+          : (activeIndex - 1 + tabs.length) % tabs.length;
+      const next = tabs[nextIndex];
+      if (!next) return;
+      if (next.kind === 'terminal') {
+        setActiveTerminalId(next.id);
+        setActiveFilePath(null);
+        setActiveDiffPath(null);
+      } else if (next.kind === 'file') {
+        setActiveFilePath(next.id);
+        setActiveDiffPath(null);
+      } else {
+        setActiveDiffPath(next.id);
+        setActiveFilePath(null);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [keymap]);
 
   useEffect(() => {
     const count = Object.keys(unread).length;
@@ -745,6 +763,20 @@ export function App(): JSX.Element {
     } catch (caught) {
       toastError(caught, 'Gagal menghapus sesi.');
       return false;
+    }
+  };
+
+  const purgeSessions = async (scope: { worktreeId?: string; projectId?: string }): Promise<number | null> => {
+    if (!window.confirm('Hapus semua sesi agent yang tidak sedang berjalan pada scope ini?')) return null;
+    try {
+      const response = await apiPost<{ data: { deleted: number } }>('/sessions/purge', scope);
+      if (selectedWorktreeId) void loadWorktreeData(selectedWorktreeId);
+      void loadDashboardSessions(true);
+      push('success', `${response.data.deleted} sesi nonaktif dihapus.`);
+      return response.data.deleted;
+    } catch (caught) {
+      toastError(caught, 'Gagal membersihkan sesi nonaktif.');
+      return null;
     }
   };
 
@@ -1453,19 +1485,21 @@ export function App(): JSX.Element {
                 jumpToken={fileJump?.path === activeFilePath ? fileJump.token : undefined}
               />
             ) : activeDiffPath ? (
-              <DiffViewer
-                key={`${selectedWorktreeId}:${activeDiffPath}`}
-                worktreeId={selectedWorktreeId ?? ''}
-                filePath={activeDiffPath}
-                initialStaged={false}
-                onSessionStarted={(session) => {
-                  setSessions((current) => [session, ...current]);
-                  setActiveTerminalId(session.terminalId);
-                  setActiveFilePath(null);
-                  setActiveDiffPath(null);
-                  void loadWorktreeData(session.worktreeId);
-                }}
-              />
+              <Suspense fallback={<div className="empty">Memuat diff...</div>}>
+                <DiffViewer
+                  key={`${selectedWorktreeId}:${activeDiffPath}`}
+                  worktreeId={selectedWorktreeId ?? ''}
+                  filePath={activeDiffPath}
+                  initialStaged={false}
+                  onSessionStarted={(session) => {
+                    setSessions((current) => [session, ...current]);
+                    setActiveTerminalId(session.terminalId);
+                    setActiveFilePath(null);
+                    setActiveDiffPath(null);
+                    void loadWorktreeData(session.worktreeId);
+                  }}
+                />
+              </Suspense>
             ) : activeTerminal ? (
               <div className={`terminal-panes panes-${paneIds.length}`}>
                 {paneIds.map((terminalId, index) => {
@@ -1582,6 +1616,7 @@ export function App(): JSX.Element {
             onClose={() => setHistoryOpen(false)}
             onRerun={rerunHistory}
             onDelete={deleteSession}
+            onPurge={purgeSessions}
             selectedProjectId={selectedProjectId}
             selectedWorktreeId={selectedWorktreeId}
           />
@@ -1671,9 +1706,26 @@ export function App(): JSX.Element {
         />
       ) : null}
       {quickOpen ? (
-        <QuickOpenDialog worktreeId={selectedWorktreeId} onClose={() => setQuickOpen(false)} onOpen={openFile} />
+        <Suspense
+          fallback={
+            <div className="palette-backdrop">
+              <div className="empty">Memuat Quick Open...</div>
+            </div>
+          }
+        >
+          <QuickOpenDialog worktreeId={selectedWorktreeId} onClose={() => setQuickOpen(false)} onOpen={openFile} />
+        </Suspense>
       ) : null}
-      {shortcutsOpen ? <ShortcutsDialog onClose={() => setShortcutsOpen(false)} /> : null}
+      {shortcutsOpen ? (
+        <ShortcutsDialog
+          keymap={keymap}
+          onClose={() => setShortcutsOpen(false)}
+          onSave={(next) => {
+            setKeymap(next);
+            saveKeymap(next);
+          }}
+        />
+      ) : null}
       {quickCommandsOpen ? (
         <Suspense
           fallback={

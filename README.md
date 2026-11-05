@@ -27,16 +27,16 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **Orchestrator terintegrasi**: dashboard realtime (SSE + fallback polling), provider LLM dengan API key terenkripsi, agent worker dengan token/heartbeat, antrean task berprioritas, dispatcher, callback worker, cancel/retry, log, dan perhitungan biaya.
 - **Command palette** (`Ctrl+Shift+P` atau `Ctrl+K`): terminal, agent, worktree, split, orchestrator, search, refresh, history, github, info, settings, share.
 - **Quick Open** (`Alt+P`) untuk melompat ke file berdasarkan nama, dan **Jump Palette** (`Alt+J`) untuk pindah cepat antar project, worktree, terminal, file, dan diff.
-- **Shortcut keyboard** (`Alt+/` untuk daftar lengkap): `Alt+T/A/O/G/H/S`, `Alt+]`/`Alt+[`, `Alt+W`, serta **Ctrl+Enter** untuk submit form/dialog mana pun.
+- **Shortcut keyboard** (`Alt+/` untuk daftar lengkap): shortcut global bisa di-remap dari dialog, mendeteksi konflik, plus **Ctrl+Enter** untuk submit form/dialog mana pun.
 - **Sesi agent interaktif tanpa prompt awal**: buka agent lalu ketik instruksi langsung di terminal agent.
 - **Git Graph** (`Alt+Shift+G` atau tombol **Graph** di project): riwayat commit project dengan lane graph, ref branch/tag, detail commit, dan daftar file yang berubah.
 - **Quick Commands**: simpan perintah global/project, lalu jalankan di terminal aktif, salin, edit, atau hapus dari dialog **Commands**.
 - **Agent Dashboard / Inbox**: papan **Needs You / Working / Done / Idle**, filter project, buka atau resume sesi, serta inbox notifikasi sesi selesai/gagal dengan status belum dibaca.
 - **Annotate Diff**: komentar inline per baris diff yang tersimpan di runtime, lalu kirim batch komentar terpilih ke agent sebagai prompt review.
-- **Session History++**: scope worktree/project/semua, filter status/agent, grup project/agent, detail CWD dan prompt pertama, salin session ID/resume command, restart sesi, serta hapus sesi yang sudah berhenti beserta terminal agent-nya.
+- **Session History++**: scope worktree/project/semua, filter status/agent, grup project/agent, detail CWD dan prompt pertama, salin session ID/resume command, restart sesi, hapus sesi/terminal agent, hapus massal sesi nonaktif, dan pencarian transcript dari log terminal.
 - **Worktree Checkpoints**: status **Todo / In progress / In review / Completed** dan catatan per worktree, bisa diubah dari sidebar atau API `PATCH /api/worktrees/:id`.
-- **Markdown Preview**: toggle **Preview/Raw** untuk file `.md` dengan heading, list, tabel, code block, gambar, link aman, dan daftar isi otomatis (renderer lazy-loaded).
-- **Scheduled Automations**: buat prompt agent berjadwal (manual, preset 5m–24h, atau cron sederhana), aktif/nonaktif, run now, dan riwayat eksekusi.
+- **Markdown Preview**: toggle **Preview/Raw** untuk file `.md` dengan heading, list, tabel, code block, gambar (termasuk path relatif), link aman, dan daftar isi otomatis (renderer lazy-loaded).
+- **Scheduled Automations**: buat prompt agent berjadwal (manual, preset 5m–24h, atau cron sederhana), aktif/nonaktif, run now, riwayat eksekusi, zona waktu `APP_TIMEZONE`, dan retry otomatis saat gagal.
 - **GitHub write actions**: komentar PR/issue, review **Comment/Approve/Request changes**, dan merge PR dari dialog GitHub (butuh `GITHUB_TOKEN` dengan scope write).
 - **Terminal polish**: link HTTP(S) bisa diklik, salin seleksi lewat context menu atau keymap, reset terminal, serta tema/font/ukuran dan keymap cari/salin yang tersimpan di localStorage.
 - **Resume sesi** agent dengan konteks percakapan (OpenCode `--continue`), serta stop sesi berjalan.

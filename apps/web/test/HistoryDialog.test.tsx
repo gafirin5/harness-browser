@@ -59,6 +59,7 @@ describe('HistoryDialog', () => {
           onClose={() => undefined}
           onRerun={async () => undefined}
           onDelete={async () => true}
+          onPurge={async () => 0}
           selectedProjectId="p-1"
           selectedWorktreeId={null}
         />
@@ -102,6 +103,7 @@ describe('HistoryDialog', () => {
           onClose={() => undefined}
           onRerun={async () => undefined}
           onDelete={onDelete}
+          onPurge={async () => 0}
           selectedProjectId="p-1"
           selectedWorktreeId={null}
         />
@@ -114,5 +116,36 @@ describe('HistoryDialog', () => {
     await waitFor(() => expect(onDelete).toHaveBeenCalledWith(expect.objectContaining({ id: 'session-123456' })));
     await waitFor(() => expect(screen.queryByText('Perbaiki graph')).toBeNull());
     expect(screen.getByText('Belum ada sesi yang cocok.')).toBeTruthy();
+  });
+
+  it('mencari transcript sesi', async () => {
+    mockedApiGet.mockImplementation(async (path: string) => {
+      if (path === '/agents') return { data: [] };
+      if (path.startsWith('/sessions/session-123456/transcript')) {
+        return { data: { available: true, total: 1, truncated: false, lines: [{ line: 3, text: 'mock-start' }] } };
+      }
+      return { data: [item], meta: { page: 1, pageSize: 50, total: 1, totalPages: 1 } };
+    });
+
+    render(
+      <ToastProvider>
+        <HistoryDialog
+          onClose={() => undefined}
+          onRerun={async () => undefined}
+          onDelete={async () => true}
+          onPurge={async () => 0}
+          selectedProjectId="p-1"
+          selectedWorktreeId={null}
+        />
+      </ToastProvider>
+    );
+
+    await waitFor(() => expect(screen.getByText('Perbaiki graph')).toBeTruthy());
+    fireEvent.change(screen.getByLabelText('Cari transcript sesi'), { target: { value: 'mock-start' } });
+    const transcriptForm = screen.getByLabelText('Cari transcript sesi').closest('form');
+    if (transcriptForm) fireEvent.submit(transcriptForm);
+
+    await waitFor(() => expect(screen.getByText('mock-start')).toBeTruthy());
+    expect(mockedApiGet).toHaveBeenCalledWith('/sessions/session-123456/transcript?q=mock-start&limit=200');
   });
 });

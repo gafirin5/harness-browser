@@ -83,6 +83,26 @@ async function ensureMode(language: string): Promise<void> {
   }
 }
 
+function resolveMarkdownImage(worktreeId: string, filePath: string, src: string): string | null {
+  const clean = src.split('#')[0]?.split('?')[0] ?? src;
+  if (!clean) return null;
+  const base = clean.startsWith('/')
+    ? clean.replace(/^\/+/, '')
+    : `${filePath.includes('/') ? filePath.slice(0, filePath.lastIndexOf('/')) : ''}/${clean}`;
+  const parts: string[] = [];
+  for (const segment of base.split('/')) {
+    if (!segment || segment === '.') continue;
+    if (segment === '..') {
+      if (parts.length === 0) return null;
+      parts.pop();
+    } else {
+      parts.push(segment);
+    }
+  }
+  if (parts.length === 0) return null;
+  return `/files/raw?worktreeId=${encodeURIComponent(worktreeId)}&path=${encodeURIComponent(parts.join('/'))}`;
+}
+
 export function FileEditor({ worktreeId, filePath, onDirtyChange, jumpLine, jumpToken }: FileEditorProps): JSX.Element {
   const { push } = useToast();
   const [content, setContent] = useState('');
@@ -245,7 +265,10 @@ export function FileEditor({ worktreeId, filePath, onDirtyChange, jumpLine, jump
           {!preview && !editorReady ? <div className="empty">Menyiapkan editor...</div> : null}
           {preview ? (
             <Suspense fallback={<div className="empty">Memuat preview...</div>}>
-              <MarkdownPreview content={content} />
+              <MarkdownPreview
+                content={content}
+                resolveImage={(src) => resolveMarkdownImage(worktreeId, filePath, src)}
+              />
             </Suspense>
           ) : null}
         </>

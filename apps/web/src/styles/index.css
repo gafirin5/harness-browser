@@ -1583,6 +1583,11 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+.diff-comment.resolved {
+  opacity: 0.55;
+  border-left-color: var(--muted-2);
+}
+
 .diff-send-list {
   display: flex;
   flex-direction: column;
@@ -1753,6 +1758,15 @@ button:disabled {
 .shortcut-row .kbd {
   flex: 0 0 auto;
   min-width: 132px;
+}
+
+.shortcut-row .keymap-input {
+  flex: 0 0 160px;
+  min-width: 0;
+}
+
+.keymap-input.conflict {
+  border-color: var(--danger, #f07c8e);
 }
 
 /* ---------- git graph ---------- */
@@ -2441,6 +2455,31 @@ button:disabled {
 
 .history-path {
   overflow-wrap: anywhere;
+}
+
+.history-transcript {
+  max-height: 180px;
+  overflow: auto;
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  background: var(--terminal);
+  padding: 6px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.history-transcript-line {
+  display: flex;
+  gap: 8px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.history-transcript-no {
+  flex: 0 0 40px;
+  color: var(--muted-2);
+  text-align: right;
 }
 
 @media (max-width: 760px) {

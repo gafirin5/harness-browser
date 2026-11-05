@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { automationCreateSchema, automationUpdateSchema, type Automation, type AutomationRun } from '@dorado/shared';
+import { config } from '../../config.js';
 import { db, newId, nowIso } from '../../db/index.js';
 import { AppError, asyncHandler, notFound } from '../../lib/errors.js';
 import { parseWith } from '../../lib/validation.js';
@@ -68,7 +69,7 @@ automationsRouter.post(
 
     const id = newId();
     const createdAt = nowIso();
-    const next = body.enabled ? computeNextRun(body.schedule) : null;
+    const next = body.enabled ? computeNextRun(body.schedule, new Date(), config.appTimezone) : null;
     db.prepare(
       `INSERT INTO automations
        (id, project_id, worktree_id, name, schedule, prompt, agent, enabled, last_run_at, next_run_at, created_at)
@@ -107,7 +108,7 @@ automationsRouter.patch(
     if (!enabled || schedule.trim().toLowerCase() === 'manual') {
       nextRunAt = null;
     } else if (body.schedule !== undefined || !nextRunAt) {
-      nextRunAt = computeNextRun(schedule)?.toISOString() ?? null;
+      nextRunAt = computeNextRun(schedule, new Date(), config.appTimezone)?.toISOString() ?? null;
     }
 
     db.prepare(

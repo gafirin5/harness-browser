@@ -21,12 +21,14 @@ export function HistoryDialog({
   onClose,
   onRerun,
   onDelete,
+  onPurge,
   selectedProjectId,
   selectedWorktreeId
 }: {
   onClose: () => void;
   onRerun: (session: SessionHistoryItem) => Promise<void>;
   onDelete: (session: SessionHistoryItem) => Promise<boolean>;
+  onPurge: (scope: { worktreeId?: string; projectId?: string }) => Promise<number | null>;
   selectedProjectId: string | null;
   selectedWorktreeId: string | null;
 }): JSX.Element {
@@ -45,6 +47,11 @@ export function HistoryDialog({
   const [selected, setSelected] = useState<SessionHistoryItem | null>(null);
   const [pending, setPending] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [purging, setPurging] = useState(false);
+  const [transcriptQuery, setTranscriptQuery] = useState('');
+  const [transcriptLines, setTranscriptLines] = useState<Array<{ line: number; text: string }>>([]);
+  const [transcriptLoading, setTranscriptLoading] = useState(false);
+  const [transcriptError, setTranscriptError] = useState<string | null>(null);
 
   const load = async (search = query, filter = status, agentFilter = agent, nextScope = scope): Promise<void> => {
     setLoading(true);
@@ -74,6 +81,12 @@ export function HistoryDialog({
       .catch(() => setAgents([]));
     // Muat sekali saat dialog dibuka; filter berikutnya memakai tombol Cari.
   }, []);
+
+  useEffect(() => {
+    setTranscriptQuery('');
+    setTranscriptLines([]);
+    setTranscriptError(null);
+  }, [selected?.id]);
 
   const grouped = useMemo(() => {
     if (group === 'none') return [{ key: 'all', label: '', items }];
@@ -112,6 +125,49 @@ export function HistoryDialog({
     }
   };
 
+  const purge = async (): Promise<void> => {
+    const scopeTarget =
+      scope === 'worktree' && selectedWorktreeId
+        ? { worktreeId: selectedWorktreeId }
+        : scope === 'project' && selectedProjectId
+          ? { projectId: selectedProjectId }
+          : null;
+    if (!scopeTarget) return;
+    setPurging(true);
+    try {
+      const deleted = await onPurge(scopeTarget);
+      if (deleted !== null) {
+        setSelected(null);
+        await load(query, status, agent, scope);
+      }
+    } finally {
+      setPurging(false);
+    }
+  };
+
+  const searchTranscript = async (): Promise<void> => {
+    if (!selected) return;
+    setTranscriptLoading(true);
+    setTranscriptError(null);
+    try {
+      const response = await apiGet<{
+        data: {
+          available: boolean;
+          total: number;
+          truncated: boolean;
+          lines: Array<{ line: number; text: string }>;
+        };
+      }>(`/sessions/${selected.id}/transcript?q=${encodeURIComponent(transcriptQuery.trim())}&limit=200`);
+      setTranscriptLines(response.data.lines);
+      if (!response.data.available) setTranscriptError('Log transcript belum tersedia untuk sesi ini.');
+    } catch (caught) {
+      setTranscriptError(caught instanceof ApiError ? caught.message : 'Gagal mencari transcript.');
+      setTranscriptLines([]);
+    } finally {
+      setTranscriptLoading(false);
+    }
+  };
+
   const copy = async (value: string, label: string): Promise<void> => {
     const ok = await copyText(value);
     push(ok ? 'success' : 'error', ok ? `${label} disalin.` : `Gagal menyalin ${label.toLowerCase()}.`);
@@ -141,6 +197,14 @@ export function HistoryDialog({
             title={selected?.status === 'running' ? 'Hentikan sesi sebelum menghapus' : 'Hapus sesi dan terminal agent'}
           >
             {deleting ? 'Menghapus...' : 'Hapus Sesi'}
+          </button>
+          <button
+            className="btn ghost"
+            onClick={() => void purge()}
+            disabled={purging || scope === 'all'}
+            title={scope === 'all' ? 'Pilih scope worktree/project' : 'Hapus semua sesi nonaktif pada scope ini'}
+          >
+            {purging ? 'Membersihkan...' : 'Hapus Nonaktif'}
           </button>
           <button
             className="btn primary"
@@ -320,6 +384,38 @@ export function HistoryDialog({
               </div>
               <div className="section-label">Prompt pertama</div>
               <pre className="history-prompt">{selected.prompt || '—'}</pre>
+
+              <div className="section-label">Cari Transcript</div>
+              <form
+                className="row"
+                style={{ gap: 6, marginBottom: 8 }}
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void searchTranscript();
+                }}
+              >
+                <input
+                  className="input"
+                  value={transcriptQuery}
+                  onChange={(event) => setTranscriptQuery(event.target.value)}
+                  placeholder="Cari teks di log terminal sesi..."
+                  aria-label="Cari transcript sesi"
+                />
+                <button className="btn tiny" type="submit" disabled={transcriptLoading}>
+                  {transcriptLoading ? 'Mencari...' : 'Cari'}
+                </button>
+              </form>
+              {transcriptError ? <div className="error-banner">{transcriptError}</div> : null}
+              {transcriptLines.length > 0 ? (
+                <div className="history-transcript">
+                  {transcriptLines.map((line) => (
+                    <div className="history-transcript-line" key={line.line}>
+                      <span className="history-transcript-no">{line.line}</span>
+                      <span>{line.text}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </>
           ) : (
             <div className="empty">Pilih sesi untuk melihat detail.</div>

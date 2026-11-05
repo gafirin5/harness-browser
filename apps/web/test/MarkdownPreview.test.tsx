@@ -48,4 +48,14 @@ describe('MarkdownPreview', () => {
     expect(anchors.some((element) => element.textContent === 'link jahat')).toBe(false);
     expect(anchors.every((element) => !/javascript:/i.test(element.getAttribute('href') ?? ''))).toBe(true);
   });
+
+  it('memakai resolver untuk gambar relatif', () => {
+    render(
+      <MarkdownPreview
+        content={'![relatif](images/demo.png)'}
+        resolveImage={(src) => `/api/files/raw?path=${encodeURIComponent(src)}`}
+      />
+    );
+    expect(screen.getByAltText('relatif').getAttribute('src')).toBe('/api/files/raw?path=images%2Fdemo.png');
+  });
 });

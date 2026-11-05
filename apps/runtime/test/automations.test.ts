@@ -20,5 +20,6 @@ describe('automation schedule', () => {
     expect(computeNextRun('*/15 * * * *', base)?.toISOString()).toBe('2026-11-05T10:15:00.000Z');
     expect(computeNextRun('0 */2 * * *', base)?.toISOString()).toBe('2026-11-05T12:00:00.000Z');
     expect(computeNextRun('30 9 * * *', base)).not.toBeNull();
+    expect(computeNextRun('30 9 * * *', base, 'Asia/Jakarta')?.toISOString()).toBe('2026-11-06T02:30:00.000Z');
   });
 });

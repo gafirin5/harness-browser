@@ -1,4 +1,5 @@
 import { db, newId, nowIso } from '../../db/index.js';
+import { config } from '../../config.js';
 import { getWorktreeRow } from '../worktrees/routes.js';
 import { buildAgentArgs, getAgent } from '../sessions/agents.js';
 import { terminalManager } from '../terminals/manager.js';
@@ -12,6 +13,7 @@ export interface AutomationRow {
   prompt: string;
   agent: string;
   enabled: number;
+  retry_count: number;
   last_run_at: string | null;
   next_run_at: string | null;
   created_at: string;
@@ -37,7 +39,76 @@ export function isScheduleValid(schedule: string): boolean {
   return false;
 }
 
-export function computeNextRun(schedule: string, from = new Date()): Date | null {
+function timezoneParts(
+  date: Date,
+  timeZone: string
+): {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+} {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23'
+  });
+  const parts = formatter.formatToParts(date);
+  const value = (type: string): number => Number(parts.find((part) => part.type === type)?.value ?? 0);
+  return {
+    year: value('year'),
+    month: value('month'),
+    day: value('day'),
+    hour: value('hour'),
+    minute: value('minute'),
+    second: value('second')
+  };
+}
+
+function zonedTimeToUtc(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  timeZone: string
+): Date {
+  const guess = Date.UTC(year, month - 1, day, hour, minute, 0);
+  const parts = timezoneParts(new Date(guess), timeZone);
+  const asUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+  return new Date(guess + (guess - asUtc));
+}
+
+function nextDaily(hour: number, minute: number, timeZone: string | undefined, from: Date): Date {
+  if (!timeZone) {
+    const next = new Date(from);
+    next.setHours(hour, minute, 0, 0);
+    if (next.getTime() <= from.getTime()) next.setDate(next.getDate() + 1);
+    return next;
+  }
+  try {
+    const parts = timezoneParts(from, timeZone);
+    let candidate = zonedTimeToUtc(parts.year, parts.month, parts.day, hour, minute, timeZone);
+    if (candidate.getTime() <= from.getTime()) {
+      candidate = zonedTimeToUtc(parts.year, parts.month, parts.day + 1, hour, minute, timeZone);
+    }
+    return candidate;
+  } catch {
+    const next = new Date(from);
+    next.setHours(hour, minute, 0, 0);
+    if (next.getTime() <= from.getTime()) next.setDate(next.getDate() + 1);
+    return next;
+  }
+}
+
+export function computeNextRun(schedule: string, from = new Date(), timeZone?: string): Date | null {
   const value = schedule.trim().toLowerCase();
   if (value === 'manual') return null;
 
@@ -58,10 +129,7 @@ export function computeNextRun(schedule: string, from = new Date()): Date | null
 
   const daily = /^(\d{1,2}) (\d{1,2}) \* \* \*$/.exec(value);
   if (daily) {
-    const next = new Date(from);
-    next.setHours(Number(daily[2]), Number(daily[1]), 0, 0);
-    if (next.getTime() <= from.getTime()) next.setDate(next.getDate() + 1);
-    return next;
+    return nextDaily(Number(daily[2]), Number(daily[1]), timeZone ?? config.appTimezone, from);
   }
 
   return null;
@@ -80,15 +148,20 @@ function updateRunStatuses(): void {
   ).run();
 }
 
-function failRun(row: AutomationRow, message: string): void {
+function failRun(row: AutomationRow, message: string, allowRetry = true): void {
   const now = nowIso();
   db.prepare(
     'INSERT INTO automation_runs (id, automation_id, session_id, status, error, started_at, finished_at) VALUES (?, ?, NULL, ?, ?, ?, ?)'
   ).run(newId(), row.id, 'failed', message, now, now);
-  const next = computeNextRun(row.schedule);
-  db.prepare('UPDATE automations SET last_run_at = ?, next_run_at = ? WHERE id = ?').run(
+  const retryCount = row.retry_count ?? 0;
+  const willRetry = allowRetry && row.schedule.toLowerCase() !== 'manual' && retryCount < 2;
+  const next = willRetry
+    ? new Date(Date.now() + 5 * 60_000)
+    : computeNextRun(row.schedule, new Date(), config.appTimezone);
+  db.prepare('UPDATE automations SET last_run_at = ?, next_run_at = ?, retry_count = ? WHERE id = ?').run(
     now,
     next ? next.toISOString() : null,
+    willRetry ? retryCount + 1 : 0,
     row.id
   );
 }
@@ -109,17 +182,17 @@ export async function runAutomation(id: string, options: { manual?: boolean } = 
         .prepare('SELECT * FROM worktrees WHERE project_id = ? ORDER BY created_at ASC LIMIT 1')
         .get(row.project_id) as unknown as ReturnType<typeof getWorktreeRow>) ?? null);
   if (!worktree) {
-    failRun(row, 'Worktree tidak ditemukan.');
+    failRun(row, 'Worktree tidak ditemukan.', !options.manual);
     return { ok: false, error: 'Worktree tidak ditemukan.' };
   }
 
   const agent = getAgent(row.agent);
   if (!agent) {
-    failRun(row, 'Agent tidak dikenal.');
+    failRun(row, 'Agent tidak dikenal.', !options.manual);
     return { ok: false, error: 'Agent tidak dikenal.' };
   }
   if (!agent.installed) {
-    failRun(row, `Agent ${agent.name} belum terpasang di host ini.`);
+    failRun(row, `Agent ${agent.name} belum terpasang di host ini.`, !options.manual);
     return { ok: false, error: `Agent ${agent.name} belum terpasang.` };
   }
 
@@ -154,12 +227,18 @@ export async function runAutomation(id: string, options: { manual?: boolean } = 
       'INSERT INTO automation_runs (id, automation_id, session_id, status, error, started_at) VALUES (?, ?, ?, ?, NULL, ?)'
     ).run(newId(), row.id, sessionId, 'running', createdAt);
 
-    const next = options.manual ? row.next_run_at : (computeNextRun(row.schedule)?.toISOString() ?? null);
-    db.prepare('UPDATE automations SET last_run_at = ?, next_run_at = ? WHERE id = ?').run(createdAt, next, row.id);
+    const next = options.manual
+      ? row.next_run_at
+      : (computeNextRun(row.schedule, new Date(), config.appTimezone)?.toISOString() ?? null);
+    db.prepare('UPDATE automations SET last_run_at = ?, next_run_at = ?, retry_count = 0 WHERE id = ?').run(
+      createdAt,
+      next,
+      row.id
+    );
     return { ok: true, sessionId };
   } catch (error) {
     const message = (error as Error).message || 'Gagal menjalankan otomasi.';
-    failRun(row, message);
+    failRun(row, message, !options.manual);
     return { ok: false, error: message };
   }
 }

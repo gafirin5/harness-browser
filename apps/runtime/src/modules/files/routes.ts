@@ -200,6 +200,45 @@ filesRouter.get(
   })
 );
 
+const IMAGE_MIME: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+  '.bmp': 'image/bmp',
+  '.ico': 'image/x-icon',
+  '.avif': 'image/avif'
+};
+
+filesRouter.get(
+  '/raw',
+  asyncHandler(async (req, res) => {
+    const query = parseWith(querySchema, req.query);
+    if (!query.path) throw new AppError(422, 'INVALID_PATH', 'Path file wajib diisi.');
+    const { root, target } = await safeTarget(query.worktreeId, query.path);
+    const mime = IMAGE_MIME[path.extname(target).toLowerCase()];
+    if (!mime) throw new AppError(422, 'NOT_IMAGE', 'Hanya file gambar yang dapat ditampilkan langsung.');
+    let stat;
+    try {
+      assertWithin(root, await fs.realpath(target));
+      stat = await fs.stat(target);
+    } catch {
+      throw notFound('File tidak ditemukan.');
+    }
+    if (!stat.isFile()) throw new AppError(422, 'NOT_FILE', 'Path bukan file.');
+    if (stat.size > 10 * 1024 * 1024) {
+      throw new AppError(422, 'FILE_TOO_LARGE', 'Gambar lebih besar dari 10 MB.');
+    }
+    const buffer = await fs.readFile(target);
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Cache-Control', 'private, max-age=60');
+    res.setHeader('Content-Length', String(buffer.length));
+    res.end(buffer);
+  })
+);
+
 filesRouter.get(
   '/content',
   asyncHandler(async (req, res) => {

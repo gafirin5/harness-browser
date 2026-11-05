@@ -115,8 +115,13 @@ async function github<T>(path: string): Promise<T> {
   }
 }
 
-async function githubWrite<T>(path: string, method: 'POST' | 'PUT', body: unknown): Promise<T> {
-  if (!config.githubToken) {
+export async function githubWrite<T>(
+  path: string,
+  method: 'POST' | 'PUT',
+  body: unknown,
+  token = config.githubToken
+): Promise<T> {
+  if (!token) {
     throw new AppError(
       422,
       'GITHUB_TOKEN_MISSING',
@@ -132,7 +137,7 @@ async function githubWrite<T>(path: string, method: 'POST' | 'PUT', body: unknow
         accept: 'application/vnd.github+json',
         'content-type': 'application/json',
         'user-agent': 'dorado-orchestrator',
-        authorization: `Bearer ${config.githubToken}`
+        authorization: `Bearer ${token}`
       },
       body: JSON.stringify(body),
       signal: controller.signal

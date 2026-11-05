@@ -320,7 +320,11 @@ try {
   await page.waitForFunction(() => !document.body.innerText.includes('Kirim Komentar ke Agent'), {
     timeout: 10000
   });
-  await page.click('.diff-comment .icon-btn');
+  await page.click('button[aria-label^="Tandai komentar"]');
+  await page.waitForSelector('.diff-comment.resolved', { timeout: 10000 });
+  await page.click('button[aria-label^="Buka kembali komentar"]');
+  await page.waitForFunction(() => !document.querySelector('.diff-comment.resolved'), { timeout: 10000 });
+  await page.click('button[aria-label^="Hapus komentar"]');
   await page.waitForFunction(() => !document.querySelector('.diff-comment'), { timeout: 10000 });
   console.log('[chrome93] annotate diff OK');
 
@@ -540,13 +544,21 @@ try {
     },
     { timeout: 15000 }
   );
-  await page.type('input[placeholder="Nama otomasi"]', 'E2E Automation');
+  await page.$eval('input[placeholder="Nama otomasi"]', (input) => {
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+    setter?.call(input, 'E2E Automation');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
   await page.$eval('input[aria-label="Jadwal otomasi"]', (input) => {
     const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
     setter?.call(input, 'manual');
     input.dispatchEvent(new Event('input', { bubbles: true }));
   });
-  await page.type('textarea[placeholder="Prompt yang dijalankan agent..."]', 'Cek kondisi repo');
+  await page.$eval('textarea[placeholder="Prompt yang dijalankan agent..."]', (area) => {
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set;
+    setter?.call(area, 'Cek kondisi repo');
+    area.dispatchEvent(new Event('input', { bubbles: true }));
+  });
   await clickText('button', '+ Tambah Otomasi');
   await page.waitForFunction(
     () =>

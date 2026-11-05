@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AgentInfo, DiffComment, SessionInfo } from '@dorado/shared';
-import { ApiError, apiDelete, apiGet, apiPost } from '../lib/api';
+import { ApiError, apiDelete, apiGet, apiPatch, apiPost } from '../lib/api';
 import { Modal, useToast } from './ui';
 
 interface DiffLine {
@@ -293,6 +293,17 @@ export function DiffViewer({
     }
   };
 
+  const toggleResolved = async (comment: DiffComment): Promise<void> => {
+    try {
+      const response = await apiPatch<{ data: DiffComment }>(`/review/${comment.id}`, {
+        resolved: !comment.resolvedAt
+      });
+      setComments((current) => current.map((item) => (item.id === comment.id ? response.data : item)));
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : 'Gagal mengubah status komentar.');
+    }
+  };
+
   return (
     <div className="editor">
       <div className="editor-head">
@@ -406,9 +417,21 @@ export function DiffViewer({
                   </div>
                 ) : null}
                 {lineComments.map((comment) => (
-                  <div className="diff-comment" key={comment.id}>
-                    <span className="diff-comment-marker">komentar</span>
+                  <div className={`diff-comment ${comment.resolvedAt ? 'resolved' : ''}`} key={comment.id}>
+                    <span className="diff-comment-marker">{comment.resolvedAt ? 'selesai' : 'komentar'}</span>
                     <span className="diff-comment-body">{comment.body}</span>
+                    <button
+                      className="icon-btn"
+                      onClick={() => void toggleResolved(comment)}
+                      title={comment.resolvedAt ? 'Buka kembali komentar' : 'Tandai selesai'}
+                      aria-label={
+                        comment.resolvedAt
+                          ? `Buka kembali komentar baris ${comment.line}`
+                          : `Tandai komentar baris ${comment.line} selesai`
+                      }
+                    >
+                      {comment.resolvedAt ? '↺' : '✓'}
+                    </button>
                     <button
                       className="icon-btn"
                       onClick={() => void deleteComment(comment)}

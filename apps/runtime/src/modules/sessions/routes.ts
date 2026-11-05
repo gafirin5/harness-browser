@@ -1,6 +1,9 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { Router } from 'express';
 import { z } from 'zod';
 import { sessionCreateSchema, type SessionHistoryItem, type SessionInfo } from '@dorado/shared';
+import { config } from '../../config.js';
 import { db, newId, nowIso } from '../../db/index.js';
 import { AppError, asyncHandler, notFound } from '../../lib/errors.js';
 import { parseWith } from '../../lib/validation.js';
@@ -64,6 +67,18 @@ function mapHistory(row: HistoryRow): SessionHistoryItem {
     worktreeBranch: row.worktree_branch,
     worktreePath: row.worktree_path
   };
+}
+
+const transcriptQuerySchema = z.object({
+  q: z.string().max(200).optional().default(''),
+  limit: z.coerce.number().int().min(1).max(500).default(200)
+});
+
+function stripAnsi(input: string): string {
+  return input
+    .replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, '')
+    .replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, '')
+    .replace(/\r/g, '');
 }
 
 export const agentsRouter = Router();
@@ -132,6 +147,39 @@ sessionsRouter.get('/history', (req, res) => {
   });
 });
 
+sessionsRouter.get(
+  '/:id/transcript',
+  asyncHandler(async (req, res) => {
+    const query = parseWith(transcriptQuerySchema, req.query);
+    const row = db.prepare('SELECT * FROM sessions WHERE id = ?').get(String(req.params.id ?? '')) as unknown as
+      | SessionRow
+      | undefined;
+    if (!row) throw notFound('Sesi tidak ditemukan.');
+    const logPath = path.join(config.logsDir, `${row.terminal_id}.log`);
+    if (!fs.existsSync(logPath)) {
+      res.json({ data: { available: false, total: 0, truncated: false, lines: [] } });
+      return;
+    }
+    const raw = fs.readFileSync(logPath, 'utf8');
+    const maxBytes = 2 * 1024 * 1024;
+    const truncated = raw.length > maxBytes;
+    const content = truncated ? raw.slice(-maxBytes) : raw;
+    const needle = query.q.toLowerCase();
+    const lines = stripAnsi(content)
+      .split('\n')
+      .map((text, index) => ({ line: index + 1, text }))
+      .filter((item) => !needle || item.text.toLowerCase().includes(needle));
+    res.json({
+      data: {
+        available: true,
+        total: lines.length,
+        truncated,
+        lines: lines.slice(-query.limit)
+      }
+    });
+  })
+);
+
 sessionsRouter.get('/', (req, res) => {
   const worktreeId = typeof req.query.worktreeId === 'string' ? req.query.worktreeId : null;
   const rows = (worktreeId
@@ -171,6 +219,41 @@ sessionsRouter.post(
 
     const row = db.prepare('SELECT * FROM sessions WHERE id = ?').get(id) as unknown as SessionRow;
     res.status(201).json({ data: mapSession(row) });
+  })
+);
+
+sessionsRouter.post(
+  '/purge',
+  asyncHandler(async (req, res) => {
+    const body = z
+      .object({
+        worktreeId: z.string().min(1).optional(),
+        projectId: z.string().min(1).optional()
+      })
+      .refine((data) => data.worktreeId || data.projectId, 'Pilih worktree atau project.')
+      .parse(req.body);
+    const where = ["s.status != 'running'"];
+    const params: string[] = [];
+    if (body.worktreeId) {
+      where.push('s.worktree_id = ?');
+      params.push(body.worktreeId);
+    } else if (body.projectId) {
+      where.push('w.project_id = ?');
+      params.push(body.projectId);
+    }
+    const rows = db
+      .prepare(
+        `SELECT s.id, s.terminal_id FROM sessions s
+         JOIN worktrees w ON w.id = s.worktree_id
+         WHERE ${where.join(' AND ')}`
+      )
+      .all(...params) as unknown as Array<{ id: string; terminal_id: string }>;
+    for (const row of rows) {
+      db.prepare('UPDATE automation_runs SET session_id = NULL WHERE session_id = ?').run(row.id);
+      terminalManager.remove(row.terminal_id);
+      db.prepare('DELETE FROM sessions WHERE id = ?').run(row.id);
+    }
+    res.json({ data: { deleted: rows.length } });
   })
 );
 

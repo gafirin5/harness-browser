@@ -53,7 +53,7 @@ function safeUrl(url: string, image = false): string | null {
 
 const INLINE_PATTERN = /(!\[[^\]]*\]\([^)]+\)|\[[^\]]*\]\([^)]+\)|`[^`]+`|\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_)/g;
 
-function renderInline(text: string, keyPrefix: string): ReactNode[] {
+function renderInline(text: string, keyPrefix: string, resolveImage?: (src: string) => string | null): ReactNode[] {
   const parts = text.split(INLINE_PATTERN).filter((part) => part !== '');
   return parts.map((part, index) => {
     const key = `${keyPrefix}:${index}`;
@@ -62,7 +62,8 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
       if (!match) return part;
       const url = safeUrl(match[2] ?? '', true);
       if (!url) return match[1] ?? '';
-      return <img key={key} src={url} alt={match[1] ?? ''} loading="lazy" />;
+      const resolved = /^(https?:|data:|#)/i.test(url) ? url : (resolveImage?.(url) ?? url);
+      return <img key={key} src={resolved} alt={match[1] ?? ''} loading="lazy" />;
     }
     if (part.startsWith('[')) {
       const match = /^\[([^\]]*)\]\(([^)]+)\)$/.exec(part);
@@ -71,7 +72,7 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
       if (!url) return match[1] ?? '';
       return (
         <a key={key} href={url} target="_blank" rel="noopener noreferrer">
-          {renderInline(match[1] ?? '', key)}
+          {renderInline(match[1] ?? '', key, resolveImage)}
         </a>
       );
     }
@@ -79,10 +80,10 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
       return <code key={key}>{part.slice(1, -1)}</code>;
     }
     if ((part.startsWith('**') && part.endsWith('**')) || (part.startsWith('__') && part.endsWith('__'))) {
-      return <strong key={key}>{renderInline(part.slice(2, -2), key)}</strong>;
+      return <strong key={key}>{renderInline(part.slice(2, -2), key, resolveImage)}</strong>;
     }
     if ((part.startsWith('*') && part.endsWith('*')) || (part.startsWith('_') && part.endsWith('_'))) {
-      return <em key={key}>{renderInline(part.slice(1, -1), key)}</em>;
+      return <em key={key}>{renderInline(part.slice(1, -1), key, resolveImage)}</em>;
     }
     return part;
   });
@@ -108,7 +109,11 @@ function parseTableRow(line: string): string[] {
     .map((cell) => cell.trim());
 }
 
-function renderBlocks(lines: string[], headings: Heading[]): ReactNode[] {
+function renderBlocks(
+  lines: string[],
+  headings: Heading[],
+  resolveImage?: (src: string) => string | null
+): ReactNode[] {
   const blocks: ReactNode[] = [];
   let index = 0;
   let headingIndex = 0;
@@ -149,7 +154,7 @@ function renderBlocks(lines: string[], headings: Heading[]): ReactNode[] {
       const Tag = `h${level}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
       blocks.push(
         <Tag id={id} key={`heading-${index}`}>
-          {renderInline(text, `h-${index}`)}
+          {renderInline(text, `h-${index}`, resolveImage)}
         </Tag>
       );
       index += 1;
@@ -168,7 +173,9 @@ function renderBlocks(lines: string[], headings: Heading[]): ReactNode[] {
         quote.push((lines[index] ?? '').replace(/^\s*>\s?/, ''));
         index += 1;
       }
-      blocks.push(<blockquote key={`quote-${index}`}>{renderInline(quote.join(' '), `q-${index}`)}</blockquote>);
+      blocks.push(
+        <blockquote key={`quote-${index}`}>{renderInline(quote.join(' '), `q-${index}`, resolveImage)}</blockquote>
+      );
       continue;
     }
 
@@ -186,7 +193,7 @@ function renderBlocks(lines: string[], headings: Heading[]): ReactNode[] {
             <thead>
               <tr>
                 {header.map((cell, cellIndex) => (
-                  <th key={cellIndex}>{renderInline(cell, `th-${index}-${cellIndex}`)}</th>
+                  <th key={cellIndex}>{renderInline(cell, `th-${index}-${cellIndex}`, resolveImage)}</th>
                 ))}
               </tr>
             </thead>
@@ -194,7 +201,7 @@ function renderBlocks(lines: string[], headings: Heading[]): ReactNode[] {
               {rows.map((row, rowIndex) => (
                 <tr key={rowIndex}>
                   {row.map((cell, cellIndex) => (
-                    <td key={cellIndex}>{renderInline(cell, `td-${index}-${rowIndex}-${cellIndex}`)}</td>
+                    <td key={cellIndex}>{renderInline(cell, `td-${index}-${rowIndex}-${cellIndex}`, resolveImage)}</td>
                   ))}
                 </tr>
               ))}
@@ -221,7 +228,7 @@ function renderBlocks(lines: string[], headings: Heading[]): ReactNode[] {
       blocks.push(
         <ListTag key={`list-${index}`}>
           {items.map((item, itemIndex) => (
-            <li key={itemIndex}>{renderInline(item, `li-${index}-${itemIndex}`)}</li>
+            <li key={itemIndex}>{renderInline(item, `li-${index}-${itemIndex}`, resolveImage)}</li>
           ))}
         </ListTag>
       );
@@ -236,15 +243,21 @@ function renderBlocks(lines: string[], headings: Heading[]): ReactNode[] {
       paragraph.push(current.trim());
       index += 1;
     }
-    blocks.push(<p key={`p-${index}`}>{renderInline(paragraph.join(' '), `p-${index}`)}</p>);
+    blocks.push(<p key={`p-${index}`}>{renderInline(paragraph.join(' '), `p-${index}`, resolveImage)}</p>);
   }
 
   return blocks;
 }
 
-export function MarkdownPreview({ content }: { content: string }): JSX.Element {
+export function MarkdownPreview({
+  content,
+  resolveImage
+}: {
+  content: string;
+  resolveImage?: (src: string) => string | null;
+}): JSX.Element {
   const headings = extractHeadings(content);
-  const blocks = renderBlocks(content.split('\n'), headings);
+  const blocks = renderBlocks(content.split('\n'), headings, resolveImage);
 
   return (
     <div className="markdown-preview">

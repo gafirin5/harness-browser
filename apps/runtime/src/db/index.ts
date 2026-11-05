@@ -58,6 +58,8 @@ db.exec(`
     prompt      TEXT NOT NULL,
     status      TEXT NOT NULL CHECK (status IN ('running','completed','failed','stopped')),
     agent_token_hash TEXT,
+    model       TEXT NOT NULL DEFAULT '',
+    message_count INTEGER NOT NULL DEFAULT 0,
     exit_code   INTEGER,
     created_at  TEXT NOT NULL,
     started_at  TEXT,
@@ -93,6 +95,8 @@ db.exec(`
     agent       TEXT NOT NULL,
     enabled     INTEGER NOT NULL DEFAULT 1,
     retry_count INTEGER NOT NULL DEFAULT 0,
+    locked_until TEXT,
+    locked_by    TEXT,
     last_run_at TEXT,
     next_run_at TEXT,
     created_at  TEXT NOT NULL
@@ -302,15 +306,23 @@ addWorktreeColumn('note', "note TEXT NOT NULL DEFAULT ''");
 
 // Migrasi database lama: retry automations.
 const automationColumns = db.prepare('PRAGMA table_info(automations)').all() as Array<{ name: string }>;
-if (!automationColumns.some((column) => column.name === 'retry_count')) {
-  db.exec('ALTER TABLE automations ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0');
-}
+const addAutomationColumn = (name: string, ddl: string): void => {
+  if (!automationColumns.some((column) => column.name === name)) db.exec(`ALTER TABLE automations ADD COLUMN ${ddl}`);
+};
+addAutomationColumn('retry_count', 'retry_count INTEGER NOT NULL DEFAULT 0');
+addAutomationColumn('locked_until', 'locked_until TEXT');
+addAutomationColumn('locked_by', 'locked_by TEXT');
 
 // Migrasi database lama: token checkpoint untuk agent.
 const sessionColumns = db.prepare('PRAGMA table_info(sessions)').all() as Array<{ name: string }>;
 if (!sessionColumns.some((column) => column.name === 'agent_token_hash')) {
   db.exec('ALTER TABLE sessions ADD COLUMN agent_token_hash TEXT');
 }
+const addSessionColumn = (name: string, ddl: string): void => {
+  if (!sessionColumns.some((column) => column.name === name)) db.exec(`ALTER TABLE sessions ADD COLUMN ${ddl}`);
+};
+addSessionColumn('model', "model TEXT NOT NULL DEFAULT ''");
+addSessionColumn('message_count', 'message_count INTEGER NOT NULL DEFAULT 0');
 db.exec('CREATE INDEX IF NOT EXISTS sessions_agent_token_ix ON sessions(agent_token_hash)');
 
 export function newId(): string {

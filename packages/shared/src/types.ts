@@ -131,6 +131,8 @@ export interface SessionInfo {
   title: string;
   prompt: string;
   status: SessionStatus;
+  model?: string;
+  messageCount?: number;
   exitCode: number | null;
   createdAt: string;
   startedAt: string | null;

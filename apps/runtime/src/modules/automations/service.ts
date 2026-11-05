@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { db, newId, nowIso } from '../../db/index.js';
 import { config } from '../../config.js';
 import { createAgentToken } from '../../lib/agent-token.js';
@@ -15,10 +16,14 @@ export interface AutomationRow {
   agent: string;
   enabled: number;
   retry_count: number;
+  locked_until: string | null;
+  locked_by: string | null;
   last_run_at: string | null;
   next_run_at: string | null;
   created_at: string;
 }
+
+const INSTANCE_ID = `dorado_${crypto.randomUUID()}`;
 
 const PRESETS: Record<string, number> = {
   '5m': 5,
@@ -159,12 +164,9 @@ function failRun(row: AutomationRow, message: string, allowRetry = true): void {
   const next = willRetry
     ? new Date(Date.now() + 5 * 60_000)
     : computeNextRun(row.schedule, new Date(), config.appTimezone);
-  db.prepare('UPDATE automations SET last_run_at = ?, next_run_at = ?, retry_count = ? WHERE id = ?').run(
-    now,
-    next ? next.toISOString() : null,
-    willRetry ? retryCount + 1 : 0,
-    row.id
-  );
+  db.prepare(
+    'UPDATE automations SET last_run_at = ?, next_run_at = ?, retry_count = ?, locked_until = NULL, locked_by = NULL WHERE id = ?'
+  ).run(now, next ? next.toISOString() : null, willRetry ? retryCount + 1 : 0, row.id);
 }
 
 export interface RunResult {
@@ -239,11 +241,9 @@ export async function runAutomation(id: string, options: { manual?: boolean } = 
     const next = options.manual
       ? row.next_run_at
       : (computeNextRun(row.schedule, new Date(), config.appTimezone)?.toISOString() ?? null);
-    db.prepare('UPDATE automations SET last_run_at = ?, next_run_at = ?, retry_count = 0 WHERE id = ?').run(
-      createdAt,
-      next,
-      row.id
-    );
+    db.prepare(
+      'UPDATE automations SET last_run_at = ?, next_run_at = ?, retry_count = 0, locked_until = NULL, locked_by = NULL WHERE id = ?'
+    ).run(createdAt, next, row.id);
     return { ok: true, sessionId };
   } catch (error) {
     const message = (error as Error).message || 'Gagal menjalankan otomasi.';
@@ -260,13 +260,24 @@ export async function tickAutomations(): Promise<number> {
   try {
     updateRunStatuses();
     const now = nowIso();
+    const lockUntil = new Date(Date.now() + 2 * 60_000).toISOString();
+    db.prepare(
+      `UPDATE automations
+       SET locked_until = ?, locked_by = ?
+       WHERE enabled = 1
+         AND schedule != 'manual'
+         AND (next_run_at IS NULL OR next_run_at <= ?)
+         AND (locked_until IS NULL OR locked_until < ?)`
+    ).run(lockUntil, INSTANCE_ID, now, now);
     const due = db
-      .prepare(
-        "SELECT * FROM automations WHERE enabled = 1 AND schedule != 'manual' AND (next_run_at IS NULL OR next_run_at <= ?)"
-      )
-      .all(now) as unknown as AutomationRow[];
-    for (const row of due) {
-      await runAutomation(row.id);
+      .prepare('SELECT * FROM automations WHERE locked_by = ? AND locked_until = ?')
+      .all(INSTANCE_ID, lockUntil) as unknown as AutomationRow[];
+    try {
+      for (const row of due) {
+        await runAutomation(row.id);
+      }
+    } finally {
+      db.prepare('UPDATE automations SET locked_until = NULL, locked_by = NULL WHERE locked_by = ?').run(INSTANCE_ID);
     }
     return due.length;
   } finally {

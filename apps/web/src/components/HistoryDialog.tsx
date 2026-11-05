@@ -354,6 +354,14 @@ export function HistoryDialog({
                 </span>
               </div>
               <div className="kv">
+                <span className="k">Model</span>
+                <span className="v mono">{selected.model || '—'}</span>
+              </div>
+              <div className="kv">
+                <span className="k">Pesan</span>
+                <span className="v">{selected.messageCount ?? 0}</span>
+              </div>
+              <div className="kv">
                 <span className="k">Dibuat</span>
                 <span className="v">{formatDate(selected.createdAt)}</span>
               </div>

@@ -23,6 +23,8 @@ const item: SessionHistoryItem = {
   title: 'Perbaiki graph',
   prompt: 'Tolong perbaiki lane graph.',
   status: 'completed',
+  model: 'claude-sonnet-4.5',
+  messageCount: 9,
   exitCode: 0,
   createdAt: '2026-11-05T01:00:00.000Z',
   startedAt: '2026-11-05T01:00:00.000Z',
@@ -68,6 +70,8 @@ describe('HistoryDialog', () => {
 
     await waitFor(() => expect(screen.getByText('Perbaiki graph')).toBeTruthy());
     expect(screen.getByText('/tmp/dorado/worktrees/main')).toBeTruthy();
+    expect(screen.getByText('claude-sonnet-4.5')).toBeTruthy();
+    expect(screen.getByText('9')).toBeTruthy();
     await waitFor(() => expect(screen.getByText('opencode --continue')).toBeTruthy());
     expect(screen.getByText('↻ Restart Sesi')).toBeTruthy();
 

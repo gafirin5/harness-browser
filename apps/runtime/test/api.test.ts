@@ -10,7 +10,7 @@ import { createApp } from '../src/app.js';
 import { db } from '../src/db/index.js';
 import { parseGitHubRemote } from '../src/modules/github/routes.js';
 import { getDashboardSummary } from '../src/modules/orchestrator/dashboard.js';
-import { runAutomation } from '../src/modules/automations/service.js';
+import { runAutomation, tickAutomations } from '../src/modules/automations/service.js';
 import { hashAgentToken } from '../src/lib/agent-token.js';
 import { pump } from '../src/modules/orchestrator/dispatcher.js';
 import { heartbeatOnce } from '../src/modules/orchestrator/heartbeat.js';
@@ -623,6 +623,19 @@ describe('automations', () => {
     expect(diff).toBeGreaterThan(0);
     expect(diff).toBeLessThanOrEqual(5 * 60_000 + 5_000);
 
+    db.prepare('UPDATE automations SET next_run_at = ? WHERE id = ?').run(
+      new Date(Date.now() - 1_000).toISOString(),
+      id
+    );
+    const ticked = await tickAutomations();
+    expect(ticked).toBe(1);
+    const locked = db.prepare('SELECT locked_by, locked_until FROM automations WHERE id = ?').get(id) as {
+      locked_by: string | null;
+      locked_until: string | null;
+    };
+    expect(locked.locked_by).toBeNull();
+    expect(locked.locked_until).toBeNull();
+
     await api.delete(`/api/automations/${id}`);
     await api.delete(`/api/worktrees/${worktreeId}`);
   });
@@ -695,6 +708,18 @@ describe('agent checkpoint token', () => {
     const read = await request(app).get('/api/agent/worktree').set('x-dorado-session-token', token);
     expect(read.status).toBe(200);
     expect(read.body.data.taskStatus).toBe('in-review');
+
+    const metadata = await request(app)
+      .patch('/api/agent/session')
+      .set('x-dorado-session-token', token)
+      .send({ model: 'test-model', messageCount: 7 });
+    expect(metadata.status).toBe(200);
+    expect(metadata.body.data.model).toBe('test-model');
+    expect(metadata.body.data.messageCount).toBe(7);
+    const sessionInfo = await request(app).get('/api/agent/session').set('x-dorado-session-token', token);
+    expect(sessionInfo.status).toBe(200);
+    expect(sessionInfo.body.data.model).toBe('test-model');
+    expect(sessionInfo.body.data.messageCount).toBe(7);
 
     const invalid = await request(app)
       .patch('/api/agent/worktree')

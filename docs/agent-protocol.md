@@ -181,3 +181,16 @@ curl -X PATCH "$DORADO_API_URL/api/agent/worktree" \
 ```
 
 Nilai `taskStatus`: `todo`, `in-progress`, `in-review`, `completed`. Token disimpan sebagai hash dan otomatis tidak berlaku saat sesi dihapus.
+
+### Melaporkan Model dan Jumlah Pesan
+
+Agent dapat melaporkan metadata sesi agar tampil di riwayat:
+
+```bash
+curl -X PATCH "$DORADO_API_URL/api/agent/session" \
+  -H "x-dorado-session-token: $DORADO_SESSION_TOKEN" \
+  -H "content-type: application/json" \
+  -d '{"model":"claude-sonnet-4.5","messageCount":12}'
+```
+
+`GET /api/agent/session` mengembalikan `model`, `messageCount`, dan `status` sesi saat ini.

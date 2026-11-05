@@ -21,6 +21,8 @@ interface SessionRow {
   title: string;
   prompt: string;
   status: 'running' | 'completed' | 'failed' | 'stopped';
+  model?: string;
+  message_count?: number;
   exit_code: number | null;
   created_at: string;
   started_at: string | null;
@@ -36,6 +38,8 @@ function mapSession(row: SessionRow): SessionInfo {
     title: row.title,
     prompt: row.prompt,
     status: row.status,
+    model: row.model ?? '',
+    messageCount: row.message_count ?? 0,
     exitCode: row.exit_code,
     createdAt: row.created_at,
     startedAt: row.started_at,

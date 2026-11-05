@@ -57,6 +57,7 @@ db.exec(`
     title       TEXT NOT NULL,
     prompt      TEXT NOT NULL,
     status      TEXT NOT NULL CHECK (status IN ('running','completed','failed','stopped')),
+    agent_token_hash TEXT,
     exit_code   INTEGER,
     created_at  TEXT NOT NULL,
     started_at  TEXT,
@@ -304,6 +305,13 @@ const automationColumns = db.prepare('PRAGMA table_info(automations)').all() as 
 if (!automationColumns.some((column) => column.name === 'retry_count')) {
   db.exec('ALTER TABLE automations ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0');
 }
+
+// Migrasi database lama: token checkpoint untuk agent.
+const sessionColumns = db.prepare('PRAGMA table_info(sessions)').all() as Array<{ name: string }>;
+if (!sessionColumns.some((column) => column.name === 'agent_token_hash')) {
+  db.exec('ALTER TABLE sessions ADD COLUMN agent_token_hash TEXT');
+}
+db.exec('CREATE INDEX IF NOT EXISTS sessions_agent_token_ix ON sessions(agent_token_hash)');
 
 export function newId(): string {
   return crypto.randomUUID().replaceAll('-', '').slice(0, 24);

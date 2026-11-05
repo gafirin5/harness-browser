@@ -11,6 +11,7 @@ import { db } from '../src/db/index.js';
 import { parseGitHubRemote } from '../src/modules/github/routes.js';
 import { getDashboardSummary } from '../src/modules/orchestrator/dashboard.js';
 import { runAutomation } from '../src/modules/automations/service.js';
+import { hashAgentToken } from '../src/lib/agent-token.js';
 import { pump } from '../src/modules/orchestrator/dispatcher.js';
 import { heartbeatOnce } from '../src/modules/orchestrator/heartbeat.js';
 import { applyAgentResult, findAgentByToken } from '../src/modules/orchestrator/service.js';
@@ -663,6 +664,61 @@ describe('inbox reads', () => {
 
     await api.delete(`/api/sessions/inbox-1`);
     await api.delete(`/api/sessions/inbox-2`);
+    await api.delete(`/api/worktrees/${worktreeId}`);
+  });
+});
+
+describe('agent checkpoint token', () => {
+  it('mengizinkan agent update checkpoint dengan token sesi', async () => {
+    const worktree = await api.post('/api/worktrees').send({
+      projectId,
+      branch: 'agent/checkpoint-token-test',
+      baseRef: 'main'
+    });
+    expect(worktree.status).toBe(201);
+    const worktreeId = worktree.body.data.id;
+    const now = new Date().toISOString();
+    const token = 'agent-token-test';
+    db.prepare(
+      `INSERT INTO sessions (id, worktree_id, terminal_id, agent, title, prompt, status, agent_token_hash, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'stopped', ?, ?)`
+    ).run('agent-token-session', worktreeId, 'agent-token-term', 'mock', 'Agent token', '', hashAgentToken(token), now);
+
+    const updated = await request(app)
+      .patch('/api/agent/worktree')
+      .set('x-dorado-session-token', token)
+      .send({ taskStatus: 'in-review', note: 'Dikerjakan agent' });
+    expect(updated.status).toBe(200);
+    expect(updated.body.data.taskStatus).toBe('in-review');
+    expect(updated.body.data.note).toBe('Dikerjakan agent');
+
+    const read = await request(app).get('/api/agent/worktree').set('x-dorado-session-token', token);
+    expect(read.status).toBe(200);
+    expect(read.body.data.taskStatus).toBe('in-review');
+
+    const invalid = await request(app)
+      .patch('/api/agent/worktree')
+      .set('x-dorado-session-token', 'salah')
+      .send({ note: 'x' });
+    expect(invalid.status).toBe(401);
+    const missing = await request(app).patch('/api/agent/worktree').send({ note: 'x' });
+    expect(missing.status).toBe(401);
+
+    const session = await api.post('/api/sessions').send({
+      worktreeId,
+      agent: 'mock',
+      title: 'Session token'
+    });
+    expect(session.status).toBe(201);
+    const row = db.prepare('SELECT agent_token_hash FROM sessions WHERE id = ?').get(session.body.data.id) as {
+      agent_token_hash: string | null;
+    };
+    expect(row.agent_token_hash).toMatch(/^[a-f0-9]{64}$/);
+    await api.post(`/api/sessions/${session.body.data.id}/stop`);
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    await api.delete(`/api/sessions/${session.body.data.id}`);
+
+    await api.delete(`/api/sessions/agent-token-session`);
     await api.delete(`/api/worktrees/${worktreeId}`);
   });
 });

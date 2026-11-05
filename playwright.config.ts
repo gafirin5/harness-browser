@@ -32,7 +32,15 @@ export default defineConfig({
       SESSION_SECRET: 'playwright-session-secret-0123456789abcdef0123456789abcdef',
       COOKIE_SECURE: 'false',
       PUBLIC_BASE_URL: `http://127.0.0.1:${port}`,
-      APP_ENCRYPTION_KEY: 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY='
+      APP_ENCRYPTION_KEY: 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=',
+      DORADO_AGENTS: JSON.stringify([
+        {
+          id: 'mock',
+          name: 'Mock Agent',
+          command: process.execPath,
+          args: ['-e', 'setInterval(() => {}, 1000)']
+        }
+      ])
     }
   }
 });

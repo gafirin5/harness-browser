@@ -1,5 +1,6 @@
 import { db, newId, nowIso } from '../../db/index.js';
 import { config } from '../../config.js';
+import { createAgentToken } from '../../lib/agent-token.js';
 import { getWorktreeRow } from '../worktrees/routes.js';
 import { buildAgentArgs, getAgent } from '../sessions/agents.js';
 import { terminalManager } from '../terminals/manager.js';
@@ -198,6 +199,8 @@ export async function runAutomation(id: string, options: { manual?: boolean } = 
 
   const createdAt = nowIso();
   try {
+    const sessionId = newId();
+    const agentToken = createAgentToken();
     const terminal = terminalManager.create({
       worktreeId: worktree.id,
       title: `Auto: ${row.name}`.slice(0, 80),
@@ -205,13 +208,18 @@ export async function runAutomation(id: string, options: { manual?: boolean } = 
       command: agent.command,
       args: buildAgentArgs(agent.args, row.prompt),
       cols: 120,
-      rows: 34
+      rows: 34,
+      env: {
+        DORADO_SESSION_ID: sessionId,
+        DORADO_SESSION_TOKEN: agentToken.token,
+        DORADO_WORKTREE_ID: worktree.id,
+        DORADO_API_URL: config.publicBaseUrl
+      }
     });
 
-    const sessionId = newId();
     db.prepare(
-      `INSERT INTO sessions (id, worktree_id, terminal_id, agent, title, prompt, status, created_at, started_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'running', ?, ?)`
+      `INSERT INTO sessions (id, worktree_id, terminal_id, agent, title, prompt, status, agent_token_hash, created_at, started_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'running', ?, ?, ?)`
     ).run(
       sessionId,
       worktree.id,
@@ -219,6 +227,7 @@ export async function runAutomation(id: string, options: { manual?: boolean } = 
       agent.id,
       `Auto: ${row.name}`.slice(0, 120),
       row.prompt,
+      agentToken.hash,
       createdAt,
       createdAt
     );

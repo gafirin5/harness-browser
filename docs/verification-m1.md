@@ -9,7 +9,7 @@ Lingkungan: Ubuntu 24.04, Node.js 24.19.0, Chromium 93.0.4577.0, cloudflared 202
 npm test
 ```
 
-Hasil: **52 test lulus** — auth/pairing, health check database + header keamanan, ganti password + cabut sesi lain + logout, project/branch, worktree create/delete + checkpoint, terminal create/list/input/delete, file tree/content/write + path traversal, git stage/commit/push/pull, git graph + detail commit, quick commands, komentar diff + resolve + multi-file, inbox read per user, riwayat sesi, hapus/purge sesi, transcript search, resume sesi dengan mock agent, info runtime, parsing remote GitHub (SSH/HTTPS/git), integrasi GitHub dengan remote non-GitHub (`connected:false`, `NOT_GITHUB`, aksi tulis ditolak), pencarian kode (match, case sensitivity, batas hasil, regex invalid), agent tidak dikenal, automations (CRUD + run manual + retry + zona waktu), multi-user & role (viewer read-only, admin menonaktifkan/mereset password viewer, proteksi admin terakhir), 2FA (setup QR, konfirmasi, login wajib kode, anti-replay, reset oleh admin), audit log (login/gagal login/user create + viewer ditolak), serta Orchestrator (provider + API key tidak bocor, agent token/hash + heartbeat, dispatch task, callback idempoten, biaya half-up `2500 × 0.0020 = 0.0050`, idempotency task, cancel/retry, dan kegagalan dispatcher).
+Hasil: **53 test lulus** — auth/pairing, health check database + header keamanan, ganti password + cabut sesi lain + logout, project/branch, worktree create/delete + checkpoint + token agent, terminal create/list/input/delete, file tree/content/write + path traversal, git stage/commit/push/pull, git graph + detail commit, quick commands, komentar diff + resolve + multi-file, inbox read per user, riwayat sesi, hapus/purge sesi, transcript search, resume sesi dengan mock agent, info runtime, parsing remote GitHub (SSH/HTTPS/git), integrasi GitHub dengan remote non-GitHub (`connected:false`, `NOT_GITHUB`, aksi tulis ditolak), pencarian kode (match, case sensitivity, batas hasil, regex invalid), agent tidak dikenal, automations (CRUD + run manual + retry + zona waktu), multi-user & role (viewer read-only, admin menonaktifkan/mereset password viewer, proteksi admin terakhir), 2FA (setup QR, konfirmasi, login wajib kode, anti-replay, reset oleh admin), audit log (login/gagal login/user create + viewer ditolak), serta Orchestrator (provider + API key tidak bocor, agent token/hash + heartbeat, dispatch task, callback idempoten, biaya half-up `2500 × 0.0020 = 0.0050`, idempotency task, cancel/retry, dan kegagalan dispatcher).
 
 Test frontend (Vitest + Testing Library + jsdom):
 
@@ -35,9 +35,9 @@ npm run verify
 | CSS terlarang | Lulus |
 | Bundel JS awal | **145,1 KB gzip** (batas 150 KB) |
 | Bundel total + editor & orchestrator lazy | **286,2 KB gzip** (batas 300 KB) |
-| Test API | 52 lulus |
+| Test API | 53 lulus |
 | Test frontend (Testing Library) | 50 lulus |
-| Playwright E2E | 3 lulus |
+| Playwright E2E | 5 lulus |
 
 ## Smoke Chromium 93
 
@@ -119,7 +119,7 @@ WebSocket berjalan melalui Cloudflare Quick Tunnel; terminal tetap interaktif.
 npm run test:e2e:playwright
 ```
 
-Hasil: **3 test lulus** di Chrome sistem — login, command palette, panel Orchestrator, dialog Setelan, dialog Audit Log, validasi form ganti password, serta admin membuat viewer dan login viewer dalam mode read-only. Playwright memakai `channel: chrome`/`CHROME_BIN` sehingga tidak mengunduh browser tambahan; gate Chromium 93 tetap dijalankan oleh script Puppeteer.
+Hasil: **5 test lulus** di Chrome sistem — login, command palette, panel Orchestrator, dialog Setelan, dialog Audit Log, validasi form ganti password, admin membuat viewer dan login viewer dalam mode read-only, remap keymap global, serta hapus sesi agent lewat sidebar. Playwright memakai `channel: chrome`/`CHROME_BIN` sehingga tidak mengunduh browser tambahan; gate Chromium 93 tetap dijalankan oleh script Puppeteer.
 
 ## Batasan yang Diketahui
 

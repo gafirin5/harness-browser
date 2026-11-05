@@ -22,6 +22,7 @@ import { orchestratorAgentRouter, orchestratorRouter } from './modules/orchestra
 import { searchRouter } from './modules/search/routes.js';
 import { quickCommandsRouter } from './modules/quick-commands/routes.js';
 import { reviewRouter } from './modules/review/routes.js';
+import { agentApiRouter } from './modules/agent-api/routes.js';
 import { automationsRouter } from './modules/automations/routes.js';
 
 export function createApp(): express.Express {
@@ -78,6 +79,10 @@ export function createApp(): express.Express {
       next();
       return;
     }
+    if (req.path.startsWith('/agent/')) {
+      next();
+      return;
+    }
     const session = getSessionFromRequest(req);
     if (!session) {
       next(new AppError(401, 'UNAUTHORIZED', 'Silakan masuk terlebih dahulu.'));
@@ -101,6 +106,10 @@ export function createApp(): express.Express {
       next();
       return;
     }
+    if (req.path.startsWith('/agent/')) {
+      next();
+      return;
+    }
     if (req.path.startsWith('/sessions/inbox')) {
       next();
       return;
@@ -113,6 +122,7 @@ export function createApp(): express.Express {
     next();
   });
 
+  app.use('/api/agent', agentApiRouter);
   app.use('/api/auth', authRouter);
   app.use('/api/users', usersRouter);
   app.use('/api/audit', auditRouter);

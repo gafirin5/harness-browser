@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { sessionCreateSchema, type SessionHistoryItem, type SessionInfo } from '@dorado/shared';
 import { config } from '../../config.js';
 import { db, newId, nowIso } from '../../db/index.js';
+import { createAgentToken } from '../../lib/agent-token.js';
 import { AppError, asyncHandler, notFound } from '../../lib/errors.js';
 import { parseWith } from '../../lib/validation.js';
 import { csrfGuard, requireAuth } from '../auth/middleware.js';
@@ -252,6 +253,8 @@ sessionsRouter.post(
       throw new AppError(422, 'AGENT_NOT_INSTALLED', `Agent ${agent.name} belum terpasang di host ini.`);
     }
 
+    const id = newId();
+    const agentToken = createAgentToken();
     const terminal = terminalManager.create({
       worktreeId: worktree.id,
       title: body.title,
@@ -259,15 +262,20 @@ sessionsRouter.post(
       command: agent.command,
       args: buildAgentArgs(agent.args, body.prompt),
       cols: 120,
-      rows: 34
+      rows: 34,
+      env: {
+        DORADO_SESSION_ID: id,
+        DORADO_SESSION_TOKEN: agentToken.token,
+        DORADO_WORKTREE_ID: worktree.id,
+        DORADO_API_URL: config.publicBaseUrl
+      }
     });
 
-    const id = newId();
     const createdAt = nowIso();
     db.prepare(
-      `INSERT INTO sessions (id, worktree_id, terminal_id, agent, title, prompt, status, created_at, started_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'running', ?, ?)`
-    ).run(id, worktree.id, terminal.id, agent.id, body.title, body.prompt, createdAt, createdAt);
+      `INSERT INTO sessions (id, worktree_id, terminal_id, agent, title, prompt, status, agent_token_hash, created_at, started_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'running', ?, ?, ?)`
+    ).run(id, worktree.id, terminal.id, agent.id, body.title, body.prompt, agentToken.hash, createdAt, createdAt);
 
     const row = db.prepare('SELECT * FROM sessions WHERE id = ?').get(id) as unknown as SessionRow;
     res.status(201).json({ data: mapSession(row) });
@@ -325,6 +333,8 @@ sessionsRouter.post(
       throw new AppError(422, 'AGENT_NOT_INSTALLED', `Agent ${agent.name} belum terpasang di host ini.`);
     }
 
+    const id = newId();
+    const agentToken = createAgentToken();
     const terminal = terminalManager.create({
       worktreeId: worktree.id,
       title: `${row.title} (lanjut)`,
@@ -332,15 +342,30 @@ sessionsRouter.post(
       command: agent.command,
       args: buildAgentArgs(agent.resumeArgs ?? agent.args, row.prompt),
       cols: 120,
-      rows: 34
+      rows: 34,
+      env: {
+        DORADO_SESSION_ID: id,
+        DORADO_SESSION_TOKEN: agentToken.token,
+        DORADO_WORKTREE_ID: worktree.id,
+        DORADO_API_URL: config.publicBaseUrl
+      }
     });
 
-    const id = newId();
     const createdAt = nowIso();
     db.prepare(
-      `INSERT INTO sessions (id, worktree_id, terminal_id, agent, title, prompt, status, created_at, started_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'running', ?, ?)`
-    ).run(id, worktree.id, terminal.id, agent.id, `${row.title} (lanjut)`, row.prompt, createdAt, createdAt);
+      `INSERT INTO sessions (id, worktree_id, terminal_id, agent, title, prompt, status, agent_token_hash, created_at, started_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'running', ?, ?, ?)`
+    ).run(
+      id,
+      worktree.id,
+      terminal.id,
+      agent.id,
+      `${row.title} (lanjut)`,
+      row.prompt,
+      agentToken.hash,
+      createdAt,
+      createdAt
+    );
 
     const created = db.prepare('SELECT * FROM sessions WHERE id = ?').get(id) as unknown as SessionRow;
     res.status(201).json({ data: mapSession(created) });

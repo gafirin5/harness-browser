@@ -160,3 +160,24 @@ Mock worker merespons `/health`, menerima `/tasks`, mengirim callback `COMPLETED
 - Rotasi token agent dari UI jika token bocor.
 - Jangan log header `Authorization`, API key, atau token. Dorado tidak mengembalikan API key utuh.
 - Callback memakai `PUBLIC_BASE_URL`, jadi URL tersebut harus dapat dijangkau worker.
+## Checkpoint Worktree dari Agent CLI
+
+Setiap sesi agent yang dibuat Dorado menerima environment:
+
+```text
+DORADO_SESSION_ID
+DORADO_SESSION_TOKEN
+DORADO_WORKTREE_ID
+DORADO_API_URL
+```
+
+Agent dapat membaca atau memperbarui checkpoint worktree tanpa cookie browser:
+
+```bash
+curl -X PATCH "$DORADO_API_URL/api/agent/worktree" \
+  -H "x-dorado-session-token: $DORADO_SESSION_TOKEN" \
+  -H "content-type: application/json" \
+  -d '{"taskStatus":"in-review","note":"Implementasi selesai, menunggu review."}'
+```
+
+Nilai `taskStatus`: `todo`, `in-progress`, `in-review`, `completed`. Token disimpan sebagai hash dan otomatis tidak berlaku saat sesi dihapus.

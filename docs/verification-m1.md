@@ -9,7 +9,7 @@ Lingkungan: Ubuntu 24.04, Node.js 24.19.0, Chromium 93.0.4577.0, cloudflared 202
 npm test
 ```
 
-Hasil: **44 test lulus** — auth/pairing, health check database + header keamanan, ganti password + cabut sesi lain + logout, project/branch, worktree create/delete + checkpoint, terminal create/list/input/delete, file tree/content/write + path traversal, git stage/commit/push/pull, git graph + detail commit, quick commands, komentar diff, riwayat sesi, resume sesi dengan mock agent, info runtime, parsing remote GitHub (SSH/HTTPS/git), integrasi GitHub dengan remote non-GitHub (`connected:false`, `NOT_GITHUB`, aksi tulis ditolak), pencarian kode (match, case sensitivity, batas hasil, regex invalid), agent tidak dikenal, automations (CRUD + run manual), multi-user & role (viewer read-only, admin menonaktifkan/mereset password viewer, proteksi admin terakhir), 2FA (setup QR, konfirmasi, login wajib kode, anti-replay, reset oleh admin), audit log (login/gagal login/user create + viewer ditolak), serta Orchestrator (provider + API key tidak bocor, agent token/hash + heartbeat, dispatch task, callback idempoten, biaya half-up `2500 × 0.0020 = 0.0050`, idempotency task, cancel/retry, dan kegagalan dispatcher).
+Hasil: **45 test lulus** — auth/pairing, health check database + header keamanan, ganti password + cabut sesi lain + logout, project/branch, worktree create/delete + checkpoint, terminal create/list/input/delete, file tree/content/write + path traversal, git stage/commit/push/pull, git graph + detail commit, quick commands, komentar diff, riwayat sesi, hapus sesi, resume sesi dengan mock agent, info runtime, parsing remote GitHub (SSH/HTTPS/git), integrasi GitHub dengan remote non-GitHub (`connected:false`, `NOT_GITHUB`, aksi tulis ditolak), pencarian kode (match, case sensitivity, batas hasil, regex invalid), agent tidak dikenal, automations (CRUD + run manual), multi-user & role (viewer read-only, admin menonaktifkan/mereset password viewer, proteksi admin terakhir), 2FA (setup QR, konfirmasi, login wajib kode, anti-replay, reset oleh admin), audit log (login/gagal login/user create + viewer ditolak), serta Orchestrator (provider + API key tidak bocor, agent token/hash + heartbeat, dispatch task, callback idempoten, biaya half-up `2500 × 0.0020 = 0.0050`, idempotency task, cancel/retry, dan kegagalan dispatcher).
 
 Test frontend (Vitest + Testing Library + jsdom):
 
@@ -17,7 +17,7 @@ Test frontend (Vitest + Testing Library + jsdom):
 npm run test:web
 ```
 
-Hasil: **40 test lulus** — CommandPalette, SettingsDialog, OrchestratorPanel, AuditDialog, InfoDialog, Modal, QuickOpenDialog, ShortcutsDialog, keyboard Ctrl+Enter, GitGraphPanel, AgentDashboard, QuickCommandsDialog, DiffViewer annotate, HistoryDialog, WorktreeCheckpoint, AutomationsDialog, MarkdownPreview, GitHubDialog write actions, dan preferensi/keymap terminal.
+Hasil: **41 test lulus** — CommandPalette, SettingsDialog, OrchestratorPanel, AuditDialog, InfoDialog, Modal, QuickOpenDialog, ShortcutsDialog, keyboard Ctrl+Enter, GitGraphPanel, AgentDashboard, QuickCommandsDialog, DiffViewer annotate, HistoryDialog, WorktreeCheckpoint, AutomationsDialog, MarkdownPreview, GitHubDialog write actions, dan preferensi/keymap terminal.
 
 ## Gate Chrome 93
 
@@ -33,10 +33,10 @@ npm run verify
 | Sintaks ES2020 | Lulus — semua chunk |
 | API JS terlarang | Lulus |
 | CSS terlarang | Lulus |
-| Bundel JS awal | **145,6 KB gzip** (batas 150 KB) |
-| Bundel total + editor & orchestrator lazy | **281,7 KB gzip** (batas 300 KB) |
-| Test API | 44 lulus |
-| Test frontend (Testing Library) | 40 lulus |
+| Bundel JS awal | **145,7 KB gzip** (batas 150 KB) |
+| Bundel total + editor & orchestrator lazy | **282,0 KB gzip** (batas 300 KB) |
+| Test API | 45 lulus |
+| Test frontend (Testing Library) | 41 lulus |
 | Playwright E2E | 3 lulus |
 
 ## Smoke Chromium 93

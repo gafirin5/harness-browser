@@ -636,6 +636,48 @@ describe('session resume', () => {
   });
 });
 
+describe('session delete', () => {
+  it('menolak sesi running lalu menghapus sesi stopped beserta terminalnya', async () => {
+    const worktree = await api.post('/api/worktrees').send({
+      projectId,
+      branch: 'agent/delete-test',
+      baseRef: 'main'
+    });
+    expect(worktree.status).toBe(201);
+    const worktreeId = worktree.body.data.id;
+
+    const session = await api.post('/api/sessions').send({
+      worktreeId,
+      agent: 'mock',
+      title: 'Sesi untuk dihapus'
+    });
+    expect(session.status).toBe(201);
+    const sessionId = session.body.data.id;
+    const terminalId = session.body.data.terminalId;
+
+    const rejected = await api.delete(`/api/sessions/${sessionId}`);
+    expect(rejected.status).toBe(409);
+    expect(rejected.body.error.code).toBe('SESSION_RUNNING');
+
+    await api.post(`/api/sessions/${sessionId}/stop`);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    const removed = await api.delete(`/api/sessions/${sessionId}`);
+    expect(removed.status).toBe(204);
+
+    const sessions = await api.get(`/api/sessions?worktreeId=${worktreeId}`);
+    expect(sessions.body.data.some((item: { id: string }) => item.id === sessionId)).toBe(false);
+
+    const terminals = await api.get(`/api/terminals?worktreeId=${worktreeId}`);
+    expect(terminals.body.data.some((item: { id: string }) => item.id === terminalId)).toBe(false);
+
+    const missing = await api.delete(`/api/sessions/${sessionId}`);
+    expect(missing.status).toBe(404);
+
+    await api.delete(`/api/worktrees/${worktreeId}`);
+  });
+});
+
 describe('terminals', () => {
   it('membuat, membaca, dan menutup terminal shell', async () => {
     const worktree = await api.post('/api/worktrees').send({

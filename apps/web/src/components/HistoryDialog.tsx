@@ -20,11 +20,13 @@ function resumeCommand(agent: string, info: AgentInfo | undefined): string {
 export function HistoryDialog({
   onClose,
   onRerun,
+  onDelete,
   selectedProjectId,
   selectedWorktreeId
 }: {
   onClose: () => void;
   onRerun: (session: SessionHistoryItem) => Promise<void>;
+  onDelete: (session: SessionHistoryItem) => Promise<boolean>;
   selectedProjectId: string | null;
   selectedWorktreeId: string | null;
 }): JSX.Element {
@@ -42,6 +44,7 @@ export function HistoryDialog({
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<SessionHistoryItem | null>(null);
   const [pending, setPending] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const load = async (search = query, filter = status, agentFilter = agent, nextScope = scope): Promise<void> => {
     setLoading(true);
@@ -94,6 +97,21 @@ export function HistoryDialog({
     }
   };
 
+  const remove = async (): Promise<void> => {
+    if (!selected) return;
+    setDeleting(true);
+    try {
+      const removed = await onDelete(selected);
+      if (removed) {
+        const id = selected.id;
+        setItems((current) => current.filter((item) => item.id !== id));
+        setSelected(null);
+      }
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const copy = async (value: string, label: string): Promise<void> => {
     const ok = await copyText(value);
     push(ok ? 'success' : 'error', ok ? `${label} disalin.` : `Gagal menyalin ${label.toLowerCase()}.`);
@@ -115,6 +133,14 @@ export function HistoryDialog({
         <>
           <button className="btn" onClick={onClose} disabled={pending}>
             Tutup
+          </button>
+          <button
+            className="btn ghost"
+            onClick={() => void remove()}
+            disabled={!selected || pending || deleting || selected.status === 'running'}
+            title={selected?.status === 'running' ? 'Hentikan sesi sebelum menghapus' : 'Hapus sesi dan terminal agent'}
+          >
+            {deleting ? 'Menghapus...' : 'Hapus Sesi'}
           </button>
           <button
             className="btn primary"

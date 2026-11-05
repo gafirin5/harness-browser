@@ -220,3 +220,17 @@ sessionsRouter.post('/:id/stop', (req, res) => {
   terminalManager.stop(row.terminal_id);
   res.json({ data: mapSession(row) });
 });
+
+sessionsRouter.delete('/:id', (req, res) => {
+  const row = db.prepare('SELECT * FROM sessions WHERE id = ?').get(String(req.params.id ?? '')) as unknown as
+    | SessionRow
+    | undefined;
+  if (!row) throw notFound('Sesi tidak ditemukan.');
+  if (row.status === 'running') {
+    throw new AppError(409, 'SESSION_RUNNING', 'Hentikan sesi terlebih dahulu sebelum menghapus.');
+  }
+  db.prepare('UPDATE automation_runs SET session_id = NULL WHERE session_id = ?').run(row.id);
+  terminalManager.remove(row.terminal_id);
+  db.prepare('DELETE FROM sessions WHERE id = ?').run(row.id);
+  res.status(204).end();
+});

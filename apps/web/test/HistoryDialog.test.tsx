@@ -58,6 +58,7 @@ describe('HistoryDialog', () => {
         <HistoryDialog
           onClose={() => undefined}
           onRerun={async () => undefined}
+          onDelete={async () => true}
           selectedProjectId="p-1"
           selectedWorktreeId={null}
         />
@@ -74,5 +75,44 @@ describe('HistoryDialog', () => {
 
     fireEvent.change(screen.getByLabelText('Kelompok riwayat'), { target: { value: 'agent' } });
     expect(document.querySelectorAll('.history-group .section-label')).toHaveLength(1);
+  });
+
+  it('menghapus sesi terpilih setelah konfirmasi handler', async () => {
+    mockedApiGet.mockImplementation(async (path: string) => {
+      if (path === '/agents') {
+        return {
+          data: [
+            {
+              id: 'opencode',
+              name: 'OpenCode',
+              command: 'opencode',
+              args: ['--prompt', '{{prompt}}'],
+              installed: true
+            }
+          ]
+        };
+      }
+      return { data: [item], meta: { page: 1, pageSize: 50, total: 1, totalPages: 1 } };
+    });
+    const onDelete = vi.fn(async () => true);
+
+    render(
+      <ToastProvider>
+        <HistoryDialog
+          onClose={() => undefined}
+          onRerun={async () => undefined}
+          onDelete={onDelete}
+          selectedProjectId="p-1"
+          selectedWorktreeId={null}
+        />
+      </ToastProvider>
+    );
+
+    await waitFor(() => expect(screen.getByText('Perbaiki graph')).toBeTruthy());
+    fireEvent.click(screen.getByText('Hapus Sesi'));
+
+    await waitFor(() => expect(onDelete).toHaveBeenCalledWith(expect.objectContaining({ id: 'session-123456' })));
+    await waitFor(() => expect(screen.queryByText('Perbaiki graph')).toBeNull());
+    expect(screen.getByText('Belum ada sesi yang cocok.')).toBeTruthy();
   });
 });

@@ -727,6 +727,10 @@ button:disabled {
   color: var(--text);
 }
 
+.icon-btn.danger:hover {
+  color: var(--danger, #f07c8e);
+}
+
 .field {
   margin-bottom: 13px;
 }

@@ -721,6 +721,33 @@ export function App(): JSX.Element {
     }
   };
 
+  const deleteSession = async (session: SessionInfo): Promise<boolean> => {
+    if (!window.confirm(`Hapus sesi "${session.title}"? Terminal agent dan riwayat sesi ini akan dihapus permanen.`)) {
+      return false;
+    }
+    try {
+      await apiDelete(`/sessions/${session.id}`);
+      markMutation();
+      delete sessionStatusRef.current[session.id];
+      setSessions((current) => current.filter((item) => item.id !== session.id));
+      setTerminals((current) => current.filter((item) => item.id !== session.terminalId));
+      setSplitTerminalIds((current) => current.filter((id) => id !== session.terminalId));
+      setUnread((current) => {
+        if (!current[session.id]) return current;
+        const next = { ...current };
+        delete next[session.id];
+        return next;
+      });
+      if (activeTerminalId === session.terminalId) setActiveTerminalId(null);
+      push('success', 'Sesi agent dihapus.');
+      void loadDashboardSessions(true);
+      return true;
+    } catch (caught) {
+      toastError(caught, 'Gagal menghapus sesi.');
+      return false;
+    }
+  };
+
   const logout = async (): Promise<void> => {
     await apiPost('/auth/logout').catch(() => undefined);
     setUser(null);
@@ -1194,6 +1221,19 @@ export function App(): JSX.Element {
                                         ↻
                                       </button>
                                     )}
+                                    {session.status !== 'running' ? (
+                                      <button
+                                        className="icon-btn danger"
+                                        title="Hapus sesi"
+                                        aria-label={`Hapus sesi ${session.title}`}
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          void deleteSession(session);
+                                        }}
+                                      >
+                                        ×
+                                      </button>
+                                    ) : null}
                                   </div>
                                 ))}
                                 {sessions.length === 0 ? <div className="empty">Belum ada sesi agent.</div> : null}
@@ -1541,6 +1581,7 @@ export function App(): JSX.Element {
           <HistoryDialog
             onClose={() => setHistoryOpen(false)}
             onRerun={rerunHistory}
+            onDelete={deleteSession}
             selectedProjectId={selectedProjectId}
             selectedWorktreeId={selectedWorktreeId}
           />

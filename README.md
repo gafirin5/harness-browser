@@ -33,7 +33,7 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **Quick Commands**: simpan perintah global/project, lalu jalankan di terminal aktif, salin, edit, atau hapus dari dialog **Commands**.
 - **Agent Dashboard / Inbox**: papan **Needs You / Working / Done / Idle**, filter project, buka atau resume sesi, serta inbox notifikasi sesi selesai/gagal dengan status belum dibaca.
 - **Annotate Diff**: komentar inline per baris diff yang tersimpan di runtime, lalu kirim batch komentar terpilih ke agent sebagai prompt review.
-- **Session History++**: scope worktree/project/semua, filter status/agent, grup project/agent, detail CWD dan prompt pertama, salin session ID/resume command, serta restart sesi.
+- **Session History++**: scope worktree/project/semua, filter status/agent, grup project/agent, detail CWD dan prompt pertama, salin session ID/resume command, restart sesi, serta hapus sesi yang sudah berhenti beserta terminal agent-nya.
 - **Worktree Checkpoints**: status **Todo / In progress / In review / Completed** dan catatan per worktree, bisa diubah dari sidebar atau API `PATCH /api/worktrees/:id`.
 - **Markdown Preview**: toggle **Preview/Raw** untuk file `.md` dengan heading, list, tabel, code block, gambar, link aman, dan daftar isi otomatis (renderer lazy-loaded).
 - **Scheduled Automations**: buat prompt agent berjadwal (manual, preset 5m–24h, atau cron sederhana), aktif/nonaktif, run now, dan riwayat eksekusi.

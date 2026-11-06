@@ -39,6 +39,7 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **Scheduled Automations**: buat prompt agent berjadwal (manual, preset 5m–24h, atau cron sederhana), aktif/nonaktif, run now, riwayat eksekusi, zona waktu `APP_TIMEZONE`, retry otomatis saat gagal, dan lock scheduler untuk mencegah run ganda.
 - **GitHub write actions**: komentar PR/issue, review **Comment/Approve/Request changes**, merge, tutup issue/PR, atur label, dan lihat diskusi/review dari dialog GitHub (butuh `GITHUB_TOKEN` dengan scope write).
 - **Terminal polish**: link HTTP(S) bisa diklik, salin seleksi lewat context menu atau keymap, reset terminal, serta tema/font/ukuran dan keymap cari/salin yang tersimpan di localStorage.
+- **Remote Nodes Federation** (`Alt+N` atau tombol **Nodes** di topbar): kendalikan mesin/server Dorado lain dari satu Controller via koneksi reverse WebSocket aman (tembus NAT/Firewall), monitoring status online dan latensi realtime, pendaftaran node one-liner, rotasi token, dan dropdown node switcher di sidebar.
 - **Resume sesi** agent dengan konteks percakapan (OpenCode `--continue`), serta stop sesi berjalan.
 - **Persistensi terminal/agent sejati** setelah runtime restart melalui tmux, dengan tombol Restart untuk shell.
 - Hentikan sesi, tutup terminal, hapus worktree (dengan proteksi sesi aktif).

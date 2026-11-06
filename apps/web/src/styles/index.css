@@ -2047,6 +2047,122 @@ button:disabled {
   flex: 0 0 auto;
 }
 
+/* ---------- remote nodes federation ---------- */
+
+.node-create-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.node-create-form .input {
+  flex: 1;
+}
+
+.node-created-banner {
+  padding: 10px 12px;
+  border: 1px solid var(--accent);
+  background: var(--panel-2);
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.node-created-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.node-created-banner .code-block {
+  padding: 8px;
+  background: var(--terminal);
+  border-radius: 6px;
+  font-size: 11px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--accent);
+  margin: 6px 0;
+}
+
+.node-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.node-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--panel);
+  cursor: pointer;
+}
+
+.node-card:hover {
+  background: var(--panel-2);
+  border-color: var(--border);
+}
+
+.node-card.active {
+  border-color: var(--accent);
+  background: var(--panel-2);
+}
+
+.node-card-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.node-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.node-card-meta {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.node-latency {
+  font-size: 10.5px;
+  color: var(--green);
+}
+
+.node-card-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.node-switcher {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--panel-2);
+}
+
+.node-switcher-select {
+  flex: 1;
+  font-size: 11.5px;
+  padding: 3px 6px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+
 /* ---------- automations ---------- */
 
 .automation-form {

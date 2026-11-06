@@ -158,3 +158,22 @@ test('hapus sesi agent lewat sidebar', async ({ page }) => {
   await sessionRow.getByLabel('Hapus sesi Delete me').click();
   await expect(sessionRow).toHaveCount(0);
 });
+
+test('kelola remote nodes federation di dialog Nodes', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill('playwright-password');
+  await page.getByRole('button', { name: 'Masuk' }).click();
+  await expect(page.locator('.topbar-title')).toHaveText('Dorado');
+
+  await page.getByRole('button', { name: 'Nodes' }).click();
+  await expect(page.getByRole('heading', { name: 'Dorado Remote Nodes (Federation)' })).toBeVisible();
+  await expect(page.getByText('🖥️ Local (Controller Host)')).toBeVisible();
+
+  await page.getByLabel('Nama node baru').fill('PW Remote Worker');
+  await page.getByRole('button', { name: '+ Tambah Node' }).click();
+
+  await expect(page.getByText('Token Node Baru: PW Remote Worker')).toBeVisible();
+  await expect(page.locator('.node-card', { hasText: 'PW Remote Worker' })).toBeVisible();
+  await page.locator('.modal button[aria-label="Tutup"]').click();
+  await expect(page.locator('.modal')).toHaveCount(0);
+});

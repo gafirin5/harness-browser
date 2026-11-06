@@ -6,6 +6,7 @@ import { startDispatcher, stopDispatcher } from './modules/orchestrator/dispatch
 import { startHeartbeat, stopHeartbeat } from './modules/orchestrator/heartbeat.js';
 import { startReconcile, stopReconcile } from './modules/orchestrator/reconcile.js';
 import { startAutomations, stopAutomations } from './modules/automations/service.js';
+import { nodeManager } from './modules/nodes/manager.js';
 import { setupTerminalWebSocket } from './ws.js';
 
 terminalManager.reconcileOnStartup();
@@ -32,6 +33,7 @@ function shutdown(signal: string): void {
   stopHeartbeat();
   stopReconcile();
   stopAutomations();
+  nodeManager.shutdown();
   terminalManager.shutdown();
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(1), 8000).unref();

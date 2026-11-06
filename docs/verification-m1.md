@@ -1,6 +1,6 @@
 # Verifikasi M1
 
-Tanggal: 2026-11-05
+Tanggal: 2026-11-07
 Lingkungan: Ubuntu 24.04, Node.js 24.19.0, Chromium 93.0.4577.0, cloudflared 2026.10.1.
 
 ## Test API
@@ -9,7 +9,7 @@ Lingkungan: Ubuntu 24.04, Node.js 24.19.0, Chromium 93.0.4577.0, cloudflared 202
 npm test
 ```
 
-Hasil: **53 test lulus** — auth/pairing, health check database + header keamanan, ganti password + cabut sesi lain + logout, project/branch, worktree create/delete + checkpoint + token agent, terminal create/list/input/delete, file tree/content/write + path traversal, git stage/commit/push/pull, git graph + detail commit, quick commands, komentar diff + resolve + multi-file, inbox read per user, riwayat sesi, hapus/purge sesi, transcript search, resume sesi dengan mock agent, info runtime, parsing remote GitHub (SSH/HTTPS/git), integrasi GitHub dengan remote non-GitHub (`connected:false`, `NOT_GITHUB`, aksi tulis ditolak), pencarian kode (match, case sensitivity, batas hasil, regex invalid), agent tidak dikenal, automations (CRUD + run manual + retry + zona waktu + lock scheduler + notifikasi kegagalan), multi-user & role (viewer read-only, admin menonaktifkan/mereset password viewer, proteksi admin terakhir), 2FA (setup QR, konfirmasi, login wajib kode, anti-replay, reset oleh admin), audit log (login/gagal login/user create + viewer ditolak), serta Orchestrator (provider + API key tidak bocor, agent token/hash + heartbeat, dispatch task, callback idempoten, biaya half-up `2500 × 0.0020 = 0.0050`, idempotency task, cancel/retry, dan kegagalan dispatcher).
+Hasil: **55 test lulus** — auth/pairing, health check database + header keamanan, ganti password + cabut sesi lain + logout, project/branch, worktree create/delete + checkpoint + token agent, terminal create/list/input/delete, file tree/content/write + path traversal, git stage/commit/push/pull, git graph + detail commit, quick commands, komentar diff + resolve + multi-file, inbox read per user, riwayat sesi, hapus/purge sesi, transcript search, resume sesi dengan mock agent, info runtime, remote nodes federation (CRUD node, rotate token, role authorization, reverse WSS handshake, node.hello, ping latency, disconnect), parsing remote GitHub (SSH/HTTPS/git), integrasi GitHub dengan remote non-GitHub (`connected:false`, `NOT_GITHUB`, aksi tulis ditolak), pencarian kode (match, case sensitivity, batas hasil, regex invalid), agent tidak dikenal, automations (CRUD + run manual + retry + zona waktu + lock scheduler + notifikasi kegagalan), multi-user & role (viewer read-only, admin menonaktifkan/mereset password viewer, proteksi admin terakhir), 2FA (setup QR, konfirmasi, login wajib kode, anti-replay, reset oleh admin), audit log (login/gagal login/user create + viewer ditolak), serta Orchestrator (provider + API key tidak bocor, agent token/hash + heartbeat, dispatch task, callback idempoten, biaya half-up `2500 × 0.0020 = 0.0050`, idempotency task, cancel/retry, dan kegagalan dispatcher).
 
 Test frontend (Vitest + Testing Library + jsdom):
 
@@ -17,7 +17,7 @@ Test frontend (Vitest + Testing Library + jsdom):
 npm run test:web
 ```
 
-Hasil: **53 test lulus** — CommandPalette, SettingsDialog, OrchestratorPanel, AuditDialog, InfoDialog, Modal, QuickOpenDialog, ShortcutsDialog, keyboard Ctrl+Enter, GitGraphPanel, AgentDashboard, QuickCommandsDialog, DiffViewer annotate, HistoryDialog, WorktreeCheckpoint, AutomationsDialog, MarkdownPreview, GitHubDialog write actions (comment/review/merge/label/close/thread), preferensi/keymap terminal, dan keymap global.
+Hasil: **57 test lulus** — CommandPalette, SettingsDialog, OrchestratorPanel, AuditDialog, InfoDialog, Modal, QuickOpenDialog, ShortcutsDialog, keyboard Ctrl+Enter, GitGraphPanel, AgentDashboard, QuickCommandsDialog, DiffViewer annotate, HistoryDialog, WorktreeCheckpoint, AutomationsDialog, MarkdownPreview, GitHubDialog write actions (comment/review/merge/label/close/thread), preferensi/keymap terminal, keymap global, dan NodesDialog (daftar node, local host, pair command, role viewer, rotasi token, delete).
 
 ## Gate Chrome 93
 
@@ -33,11 +33,11 @@ npm run verify
 | Sintaks ES2020 | Lulus — semua chunk |
 | API JS terlarang | Lulus |
 | CSS terlarang | Lulus |
-| Bundel JS awal | **145,3 KB gzip** (batas 150 KB) |
-| Bundel total + editor & orchestrator lazy | **287,9 KB gzip** (batas 300 KB) |
-| Test API | 53 lulus |
-| Test frontend (Testing Library) | 53 lulus |
-| Playwright E2E | 5 lulus |
+| Bundel JS awal | **145,8 KB gzip** (batas 150 KB) |
+| Bundel total + editor & orchestrator lazy | **290,5 KB gzip** (batas 300 KB) |
+| Test API | 55 lulus |
+| Test frontend (Testing Library) | 57 lulus |
+| Playwright E2E | 6 lulus |
 
 ## Smoke Chromium 93
 
@@ -76,9 +76,10 @@ Alur yang diuji:
 22. Buka **Setelan**, cabut sesi lain, verifikasi toast sukses dan sesi browser tetap aktif.
 23. Buka dialog riwayat sesi, verifikasi scope/grup/filter serta pencarian transcript, dan hapus sesi nonaktif lewat tombol Hapus Sesi.
 24. Buka **Agent Dashboard / Inbox**, verifikasi kolom board dan tab inbox.
-25. Buka dialog Share dan buat pairing token.
-26. Buka pairing URL di incognito context → auto-login.
-27. Nol error konsol/pageerror.
+25. Buka dialog **Nodes**, daftarkan node remote baru, verifikasi token dan perintah pairing yang dihasilkan.
+26. Buka dialog Share dan buat pairing token.
+27. Buka pairing URL di incognito context → auto-login.
+28. Nol error konsol/pageerror.
 
 Git push/pull divalidasi melalui test API dengan remote bare lokal; tombol UI tersedia di panel Changes.
 

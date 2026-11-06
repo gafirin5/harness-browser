@@ -8,6 +8,7 @@ export type GlobalAction =
   | 'gitGraph'
   | 'history'
   | 'settings'
+  | 'nodes'
   | 'quickOpen'
   | 'jump'
   | 'shortcuts'
@@ -25,6 +26,7 @@ export const ACTION_LABELS: Record<GlobalAction, string> = {
   gitGraph: 'Buka Git Graph',
   history: 'Riwayat sesi',
   settings: 'Setelan keamanan',
+  nodes: 'Kelola Remote Nodes',
   quickOpen: 'Quick Open file',
   jump: 'Jump ke worktree/tab',
   shortcuts: 'Daftar shortcut',
@@ -41,6 +43,7 @@ export const DEFAULT_KEYMAP: Keymap = {
   gitGraph: 'alt+shift+g',
   history: 'alt+h',
   settings: 'alt+s',
+  nodes: 'alt+n',
   quickOpen: 'alt+p',
   jump: 'alt+j',
   shortcuts: 'alt+/',

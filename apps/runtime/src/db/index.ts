@@ -135,6 +135,19 @@ db.exec(`
     PRIMARY KEY (user_id, notification_id)
   );
 
+  CREATE TABLE IF NOT EXISTS remote_nodes (
+    id           TEXT PRIMARY KEY,
+    name         TEXT NOT NULL,
+    token_hash   TEXT NOT NULL UNIQUE,
+    status       TEXT NOT NULL DEFAULT 'offline' CHECK (status IN ('online', 'offline')),
+    hostname     TEXT,
+    platform     TEXT,
+    agents_json  TEXT NOT NULL DEFAULT '[]',
+    latency_ms   INTEGER,
+    last_seen_at TEXT,
+    created_at   TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS pairing_tokens (
     id           TEXT PRIMARY KEY,
     token_hash   TEXT NOT NULL UNIQUE,
@@ -294,6 +307,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS automations_due_ix ON automations(enabled, next_run_at);
   CREATE INDEX IF NOT EXISTS automation_runs_automation_ix ON automation_runs(automation_id, started_at DESC);
   CREATE INDEX IF NOT EXISTS notifications_created_ix ON notifications(created_at DESC);
+  CREATE INDEX IF NOT EXISTS remote_nodes_status_ix ON remote_nodes(status);
 `);
 
 // Migrasi database lama: auth_sessions belum memiliki user_id.
@@ -341,6 +355,9 @@ const addSessionColumn = (name: string, ddl: string): void => {
 addSessionColumn('model', "model TEXT NOT NULL DEFAULT ''");
 addSessionColumn('message_count', 'message_count INTEGER NOT NULL DEFAULT 0');
 db.exec('CREATE INDEX IF NOT EXISTS sessions_agent_token_ix ON sessions(agent_token_hash)');
+
+// Reset status node remote saat startup controller
+db.prepare("UPDATE remote_nodes SET status = 'offline', latency_ms = NULL WHERE status = 'online'").run();
 
 export function newId(): string {
   return crypto.randomUUID().replaceAll('-', '').slice(0, 24);

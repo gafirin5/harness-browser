@@ -2,6 +2,7 @@ import type { Server } from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { terminalClientMessageSchema } from '@dorado/shared';
 import { terminalManager } from './modules/terminals/manager.js';
+import { nodeManager } from './modules/nodes/manager.js';
 import { checkWsOrigin } from './modules/auth/middleware.js';
 import { getSessionFromCookieHeader } from './modules/auth/session.js';
 
@@ -12,9 +13,39 @@ function reject(socket: import('node:stream').Duplex, status: number, message: s
 
 export function setupTerminalWebSocket(server: Server): WebSocketServer {
   const wss = new WebSocketServer({ noServer: true });
+  const nodesWss = new WebSocketServer({ noServer: true });
 
   server.on('upgrade', (req, socket, head) => {
     const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
+
+    if (url.pathname === '/ws/nodes/connect') {
+      const authHeader = req.headers.authorization;
+      const customHeader = req.headers['x-dorado-node-token'];
+      const queryToken = url.searchParams.get('token');
+      const rawToken = (
+        typeof customHeader === 'string'
+          ? customHeader
+          : typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+            ? authHeader.slice(7)
+            : queryToken
+      )?.trim();
+
+      if (!rawToken) {
+        reject(socket, 401, 'Unauthorized');
+        return;
+      }
+      const node = nodeManager.getByToken(rawToken);
+      if (!node) {
+        reject(socket, 401, 'Unauthorized');
+        return;
+      }
+
+      nodesWss.handleUpgrade(req, socket, head, (ws) => {
+        nodeManager.registerConnection(node.id, ws);
+      });
+      return;
+    }
+
     const match = /^\/ws\/terminals\/([A-Za-z0-9]+)$/.exec(url.pathname);
     if (!match?.[1]) {
       reject(socket, 404, 'Not Found');

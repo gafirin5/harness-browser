@@ -24,6 +24,7 @@ import { quickCommandsRouter } from './modules/quick-commands/routes.js';
 import { reviewRouter } from './modules/review/routes.js';
 import { agentApiRouter } from './modules/agent-api/routes.js';
 import { notificationsRouter } from './modules/notifications/routes.js';
+import { nodesRouter } from './modules/nodes/routes.js';
 import { automationsRouter } from './modules/automations/routes.js';
 
 export function createApp(): express.Express {
@@ -129,6 +130,7 @@ export function createApp(): express.Express {
 
   app.use('/api/agent', agentApiRouter);
   app.use('/api/notifications', notificationsRouter);
+  app.use('/api/nodes', nodesRouter);
   app.use('/api/auth', authRouter);
   app.use('/api/users', usersRouter);
   app.use('/api/audit', auditRouter);

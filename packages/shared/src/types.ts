@@ -116,6 +116,48 @@ export interface NotificationItem {
   read: boolean;
 }
 
+export type RemoteNodeStatus = 'online' | 'offline';
+
+export interface RemoteNodeInfo {
+  id: string;
+  name: string;
+  status: RemoteNodeStatus;
+  hostname: string | null;
+  platform: string | null;
+  agents: AgentInfo[];
+  latencyMs: number | null;
+  lastSeenAt: string | null;
+  createdAt: string;
+}
+
+export interface RemoteNodeCreated extends RemoteNodeInfo {
+  token: string;
+  pairCommand: string;
+}
+
+export interface NodeHelloParams {
+  hostname: string;
+  platform: string;
+  version: string;
+  agents: AgentInfo[];
+}
+
+export interface NodeRpcRequest<T = unknown> {
+  id: string;
+  method: string;
+  params?: T;
+}
+
+export interface NodeRpcResponse<T = unknown> {
+  id: string;
+  ok: boolean;
+  data?: T;
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
 export type TerminalKind = 'shell' | 'agent';
 export type TerminalStatus = 'running' | 'exited' | 'stopped';
 

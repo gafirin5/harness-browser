@@ -804,6 +804,15 @@ try {
   await page.waitForFunction(() => !document.querySelector('.agent-dashboard'), { timeout: 10000 });
   console.log('[chrome93] agent dashboard + inbox OK');
 
+  await clickText('button', 'Nodes');
+  await waitText('Dorado Remote Nodes (Federation)');
+  await page.type('input[placeholder*="Nama node"]', 'Chrome93 Remote Node');
+  await clickText('button', '+ Tambah Node');
+  await waitText('Token Node Baru: Chrome93 Remote Node');
+  await page.click('.modal button[aria-label="Tutup"]');
+  await page.waitForFunction(() => !document.body.innerText.includes('Dorado Remote Nodes'), { timeout: 10000 });
+  console.log('[chrome93] remote nodes dialog OK');
+
   await clickText('button', 'Share');
   await waitText('Share & Pairing');
   await clickText('button', 'Buat Pairing Token');

@@ -189,3 +189,7 @@ export const automationUpdateSchema = z
     enabled: z.boolean().optional()
   })
   .refine((data) => Object.keys(data).length > 0, 'Tidak ada perubahan yang dikirim.');
+
+export const remoteNodeCreateSchema = z.object({
+  name: z.string().trim().min(1, 'Nama node wajib diisi.').max(80)
+});

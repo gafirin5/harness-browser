@@ -3,6 +3,7 @@ import type {
   AgentInfo,
   NotificationItem,
   Project,
+  RemoteNodeInfo,
   SessionHistoryItem,
   SessionInfo,
   TerminalInfo,
@@ -52,6 +53,7 @@ const QuickOpenDialog = lazy(() =>
   import('./components/QuickOpenDialog').then((module) => ({ default: module.QuickOpenDialog }))
 );
 const DiffViewer = lazy(() => import('./components/DiffViewer').then((module) => ({ default: module.DiffViewer })));
+const NodesDialog = lazy(() => import('./components/NodesDialog'));
 
 type DialogState =
   | { type: 'project' }
@@ -105,6 +107,9 @@ export function App(): JSX.Element {
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [inboxRead, setInboxRead] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [nodesOpen, setNodesOpen] = useState(false);
+  const [remoteNodes, setRemoteNodes] = useState<RemoteNodeInfo[]>([]);
+  const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
   const shortcutRef = useRef({
     selectedWorktree: null as Worktree | null,
     terminals: [] as TerminalInfo[],
@@ -267,16 +272,27 @@ export function App(): JSX.Element {
     }
   }, []);
 
+  const loadRemoteNodes = useCallback(async () => {
+    try {
+      const response = await apiGet<{ data: RemoteNodeInfo[] }>('/nodes');
+      setRemoteNodes(response.data);
+    } catch {
+      // Abaikan bila belum login
+    }
+  }, []);
+
   useEffect(() => {
     if (!booted) return undefined;
     void loadDashboardSessions(true);
     void loadNotifications();
+    void loadRemoteNodes();
     const timer = window.setInterval(() => {
       void loadDashboardSessions(true);
       void loadNotifications();
-    }, 20000);
+      void loadRemoteNodes();
+    }, 15000);
     return () => window.clearInterval(timer);
-  }, [booted, loadDashboardSessions, loadNotifications]);
+  }, [booted, loadDashboardSessions, loadNotifications, loadRemoteNodes]);
 
   const loadInboxReads = useCallback(async () => {
     try {
@@ -380,6 +396,10 @@ export function App(): JSX.Element {
       }
       if (action === 'settings') {
         setSettingsOpen(true);
+        return;
+      }
+      if (action === 'nodes') {
+        setNodesOpen(true);
         return;
       }
       if (action === 'quickOpen') {
@@ -945,6 +965,12 @@ export function App(): JSX.Element {
       run: () => setShortcutsOpen(true)
     },
     {
+      id: 'nodes',
+      label: 'Kelola Remote Nodes',
+      hint: 'Federasi mesin Dorado lain (Alt+N)',
+      run: () => setNodesOpen(true)
+    },
+    {
       id: 'git-graph',
       label: 'Git Graph',
       hint: 'Riwayat commit project dan detail per commit (Alt+Shift+G)',
@@ -1112,6 +1138,12 @@ export function App(): JSX.Element {
             Audit
           </button>
         ) : null}
+        <button className="btn tiny" onClick={() => setNodesOpen(true)} title="Kelola Remote Nodes (Alt+N)">
+          Nodes
+          {remoteNodes.filter((n) => n.status === 'online').length > 0
+            ? ` (${remoteNodes.filter((n) => n.status === 'online').length})`
+            : ''}
+        </button>
         <button className="btn tiny" onClick={() => setSettingsOpen(true)}>
           Setelan
         </button>
@@ -1122,6 +1154,28 @@ export function App(): JSX.Element {
 
       <div className="main">
         <aside className="sidebar">
+          <div className="node-switcher">
+            <span className="mono" style={{ fontSize: 11 }}>
+              🌐 Node:
+            </span>
+            <select
+              className="node-switcher-select"
+              value={activeNodeId ?? ''}
+              onChange={(e) => setActiveNodeId(e.target.value || null)}
+              aria-label="Pilih host atau remote node"
+            >
+              <option value="">🖥️ Local</option>
+              {remoteNodes.map((n) => (
+                <option key={n.id} value={n.id} disabled={n.status !== 'online'}>
+                  {n.name} ({n.status}
+                  {n.status === 'online' && n.latencyMs !== null ? `, ${n.latencyMs}ms` : ''})
+                </option>
+              ))}
+            </select>
+            <button className="icon-btn" onClick={() => setNodesOpen(true)} title="Kelola Remote Nodes (Alt+N)">
+              ⚙
+            </button>
+          </div>
           <div className="sidebar-head">
             <span className="sidebar-title">Projects</span>
             <button className="icon-btn" title="Tambah project" onClick={() => setDialog({ type: 'project' })}>
@@ -1725,6 +1779,22 @@ export function App(): JSX.Element {
             onMarkAllRead={markInboxAllRead}
             onMarkNotificationRead={markNotificationRead}
             onMarkAllNotificationsRead={markAllNotificationsRead}
+          />
+        </Suspense>
+      ) : null}
+      {nodesOpen && user ? (
+        <Suspense
+          fallback={
+            <div className="orch-overlay">
+              <div className="empty">Memuat Remote Nodes...</div>
+            </div>
+          }
+        >
+          <NodesDialog
+            currentUser={user}
+            activeNodeId={activeNodeId}
+            onSelectNode={(id) => setActiveNodeId(id)}
+            onClose={() => setNodesOpen(false)}
           />
         </Suspense>
       ) : null}

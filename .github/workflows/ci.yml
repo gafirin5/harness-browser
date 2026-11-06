@@ -39,6 +39,22 @@ jobs:
           else
             echo "Chrome tidak ditemukan"; exit 1
           fi
+
+      - name: Cache Chromium 93
+        id: cache-chromium93
+        uses: actions/cache@v4
+        with:
+          path: /tmp/puppeteer93
+          key: chromium93-puppeteer-10.2.0-v1
+
+      - name: Install Chromium 93
+        if: steps.cache-chromium93.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p /tmp/puppeteer93
+          cd /tmp/puppeteer93
+          npm init -y
+          npm install puppeteer@10.2.0 --no-save
+
       - run: npm ci
       - run: npm run build
       - name: Start runtime
@@ -56,10 +72,11 @@ jobs:
           done
           cat /tmp/dorado-runtime.log
           exit 1
-      - name: Chrome UI smoke
+      - name: Chromium 93 UI smoke
         env:
           BASE_URL: http://127.0.0.1:7788
           DORADO_PASSWORD: ci-password-123
+          PUPPETEER93_DIR: /tmp/puppeteer93
         run: node scripts/e2e-chrome93.mjs
       - name: Playwright UI smoke
         run: npx playwright test

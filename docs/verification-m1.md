@@ -41,11 +41,13 @@ npm run verify
 
 ## Smoke Chromium 93
 
-Lokal dan melalui Cloudflare Quick Tunnel:
+Script `scripts/e2e-chrome93.mjs` memvalidasi versi browser secara ketat (`HeadlessChrome/93.0.4577.0` atau `Chrome/93.x`). Baik lokal maupun CI GitHub Actions kini menginstal dan meng-cache Puppeteer 10.2.0 (Chromium 93 r901912).
+
+Pengujian lokal dan melalui Cloudflare Quick Tunnel:
 
 ```bash
-BASE_URL=http://127.0.0.1:7788 node scripts/e2e-chrome93.mjs
-BASE_URL=https://<tunnel>.trycloudflare.com node scripts/e2e-chrome93.mjs
+PUPPETEER93_DIR=/tmp/puppeteer93 BASE_URL=http://127.0.0.1:7788 node scripts/e2e-chrome93.mjs
+PUPPETEER93_DIR=/tmp/puppeteer93 BASE_URL=https://<tunnel>.trycloudflare.com node scripts/e2e-chrome93.mjs
 ```
 
 Alur yang diuji:

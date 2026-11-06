@@ -69,6 +69,12 @@ const worktree = await api(
 if (worktree.status !== 201) throw new Error(`Seed worktree gagal: ${JSON.stringify(worktree.body)}`);
 
 const browser = await puppeteer.launch(launchOptions);
+const browserVersion = await browser.version();
+console.log(`[chrome93] browser version: ${browserVersion}`);
+if (process.env.STRICT_CHROME93 !== 'false' && !/Chrome\/93\./i.test(browserVersion)) {
+  throw new Error(`Smoke test mensyaratkan Chromium 93, tetapi terdeteksi: ${browserVersion}`);
+}
+
 const page = await browser.newPage();
 await page.setViewport({ width: 1366, height: 768 });
 

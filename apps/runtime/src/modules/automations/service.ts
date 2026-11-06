@@ -161,6 +161,16 @@ function failRun(row: AutomationRow, message: string, allowRetry = true): void {
   ).run(newId(), row.id, 'failed', message, now, now);
   const retryCount = row.retry_count ?? 0;
   const willRetry = allowRetry && row.schedule.toLowerCase() !== 'manual' && retryCount < 2;
+  if (!willRetry) {
+    db.prepare('INSERT INTO notifications (id, type, title, body, ref_id, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
+      newId(),
+      'automation_failed',
+      `Otomasi "${row.name}" gagal`,
+      message.slice(0, 1000),
+      row.id,
+      now
+    );
+  }
   const next = willRetry
     ? new Date(Date.now() + 5 * 60_000)
     : computeNextRun(row.schedule, new Date(), config.appTimezone);

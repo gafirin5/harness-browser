@@ -611,6 +611,18 @@ describe('automations', () => {
     const failed = await api.post(`/api/automations/${id}/run`);
     expect(failed.status).toBe(422);
 
+    const notifications = await api.get('/api/notifications');
+    expect(notifications.status).toBe(200);
+    const notification = notifications.body.data.find((item: { refId: string | null }) => item.refId === id);
+    expect(notification).toBeTruthy();
+    expect(notification.read).toBe(false);
+    const marked = await api.post(`/api/notifications/${notification.id}/read`);
+    expect(marked.status).toBe(200);
+    const afterRead = await api.get('/api/notifications');
+    expect(afterRead.body.data.find((item: { id: string }) => item.id === notification.id).read).toBe(true);
+    const readAll = await api.post('/api/notifications/read-all');
+    expect(readAll.status).toBe(200);
+
     const scheduled = await runAutomation(id);
     expect(scheduled.ok).toBe(false);
 

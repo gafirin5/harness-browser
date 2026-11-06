@@ -23,6 +23,7 @@ import { searchRouter } from './modules/search/routes.js';
 import { quickCommandsRouter } from './modules/quick-commands/routes.js';
 import { reviewRouter } from './modules/review/routes.js';
 import { agentApiRouter } from './modules/agent-api/routes.js';
+import { notificationsRouter } from './modules/notifications/routes.js';
 import { automationsRouter } from './modules/automations/routes.js';
 
 export function createApp(): express.Express {
@@ -114,6 +115,10 @@ export function createApp(): express.Express {
       next();
       return;
     }
+    if (req.path.startsWith('/notifications')) {
+      next();
+      return;
+    }
     const user = res.locals.user as { role?: string } | undefined;
     if (!user || user.role !== 'ADMIN') {
       next(new AppError(403, 'FORBIDDEN', 'Mode viewer tidak diizinkan melakukan perubahan.'));
@@ -123,6 +128,7 @@ export function createApp(): express.Express {
   });
 
   app.use('/api/agent', agentApiRouter);
+  app.use('/api/notifications', notificationsRouter);
   app.use('/api/auth', authRouter);
   app.use('/api/users', usersRouter);
   app.use('/api/audit', auditRouter);

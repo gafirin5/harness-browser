@@ -31,7 +31,7 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **Sesi agent interaktif tanpa prompt awal**: buka agent lalu ketik instruksi langsung di terminal agent.
 - **Git Graph** (`Alt+Shift+G` atau tombol **Graph** di project): riwayat commit project dengan lane graph, ref branch/tag, detail commit, dan daftar file yang berubah.
 - **Quick Commands**: simpan perintah global/project, lalu jalankan di terminal aktif, salin, edit, atau hapus dari dialog **Commands**.
-- **Agent Dashboard / Inbox**: papan **Needs You / Working / Done / Idle**, filter project, buka atau resume sesi, serta inbox notifikasi dengan status belum dibaca yang tersimpan per user di server.
+- **Agent Dashboard / Inbox**: papan **Needs You / Working / Done / Idle**, filter project, buka atau resume sesi, serta inbox notifikasi sesi dan kegagalan automation dengan status belum dibaca yang tersimpan per user di server.
 - **Annotate Diff**: komentar inline per baris diff yang tersimpan di runtime, resolve/reopen, lalu kirim batch komentar dari satu atau beberapa file ke agent sebagai prompt review.
 - **Session History++**: scope worktree/project/semua, filter status/agent, grup project/agent, detail CWD dan prompt pertama, salin session ID/resume command, restart sesi, hapus sesi/terminal agent, hapus massal sesi nonaktif, dan pencarian transcript dari log terminal.
 - **Worktree Checkpoints**: status **Todo / In progress / In review / Completed** dan catatan per worktree, bisa diubah dari sidebar, API admin, atau oleh agent lewat token sesi (`PATCH /api/agent/worktree`).

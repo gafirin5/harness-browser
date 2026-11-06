@@ -2306,6 +2306,12 @@ button:disabled {
   margin-bottom: 10px;
 }
 
+.dashboard-notification-block {
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
 .dashboard-inbox-list {
   display: flex;
   flex-direction: column;

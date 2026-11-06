@@ -48,13 +48,16 @@ const baseProps = {
   projects: [project],
   selectedProjectId: 'p-1',
   inboxRead: [] as string[],
+  notifications: [],
   onClose: () => undefined,
   onRefresh: () => undefined,
   onOpenSession: () => undefined,
   onRerun: () => undefined,
   onStop: () => undefined,
   onMarkRead: () => undefined,
-  onMarkAllRead: () => undefined
+  onMarkAllRead: () => undefined,
+  onMarkNotificationRead: () => undefined,
+  onMarkAllNotificationsRead: () => undefined
 };
 
 describe('AgentDashboard', () => {
@@ -91,5 +94,33 @@ describe('AgentDashboard', () => {
     expect(document.querySelectorAll('.dashboard-inbox-row.unread')).toHaveLength(1);
 
     fireEvent.click(screen.getByText('Tandai Semua Dibaca'));
+  });
+});
+
+describe('AgentDashboard notifications', () => {
+  it('menampilkan notifikasi sistem dan menandainya dibaca', () => {
+    const onMarkNotificationRead = vi.fn();
+    render(
+      <AgentDashboard
+        {...baseProps}
+        initialTab="inbox"
+        notifications={[
+          {
+            id: 'n-1',
+            type: 'automation_failed',
+            title: 'Otomasi "Cek malam" gagal',
+            body: 'Agent belum terpasang.',
+            refId: 'a-1',
+            createdAt: '2026-11-05T10:00:00.000Z',
+            read: false
+          }
+        ]}
+        onMarkNotificationRead={onMarkNotificationRead}
+      />
+    );
+
+    expect(screen.getByText('Otomasi "Cek malam" gagal')).toBeTruthy();
+    fireEvent.click(screen.getByText('Otomasi "Cek malam" gagal'));
+    expect(onMarkNotificationRead).toHaveBeenCalledWith('n-1');
   });
 });

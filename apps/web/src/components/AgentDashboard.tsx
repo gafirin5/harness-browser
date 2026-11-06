@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { Project, SessionHistoryItem } from '@dorado/shared';
+import type { NotificationItem, Project, SessionHistoryItem } from '@dorado/shared';
 
 type DashboardTab = 'board' | 'inbox';
 
@@ -27,6 +27,7 @@ export function AgentDashboard({
   projects,
   selectedProjectId,
   inboxRead,
+  notifications,
   initialTab = 'board',
   onClose,
   onRefresh,
@@ -34,13 +35,16 @@ export function AgentDashboard({
   onRerun,
   onStop,
   onMarkRead,
-  onMarkAllRead
+  onMarkAllRead,
+  onMarkNotificationRead,
+  onMarkAllNotificationsRead
 }: {
   sessions: SessionHistoryItem[];
   loading: boolean;
   projects: Project[];
   selectedProjectId: string | null;
   inboxRead: string[];
+  notifications: NotificationItem[];
   initialTab?: DashboardTab;
   onClose: () => void;
   onRefresh: () => void;
@@ -49,6 +53,8 @@ export function AgentDashboard({
   onStop: (session: SessionHistoryItem) => void;
   onMarkRead: (id: string) => void;
   onMarkAllRead: (ids: string[]) => void;
+  onMarkNotificationRead: (id: string) => void;
+  onMarkAllNotificationsRead: () => void;
 }): JSX.Element {
   const [tab, setTab] = useState<DashboardTab>(initialTab);
   const [projectFilter, setProjectFilter] = useState<string>(selectedProjectId ?? 'all');
@@ -75,6 +81,8 @@ export function AgentDashboard({
     () => inbox.filter((session) => !readSet.has(session.id)).map((s) => s.id),
     [inbox, readSet]
   );
+  const unreadNotificationCount = notifications.filter((item) => !item.read).length;
+  const totalUnread = unreadIds.length + unreadNotificationCount;
 
   const open = (session: SessionHistoryItem): void => {
     onMarkRead(session.id);
@@ -96,7 +104,7 @@ export function AgentDashboard({
               Board
             </button>
             <button className={`orch-tab ${tab === 'inbox' ? 'active' : ''}`} onClick={() => setTab('inbox')}>
-              Inbox{unreadIds.length > 0 ? ` (${unreadIds.length})` : ''}
+              Inbox{totalUnread > 0 ? ` (${totalUnread})` : ''}
             </button>
           </div>
           <span className="topbar-spacer" />
@@ -170,6 +178,38 @@ export function AgentDashboard({
           </div>
         ) : (
           <div className="dashboard-inbox">
+            {notifications.length > 0 ? (
+              <div className="dashboard-notification-block">
+                <div className="dashboard-inbox-head">
+                  <span className="muted" style={{ fontSize: 11.5 }}>
+                    Notifikasi sistem · {unreadNotificationCount} belum dibaca
+                  </span>
+                  <button
+                    className="btn tiny"
+                    onClick={onMarkAllNotificationsRead}
+                    disabled={unreadNotificationCount === 0}
+                  >
+                    Tandai Semua Dibaca
+                  </button>
+                </div>
+                <div className="dashboard-inbox-list">
+                  {notifications.map((notification) => (
+                    <button
+                      key={notification.id}
+                      className={`dashboard-inbox-row ${notification.read ? '' : 'unread'}`}
+                      onClick={() => onMarkNotificationRead(notification.id)}
+                    >
+                      <span className="dot off" />
+                      <span className="dashboard-inbox-info">
+                        <span className="dashboard-inbox-title">{notification.title}</span>
+                        <span className="dashboard-inbox-meta">{notification.body}</span>
+                      </span>
+                      <span className="dashboard-inbox-time">{formatTime(notification.createdAt)}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <div className="dashboard-inbox-head">
               <span className="muted" style={{ fontSize: 11.5 }}>
                 {unreadIds.length} belum dibaca dari {inbox.length} sesi selesai/gagal.

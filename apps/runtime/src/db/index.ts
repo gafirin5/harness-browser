@@ -119,6 +119,22 @@ db.exec(`
     PRIMARY KEY (user_id, session_id)
   );
 
+  CREATE TABLE IF NOT EXISTS notifications (
+    id         TEXT PRIMARY KEY,
+    type       TEXT NOT NULL,
+    title      TEXT NOT NULL,
+    body       TEXT NOT NULL,
+    ref_id     TEXT,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS notification_reads (
+    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    notification_id TEXT NOT NULL REFERENCES notifications(id) ON DELETE CASCADE,
+    read_at         TEXT NOT NULL,
+    PRIMARY KEY (user_id, notification_id)
+  );
+
   CREATE TABLE IF NOT EXISTS pairing_tokens (
     id           TEXT PRIMARY KEY,
     token_hash   TEXT NOT NULL UNIQUE,
@@ -277,6 +293,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS automations_project_ix ON automations(project_id);
   CREATE INDEX IF NOT EXISTS automations_due_ix ON automations(enabled, next_run_at);
   CREATE INDEX IF NOT EXISTS automation_runs_automation_ix ON automation_runs(automation_id, started_at DESC);
+  CREATE INDEX IF NOT EXISTS notifications_created_ix ON notifications(created_at DESC);
 `);
 
 // Migrasi database lama: auth_sessions belum memiliki user_id.

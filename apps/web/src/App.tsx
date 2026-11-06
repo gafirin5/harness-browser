@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   AgentInfo,
+  NotificationItem,
   Project,
   SessionHistoryItem,
   SessionInfo,
@@ -103,6 +104,7 @@ export function App(): JSX.Element {
   const [dashboardSessions, setDashboardSessions] = useState<SessionHistoryItem[]>([]);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [inboxRead, setInboxRead] = useState<string[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const shortcutRef = useRef({
     selectedWorktree: null as Worktree | null,
     terminals: [] as TerminalInfo[],
@@ -256,12 +258,25 @@ export function App(): JSX.Element {
     [toastError]
   );
 
+  const loadNotifications = useCallback(async () => {
+    try {
+      const response = await apiGet<{ data: NotificationItem[] }>('/notifications?limit=50');
+      setNotifications(response.data);
+    } catch {
+      // Abaikan; notifikasi opsional.
+    }
+  }, []);
+
   useEffect(() => {
     if (!booted) return undefined;
     void loadDashboardSessions(true);
-    const timer = window.setInterval(() => void loadDashboardSessions(true), 20000);
+    void loadNotifications();
+    const timer = window.setInterval(() => {
+      void loadDashboardSessions(true);
+      void loadNotifications();
+    }, 20000);
     return () => window.clearInterval(timer);
-  }, [booted, loadDashboardSessions]);
+  }, [booted, loadDashboardSessions, loadNotifications]);
 
   const loadInboxReads = useCallback(async () => {
     try {
@@ -280,10 +295,11 @@ export function App(): JSX.Element {
 
   const unreadInboxCount = useMemo(() => {
     const read = new Set(inboxRead);
-    return dashboardSessions.filter(
+    const sessionUnread = dashboardSessions.filter(
       (session) => (session.status === 'completed' || session.status === 'failed') && !read.has(session.id)
     ).length;
-  }, [dashboardSessions, inboxRead]);
+    return sessionUnread + notifications.filter((item) => !item.read).length;
+  }, [dashboardSessions, inboxRead, notifications]);
 
   useEffect(() => {
     if (!user || projects.length === 0 || selectedProjectId) return;
@@ -641,6 +657,16 @@ export function App(): JSX.Element {
       return Array.from(next);
     });
     void apiPost('/sessions/inbox/read-all', { sessionIds: ids }).catch(() => undefined);
+  };
+
+  const markNotificationRead = (id: string): void => {
+    setNotifications((current) => current.map((item) => (item.id === id ? { ...item, read: true } : item)));
+    void apiPost(`/notifications/${id}/read`).catch(() => undefined);
+  };
+
+  const markAllNotificationsRead = (): void => {
+    setNotifications((current) => current.map((item) => ({ ...item, read: true })));
+    void apiPost('/notifications/read-all').catch(() => undefined);
   };
 
   const createTerminal = async (): Promise<void> => {
@@ -1682,9 +1708,13 @@ export function App(): JSX.Element {
             projects={projects}
             selectedProjectId={selectedProjectId}
             inboxRead={inboxRead}
+            notifications={notifications}
             initialTab={dashboardTab}
             onClose={() => setDashboardOpen(false)}
-            onRefresh={() => void loadDashboardSessions()}
+            onRefresh={() => {
+              void loadDashboardSessions();
+              void loadNotifications();
+            }}
             onOpenSession={(session) => void openDashboardSession(session)}
             onRerun={(session) => {
               setDashboardOpen(false);
@@ -1693,6 +1723,8 @@ export function App(): JSX.Element {
             onStop={(session) => void stopSession(session).then(() => void loadDashboardSessions(true))}
             onMarkRead={markInboxRead}
             onMarkAllRead={markInboxAllRead}
+            onMarkNotificationRead={markNotificationRead}
+            onMarkAllNotificationsRead={markAllNotificationsRead}
           />
         </Suspense>
       ) : null}

@@ -106,6 +106,16 @@ export interface AutomationRun {
   finishedAt: string | null;
 }
 
+export interface NotificationItem {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  refId: string | null;
+  createdAt: string;
+  read: boolean;
+}
+
 export type TerminalKind = 'shell' | 'agent';
 export type TerminalStatus = 'running' | 'exited' | 'stopped';
 

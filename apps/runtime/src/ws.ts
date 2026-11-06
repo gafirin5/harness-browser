@@ -46,7 +46,7 @@ export function setupTerminalWebSocket(server: Server): WebSocketServer {
       return;
     }
 
-    const match = /^\/ws\/terminals\/([A-Za-z0-9]+)$/.exec(url.pathname);
+    const match = /^\/ws\/terminals\/([A-Za-z0-9_-]+)$/.exec(url.pathname);
     if (!match?.[1]) {
       reject(socket, 404, 'Not Found');
       return;
@@ -60,6 +60,20 @@ export function setupTerminalWebSocket(server: Server): WebSocketServer {
       reject(socket, 401, 'Unauthorized');
       return;
     }
+
+    const remoteNodeId = url.searchParams.get('nodeId');
+    if (remoteNodeId) {
+      const nodeConn = nodeManager.getConnection(remoteNodeId);
+      if (!nodeConn) {
+        reject(socket, 503, 'Node Offline');
+        return;
+      }
+      wss.handleUpgrade(req, socket, head, (ws) => {
+        wss.emit('remote_terminal_connection', ws, req, remoteNodeId, match[1], session.user.role);
+      });
+      return;
+    }
+
     if (!terminalManager.getRow(match[1])) {
       reject(socket, 404, 'Terminal Not Found');
       return;
@@ -68,6 +82,61 @@ export function setupTerminalWebSocket(server: Server): WebSocketServer {
       wss.emit('connection', ws, req, match[1], session.user.role);
     });
   });
+
+  wss.on(
+    'remote_terminal_connection',
+    (
+      ws: WebSocket,
+      _req: import('node:http').IncomingMessage,
+      remoteNodeId: string,
+      terminalId: string,
+      role: 'ADMIN' | 'VIEWER'
+    ) => {
+      const readOnly = role !== 'ADMIN';
+      const nodeConn = nodeManager.getConnection(remoteNodeId);
+      if (!nodeConn) {
+        ws.send(JSON.stringify({ type: 'error', message: 'Node remote tidak terhubung.' }));
+        ws.close();
+        return;
+      }
+
+      nodeConn.attachTerminalClient(terminalId, ws);
+
+      ws.on('message', (raw) => {
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(String(raw));
+        } catch {
+          ws.send(JSON.stringify({ type: 'error', message: 'Pesan bukan JSON valid.' }));
+          return;
+        }
+        const result = terminalClientMessageSchema.safeParse(parsed);
+        if (!result.success) {
+          ws.send(JSON.stringify({ type: 'error', message: 'Pesan terminal tidak valid.' }));
+          return;
+        }
+        const message = result.data;
+        if (message.type === 'input') {
+          if (readOnly) {
+            ws.send(JSON.stringify({ type: 'error', message: 'Mode viewer: input terminal dinonaktifkan.' }));
+            return;
+          }
+          void nodeConn.call('terminals.input', { id: terminalId, data: message.data }).catch(() => undefined);
+        } else if (message.type === 'resize') {
+          if (!readOnly) {
+            void nodeConn
+              .call('terminals.resize', { id: terminalId, cols: message.cols, rows: message.rows })
+              .catch(() => undefined);
+          }
+        } else {
+          ws.send(JSON.stringify({ type: 'pong' }));
+        }
+      });
+
+      ws.on('close', () => nodeConn.detachTerminalClient(terminalId, ws));
+      ws.on('error', () => nodeConn.detachTerminalClient(terminalId, ws));
+    }
+  );
 
   wss.on(
     'connection',

@@ -5,6 +5,7 @@ import { AppError, asyncHandler, notFound } from '../../lib/errors.js';
 import { listBranches, resolveRepo } from '../../lib/git.js';
 import { parseWith } from '../../lib/validation.js';
 import { csrfGuard, requireAuth } from '../auth/middleware.js';
+import { getNodeTarget } from '../nodes/dispatch.js';
 
 interface ProjectRow {
   id: string;
@@ -34,13 +35,28 @@ export function getProject(id: string): Project | null {
 export const projectsRouter = Router();
 projectsRouter.use(csrfGuard, requireAuth);
 
-projectsRouter.get('/', (_req, res) => {
-  res.json({ data: listProjects() });
-});
+projectsRouter.get(
+  '/',
+  asyncHandler(async (req, res) => {
+    const remote = getNodeTarget(req);
+    if (remote) {
+      const data = await remote.call('projects.list');
+      res.json({ data });
+      return;
+    }
+    res.json({ data: listProjects() });
+  })
+);
 
 projectsRouter.post(
   '/',
   asyncHandler(async (req, res) => {
+    const remote = getNodeTarget(req);
+    if (remote) {
+      const data = await remote.call('projects.create', req.body);
+      res.status(201).json({ data });
+      return;
+    }
     const body = parseWith(projectCreateSchema, req.body);
     const repoPath = await resolveRepo(body.path);
     const existing = db.prepare('SELECT id FROM projects WHERE path = ?').get(repoPath) as { id: string } | undefined;
@@ -60,19 +76,34 @@ projectsRouter.post(
 projectsRouter.get(
   '/:id/branches',
   asyncHandler(async (req, res) => {
+    const remote = getNodeTarget(req);
+    if (remote) {
+      const data = await remote.call('projects.branches', { projectId: req.params.id });
+      res.json({ data });
+      return;
+    }
     const project = getProject(String(req.params.id ?? ''));
     if (!project) throw notFound('Project tidak ditemukan.');
     res.json({ data: await listBranches(project.path) });
   })
 );
 
-projectsRouter.delete('/:id', (req, res) => {
-  const project = getProject(String(req.params.id ?? ''));
-  if (!project) throw notFound('Project tidak ditemukan.');
-  const count = db.prepare('SELECT count(*) AS total FROM worktrees WHERE project_id = ?').get(project.id) as {
-    total: number;
-  };
-  if (count.total > 0) throw new AppError(422, 'PROJECT_IN_USE', 'Hapus semua worktree project ini terlebih dahulu.');
-  db.prepare('DELETE FROM projects WHERE id = ?').run(project.id);
-  res.status(204).end();
-});
+projectsRouter.delete(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const remote = getNodeTarget(req);
+    if (remote) {
+      await remote.call('projects.delete', { id: req.params.id });
+      res.status(204).end();
+      return;
+    }
+    const project = getProject(String(req.params.id ?? ''));
+    if (!project) throw notFound('Project tidak ditemukan.');
+    const count = db.prepare('SELECT count(*) AS total FROM worktrees WHERE project_id = ?').get(project.id) as {
+      total: number;
+    };
+    if (count.total > 0) throw new AppError(422, 'PROJECT_IN_USE', 'Hapus semua worktree project ini terlebih dahulu.');
+    db.prepare('DELETE FROM projects WHERE id = ?').run(project.id);
+    res.status(204).end();
+  })
+);

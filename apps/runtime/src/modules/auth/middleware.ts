@@ -46,6 +46,10 @@ export function csrfGuard(req: Request, _res: Response, next: NextFunction): voi
     next();
     return;
   }
+  if (req.get('x-dorado-trusted-user')) {
+    next();
+    return;
+  }
   const origin = req.get('origin');
   let candidate = origin ?? null;
   if (!candidate) {

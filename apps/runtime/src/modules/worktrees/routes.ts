@@ -9,6 +9,7 @@ import { createWorktree, git, isWorktreeHealthy, removeWorktree, slugifyBranch }
 import { parseWith } from '../../lib/validation.js';
 import { csrfGuard, requireAuth } from '../auth/middleware.js';
 import { getProject } from '../projects/routes.js';
+import { getNodeTarget } from '../nodes/dispatch.js';
 
 interface WorktreeRow {
   id: string;
@@ -54,6 +55,12 @@ worktreesRouter.use(csrfGuard, requireAuth);
 worktreesRouter.get(
   '/',
   asyncHandler(async (req, res) => {
+    const remote = getNodeTarget(req);
+    if (remote) {
+      const data = await remote.call('worktrees.list', { projectId: req.query.projectId });
+      res.json({ data });
+      return;
+    }
     const projectId = typeof req.query.projectId === 'string' ? req.query.projectId : null;
     const rows = (projectId
       ? db.prepare('SELECT * FROM worktrees WHERE project_id = ? ORDER BY created_at ASC').all(projectId)
@@ -65,6 +72,12 @@ worktreesRouter.get(
 worktreesRouter.post(
   '/',
   asyncHandler(async (req, res) => {
+    const remote = getNodeTarget(req);
+    if (remote) {
+      const data = await remote.call('worktrees.create', req.body);
+      res.status(201).json({ data });
+      return;
+    }
     const body = parseWith(worktreeCreateSchema, req.body);
     const project = getProject(body.projectId);
     if (!project) throw notFound('Project tidak ditemukan.');
@@ -109,6 +122,12 @@ worktreesRouter.post(
 worktreesRouter.patch(
   '/:id',
   asyncHandler(async (req, res) => {
+    const remote = getNodeTarget(req);
+    if (remote) {
+      const data = await remote.call('worktrees.update', { id: req.params.id, ...req.body });
+      res.json({ data });
+      return;
+    }
     const row = getWorktreeRow(String(req.params.id ?? ''));
     if (!row) throw notFound('Worktree tidak ditemukan.');
     const body = parseWith(worktreeUpdateSchema, req.body);
@@ -126,6 +145,12 @@ worktreesRouter.patch(
 worktreesRouter.delete(
   '/:id',
   asyncHandler(async (req, res) => {
+    const remote = getNodeTarget(req);
+    if (remote) {
+      await remote.call('worktrees.delete', { id: req.params.id, force: req.query.force === '1' });
+      res.status(204).end();
+      return;
+    }
     const row = getWorktreeRow(String(req.params.id ?? ''));
     if (!row) throw notFound('Worktree tidak ditemukan.');
     const project = getProject(row.project_id);

@@ -25,6 +25,7 @@ import { reviewRouter } from './modules/review/routes.js';
 import { agentApiRouter } from './modules/agent-api/routes.js';
 import { notificationsRouter } from './modules/notifications/routes.js';
 import { nodesRouter } from './modules/nodes/routes.js';
+import { remoteNodeHttpProxy } from './modules/nodes/dispatch.js';
 import { automationsRouter } from './modules/automations/routes.js';
 
 export function createApp(): express.Express {
@@ -85,6 +86,17 @@ export function createApp(): express.Express {
       next();
       return;
     }
+    const trustedUser = req.get('x-dorado-trusted-user');
+    if (trustedUser) {
+      try {
+        res.locals.user = JSON.parse(trustedUser);
+        res.locals.sessionId = 'trusted-node-proxy';
+        next();
+        return;
+      } catch {
+        // lanjut ke verifikasi session biasa
+      }
+    }
     const session = getSessionFromRequest(req);
     if (!session) {
       next(new AppError(401, 'UNAUTHORIZED', 'Silakan masuk terlebih dahulu.'));
@@ -127,6 +139,8 @@ export function createApp(): express.Express {
     }
     next();
   });
+
+  app.use('/api', remoteNodeHttpProxy());
 
   app.use('/api/agent', agentApiRouter);
   app.use('/api/notifications', notificationsRouter);

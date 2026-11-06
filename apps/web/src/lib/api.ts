@@ -15,11 +15,29 @@ interface RequestOptions {
   body?: unknown;
 }
 
+let activeNodeId: string | null = null;
+
+export function setActiveNodeId(nodeId: string | null): void {
+  activeNodeId = nodeId;
+}
+
+export function getActiveNodeId(): string | null {
+  return activeNodeId;
+}
+
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (options.body !== undefined) {
+    headers['content-type'] = 'application/json';
+  }
+  if (activeNodeId) {
+    headers['x-dorado-node-id'] = activeNodeId;
+  }
+
   const response = await fetch(`/api${path}`, {
     method: options.method ?? 'GET',
     credentials: 'same-origin',
-    headers: options.body !== undefined ? { 'content-type': 'application/json' } : undefined,
+    headers: Object.keys(headers).length > 0 ? headers : undefined,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined
   });
   const text = await response.text();
@@ -59,7 +77,8 @@ export function apiDelete<T>(path: string): Promise<T> {
 
 export function terminalWsUrl(terminalId: string): string {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${protocol}//${location.host}/ws/terminals/${terminalId}`;
+  const query = activeNodeId ? `?nodeId=${encodeURIComponent(activeNodeId)}` : '';
+  return `${protocol}//${location.host}/ws/terminals/${terminalId}${query}`;
 }
 
 export async function copyText(text: string): Promise<boolean> {

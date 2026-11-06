@@ -71,6 +71,7 @@ export class NodeConnection {
   >();
   private pingTimer: NodeJS.Timeout | null = null;
   private nextRequestId = 1;
+  private terminalClients = new Map<string, Set<WebSocket>>();
 
   constructor(nodeId: string, ws: WebSocket) {
     this.nodeId = nodeId;
@@ -121,6 +122,39 @@ export class NodeConnection {
     }
   }
 
+  public attachTerminalClient(terminalId: string, clientWs: WebSocket): void {
+    let set = this.terminalClients.get(terminalId);
+    if (!set) {
+      set = new Set();
+      this.terminalClients.set(terminalId, set);
+      void this.call('terminal.attach', { terminalId }).catch(() => undefined);
+    }
+    set.add(clientWs);
+  }
+
+  public detachTerminalClient(terminalId: string, clientWs: WebSocket): void {
+    const set = this.terminalClients.get(terminalId);
+    if (set) {
+      set.delete(clientWs);
+      if (set.size === 0) {
+        this.terminalClients.delete(terminalId);
+        void this.call('terminal.detach', { terminalId }).catch(() => undefined);
+      }
+    }
+  }
+
+  public broadcastTerminalEvent(terminalId: string, event: unknown): void {
+    const set = this.terminalClients.get(terminalId);
+    if (set) {
+      const payload = typeof event === 'string' ? event : JSON.stringify(event);
+      for (const client of set) {
+        if (client.readyState === 1 /* WebSocket.OPEN */) {
+          client.send(payload);
+        }
+      }
+    }
+  }
+
   public close(): void {
     if (this.pingTimer) {
       clearInterval(this.pingTimer);
@@ -131,6 +165,14 @@ export class NodeConnection {
       item.reject(new AppError(503, 'NODE_DISCONNECTED', 'Koneksi node ditutup.'));
     }
     this.pending.clear();
+    for (const [, set] of this.terminalClients) {
+      for (const client of set) {
+        if (client.readyState === 1) {
+          client.send(JSON.stringify({ type: 'error', message: 'Koneksi ke node remote ditutup.' }));
+        }
+      }
+    }
+    this.terminalClients.clear();
     try {
       this.ws.close();
     } catch {
@@ -148,15 +190,29 @@ export class NodeConnection {
       item.reject(new AppError(503, 'NODE_DISCONNECTED', 'Koneksi node terputus.'));
     }
     this.pending.clear();
+    for (const [, set] of this.terminalClients) {
+      for (const client of set) {
+        if (client.readyState === 1) {
+          client.send(JSON.stringify({ type: 'error', message: 'Koneksi ke node remote terputus.' }));
+        }
+      }
+    }
+    this.terminalClients.clear();
     nodeManager.unregisterConnection(this.nodeId, this);
     db.prepare("UPDATE remote_nodes SET status = 'offline', latency_ms = NULL WHERE id = ?").run(this.nodeId);
   }
 
   private handleMessage(raw: unknown): void {
-    let message: NodeRpcRequest & NodeRpcResponse;
+    let message: NodeRpcRequest & NodeRpcResponse & { type?: string; terminalId?: string; event?: unknown };
     try {
       message = JSON.parse(String(raw)) as typeof message;
     } catch {
+      return;
+    }
+
+    // Event streaming terminal dari node ke controller
+    if (message.type === 'terminal.event' && message.terminalId && message.event) {
+      this.broadcastTerminalEvent(message.terminalId, message.event);
       return;
     }
 

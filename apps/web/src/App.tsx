@@ -10,7 +10,7 @@ import type {
   UserInfo,
   Worktree
 } from '@dorado/shared';
-import { ApiError, apiDelete, apiGet, apiPost } from './lib/api';
+import { ApiError, apiDelete, apiGet, apiPost, setActiveNodeId as setActiveNodeApi } from './lib/api';
 import { submitOnCtrlEnter } from './lib/keyboard';
 import { loadTerminalPrefs, saveTerminalPrefs, type TerminalPrefs } from './lib/terminal-prefs';
 import { actionForEvent, loadKeymap, saveKeymap, type Keymap } from './lib/keymap';
@@ -170,6 +170,24 @@ export function App(): JSX.Element {
     void loadProjects().catch((caught: unknown) => toastError(caught, 'Gagal memuat project.'));
     void loadAgents().catch((caught: unknown) => toastError(caught, 'Gagal memuat agent.'));
   }, [user, loadProjects, loadAgents, toastError]);
+
+  useEffect(() => {
+    setActiveNodeApi(activeNodeId);
+    if (!booted) return;
+    setSelectedProjectId(null);
+    setSelectedWorktreeId(null);
+    setProjects([]);
+    setWorktrees([]);
+    setTerminals([]);
+    setSessions([]);
+    setActiveTerminalId(null);
+    setOpenFiles([]);
+    setActiveFilePath(null);
+    setOpenDiffs([]);
+    setActiveDiffPath(null);
+    setSplitTerminalIds([]);
+    void loadProjects().catch((caught: unknown) => toastError(caught, 'Gagal memuat project node.'));
+  }, [activeNodeId, booted, loadProjects, toastError]);
 
   const selectProject = useCallback(
     async (project: Project) => {

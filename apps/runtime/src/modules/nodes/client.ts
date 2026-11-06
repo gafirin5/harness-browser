@@ -1,7 +1,8 @@
 import os from 'node:os';
 import { WebSocket } from 'ws';
-import type { NodeHelloParams, NodeRpcRequest, NodeRpcResponse } from '@dorado/shared';
+import type { NodeHelloParams, NodeRpcRequest } from '@dorado/shared';
 import { listAgents } from '../sessions/agents.js';
+import { createNodeRpcHandlers } from './rpc-handlers.js';
 
 export interface NodeClientOptions {
   controllerUrl: string;
@@ -23,6 +24,10 @@ export class DoradoNodeClient {
 
   constructor(private options: NodeClientOptions) {
     this.registerBuiltinHandlers();
+    const rpcHandlers = createNodeRpcHandlers(this);
+    for (const [method, handler] of Object.entries(rpcHandlers)) {
+      this.registerHandler(method, handler);
+    }
   }
 
   public registerHandler(method: string, handler: NodeRpcHandler): void {
@@ -140,7 +145,7 @@ export class DoradoNodeClient {
     this.send({ id, ok, data, error });
   }
 
-  private send(msg: NodeRpcRequest | NodeRpcResponse): void {
+  public send(msg: unknown): void {
     if (this.ws?.readyState === 1 /* WebSocket.OPEN */) {
       this.ws.send(JSON.stringify(msg));
     }

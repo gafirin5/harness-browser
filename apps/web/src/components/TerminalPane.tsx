@@ -50,6 +50,24 @@ export function TerminalPane({
     fit.fit();
     terminal.focus();
 
+    let disposed = false;
+    const core = (
+      terminal as unknown as {
+        _core?: { viewport?: { syncScrollArea: (force?: boolean) => void }; _renderService?: unknown };
+      }
+    )._core;
+    if (core?.viewport) {
+      const origSync = core.viewport.syncScrollArea.bind(core.viewport);
+      core.viewport.syncScrollArea = function (force?: boolean): void {
+        if (disposed || !core._renderService) return;
+        try {
+          origSync(force);
+        } catch {
+          // abaikan saat transisi layout atau dispose
+        }
+      };
+    }
+
     const linkDisposable = terminal.registerLinkProvider({
       provideLinks: (lineNumber, callback) => {
         const bufferLine = terminal.buffer.active.getLine(lineNumber - 1);
@@ -89,7 +107,6 @@ export function TerminalPane({
     };
     host.addEventListener('contextmenu', onContextMenu);
 
-    let disposed = false;
     let socket: WebSocket | null = null;
     let retries = 0;
     let resizeTimer = 0;
@@ -172,7 +189,14 @@ export function TerminalPane({
       searchRef.current = null;
       fitRef.current = null;
       terminalRef.current = null;
-      terminal.dispose();
+      if (core?.viewport) {
+        core.viewport.syncScrollArea = () => undefined;
+      }
+      try {
+        terminal.dispose();
+      } catch {
+        // abaikan saat transisi unmount
+      }
     };
   }, [terminalId]);
 
@@ -196,18 +220,19 @@ export function TerminalPane({
 
   useEffect(() => {
     const terminal = terminalRef.current;
-    if (!terminal) return;
+    if (!terminal) return undefined;
     terminal.options.fontSize = prefs.fontSize;
     terminal.options.fontFamily = FONT_FAMILIES[prefs.fontFamily];
     terminal.options.cursorBlink = prefs.cursorBlink;
     terminal.options.theme = TERMINAL_THEMES[prefs.theme];
-    window.setTimeout(() => {
+    const timer = window.setTimeout(() => {
       try {
         fitRef.current?.fit();
       } catch {
         // abaikan saat layout transisi
       }
     }, 20);
+    return () => window.clearTimeout(timer);
   }, [prefs.fontSize, prefs.fontFamily, prefs.cursorBlink, prefs.theme]);
 
   useEffect(() => {

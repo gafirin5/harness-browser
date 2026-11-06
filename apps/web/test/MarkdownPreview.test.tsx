@@ -58,4 +58,25 @@ describe('MarkdownPreview', () => {
     );
     expect(screen.getByAltText('relatif').getAttribute('src')).toBe('/api/files/raw?path=images%2Fdemo.png');
   });
+
+  it('merender diagram alir mermaid sebagai SVG', () => {
+    const content = ['```mermaid', 'graph TD', '  A[Mulai] --> B[Analisis]', '  B -->|OK| C[Selesai]', '```'].join(
+      '\n'
+    );
+
+    render(<MarkdownPreview content={content} />);
+    const diagram = screen.getByRole('img', { name: 'Diagram alir Mermaid' });
+    expect(diagram).toBeTruthy();
+    expect(screen.getByText('Mulai')).toBeTruthy();
+    expect(screen.getByText('Analisis')).toBeTruthy();
+    expect(screen.getByText('Selesai')).toBeTruthy();
+    expect(screen.getByText('OK')).toBeTruthy();
+  });
+
+  it('fallback ke code block jika sintaks mermaid tidak didukung', () => {
+    const content = ['```mermaid', 'classDiagram', '  class Hewan', '```'].join('\n');
+    render(<MarkdownPreview content={content} />);
+    expect(screen.queryByRole('img', { name: 'Diagram alir Mermaid' })).toBeNull();
+    expect(screen.getByText(/class Hewan/)).toBeTruthy();
+  });
 });

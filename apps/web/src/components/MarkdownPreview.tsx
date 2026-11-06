@@ -109,6 +109,214 @@ function parseTableRow(line: string): string[] {
     .map((cell) => cell.trim());
 }
 
+interface DiagramEdge {
+  from: string;
+  to: string;
+  label?: string;
+}
+
+function renderMermaidDiagram(code: string, key: string): ReactNode | null {
+  const lines = code
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('%%'));
+  if (lines.length < 2) return null;
+  const header = lines[0] ?? '';
+  if (!/^(graph|flowchart)\s+(TD|TB|LR)/i.test(header)) return null;
+  const dir = /LR/i.test(header) ? 'LR' : 'TD';
+
+  const nodeLabels = new Map<string, string>();
+  const edges: DiagramEdge[] = [];
+  const nodeSet = new Set<string>();
+
+  const regex =
+    /^([A-Za-z0-9_-]+)(?:\[(.*?)\]|\((.*?)\))?\s*(-->|---|==>|-\.->)(?:\|(.*?)\|)?\s*([A-Za-z0-9_-]+)(?:\[(.*?)\]|\((.*?)\))?$/;
+
+  for (const line of lines.slice(1)) {
+    const match = regex.exec(line);
+    if (!match) continue;
+    const fromId = match[1] ?? '';
+    const toId = match[6] ?? '';
+    if (!fromId || !toId) continue;
+
+    const fromLabel = match[2] || match[3] || fromId;
+    const toLabel = match[7] || match[8] || toId;
+
+    if (!nodeLabels.has(fromId) || match[2] || match[3]) nodeLabels.set(fromId, fromLabel);
+    if (!nodeLabels.has(toId) || match[7] || match[8]) nodeLabels.set(toId, toLabel);
+
+    nodeSet.add(fromId);
+    nodeSet.add(toId);
+    edges.push({ from: fromId, to: toId, label: match[5]?.trim() });
+  }
+
+  if (nodeSet.size === 0 || edges.length === 0) return null;
+
+  const nodes = Array.from(nodeSet);
+  const ranks = new Map<string, number>();
+  nodes.forEach((id) => ranks.set(id, 0));
+
+  for (let iter = 0; iter < nodes.length; iter += 1) {
+    let changed = false;
+    for (const edge of edges) {
+      const fromRank = ranks.get(edge.from) ?? 0;
+      const toRank = ranks.get(edge.to) ?? 0;
+      if (toRank < fromRank + 1) {
+        ranks.set(edge.to, Math.min(fromRank + 1, 10));
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+
+  const maxRank = Math.max(...Array.from(ranks.values()));
+  const rankBuckets = new Map<number, string[]>();
+  for (const id of nodes) {
+    const r = ranks.get(id) ?? 0;
+    const bucket = rankBuckets.get(r) ?? [];
+    bucket.push(id);
+    rankBuckets.set(r, bucket);
+  }
+
+  const maxNodesInRank = Math.max(...Array.from(rankBuckets.values()).map((b) => b.length));
+  const nodeCoords = new Map<string, { x: number; y: number }>();
+
+  let svgWidth = 360;
+  let svgHeight = 200;
+
+  if (dir === 'TD') {
+    svgWidth = Math.max(360, maxNodesInRank * 130 + 40);
+    svgHeight = (maxRank + 1) * 72 + 20;
+    for (let r = 0; r <= maxRank; r += 1) {
+      const bucket = rankBuckets.get(r) ?? [];
+      bucket.forEach((id, index) => {
+        const x = (svgWidth / (bucket.length + 1)) * (index + 1);
+        const y = r * 72 + 36;
+        nodeCoords.set(id, { x, y });
+      });
+    }
+  } else {
+    svgWidth = (maxRank + 1) * 150 + 50;
+    svgHeight = Math.max(160, maxNodesInRank * 56 + 30);
+    for (let r = 0; r <= maxRank; r += 1) {
+      const bucket = rankBuckets.get(r) ?? [];
+      bucket.forEach((id, index) => {
+        const x = r * 150 + 65;
+        const y = (svgHeight / (bucket.length + 1)) * (index + 1);
+        nodeCoords.set(id, { x, y });
+      });
+    }
+  }
+
+  return (
+    <div className="md-diagram-wrap" key={key}>
+      <svg
+        className="md-diagram"
+        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+        style={{ width: '100%', maxWidth: svgWidth, height: 'auto' }}
+        role="img"
+        aria-label="Diagram alir Mermaid"
+      >
+        <defs>
+          <marker
+            id={`arrow-${key}`}
+            viewBox="0 0 10 10"
+            refX="9"
+            refY="5"
+            markerWidth="6"
+            markerHeight="6"
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--accent)" />
+          </marker>
+        </defs>
+        {edges.map((edge, index) => {
+          const from = nodeCoords.get(edge.from);
+          const to = nodeCoords.get(edge.to);
+          if (!from || !to) return null;
+          let d = '';
+          let midX = (from.x + to.x) / 2;
+          let midY = (from.y + to.y) / 2;
+          if (dir === 'TD') {
+            const startY = from.y + 16;
+            const endY = to.y - 16;
+            if (Math.abs(from.x - to.x) < 4) {
+              d = `M ${from.x} ${startY} L ${to.x} ${endY}`;
+            } else {
+              const cY = (startY + endY) / 2;
+              d = `M ${from.x} ${startY} C ${from.x} ${cY}, ${to.x} ${cY}, ${to.x} ${endY}`;
+            }
+            midY = (startY + endY) / 2;
+          } else {
+            const startX = from.x + 46;
+            const endX = to.x - 46;
+            if (Math.abs(from.y - to.y) < 4) {
+              d = `M ${startX} ${from.y} L ${endX} ${to.y}`;
+            } else {
+              const cX = (startX + endX) / 2;
+              d = `M ${startX} ${from.y} C ${cX} ${from.y}, ${cX} ${to.y}, ${endX} ${to.y}`;
+            }
+            midX = (startX + endX) / 2;
+          }
+          return (
+            <g key={`edge-${index}`}>
+              <path
+                d={d}
+                fill="none"
+                stroke="var(--accent)"
+                strokeWidth={1.5}
+                markerEnd={`url(#arrow-${key})`}
+                opacity={0.8}
+              />
+              {edge.label ? (
+                <text
+                  x={midX}
+                  y={midY - 4}
+                  textAnchor="middle"
+                  fill="var(--muted)"
+                  fontSize={9.5}
+                  fontFamily="var(--mono)"
+                >
+                  {edge.label}
+                </text>
+              ) : null}
+            </g>
+          );
+        })}
+        {nodes.map((id) => {
+          const pos = nodeCoords.get(id);
+          if (!pos) return null;
+          const label = nodeLabels.get(id) || id;
+          return (
+            <g className="md-diagram-node" key={`node-${id}`}>
+              <rect
+                x={pos.x - 46}
+                y={pos.y - 15}
+                width={92}
+                height={30}
+                rx={6}
+                fill="var(--panel-2)"
+                stroke="var(--border)"
+                strokeWidth={1.2}
+              />
+              <text
+                x={pos.x}
+                y={pos.y + 4}
+                textAnchor="middle"
+                fill="var(--text)"
+                fontSize={11}
+                fontFamily="var(--mono)"
+              >
+                {label.length > 13 ? `${label.slice(0, 12)}…` : label}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
 function renderBlocks(
   lines: string[],
   headings: Heading[],
@@ -136,6 +344,13 @@ function renderBlocks(
         index += 1;
       }
       index += 1;
+      if (language.toLowerCase() === 'mermaid') {
+        const diagram = renderMermaidDiagram(code.join('\n'), `diag-${index}`);
+        if (diagram) {
+          blocks.push(diagram);
+          continue;
+        }
+      }
       blocks.push(
         <pre className="md-code" key={`code-${index}`}>
           {language ? <span className="md-code-lang">{language}</span> : null}

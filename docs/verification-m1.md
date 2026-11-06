@@ -17,7 +17,7 @@ Test frontend (Vitest + Testing Library + jsdom):
 npm run test:web
 ```
 
-Hasil: **51 test lulus** — CommandPalette, SettingsDialog, OrchestratorPanel, AuditDialog, InfoDialog, Modal, QuickOpenDialog, ShortcutsDialog, keyboard Ctrl+Enter, GitGraphPanel, AgentDashboard, QuickCommandsDialog, DiffViewer annotate, HistoryDialog, WorktreeCheckpoint, AutomationsDialog, MarkdownPreview, GitHubDialog write actions (comment/review/merge/label/close/thread), preferensi/keymap terminal, dan keymap global.
+Hasil: **53 test lulus** — CommandPalette, SettingsDialog, OrchestratorPanel, AuditDialog, InfoDialog, Modal, QuickOpenDialog, ShortcutsDialog, keyboard Ctrl+Enter, GitGraphPanel, AgentDashboard, QuickCommandsDialog, DiffViewer annotate, HistoryDialog, WorktreeCheckpoint, AutomationsDialog, MarkdownPreview, GitHubDialog write actions (comment/review/merge/label/close/thread), preferensi/keymap terminal, dan keymap global.
 
 ## Gate Chrome 93
 
@@ -34,9 +34,9 @@ npm run verify
 | API JS terlarang | Lulus |
 | CSS terlarang | Lulus |
 | Bundel JS awal | **145,3 KB gzip** (batas 150 KB) |
-| Bundel total + editor & orchestrator lazy | **286,5 KB gzip** (batas 300 KB) |
+| Bundel total + editor & orchestrator lazy | **287,9 KB gzip** (batas 300 KB) |
 | Test API | 53 lulus |
-| Test frontend (Testing Library) | 51 lulus |
+| Test frontend (Testing Library) | 53 lulus |
 | Playwright E2E | 5 lulus |
 
 ## Smoke Chromium 93
@@ -56,7 +56,7 @@ Alur yang diuji:
 4. Buka **Tampilan**, ubah ukuran font terminal, simpan, verifikasi localStorage, lalu klik **Reset**.
 5. Buat quick command `echo quick-command-e2e`, jalankan di terminal aktif, verifikasi output, lalu hapus.
 6. Buka file `README.md` di CodeMirror, sunting, simpan dengan Ctrl+S, verifikasi isi file.
-7. Toggle **Preview** markdown, verifikasi heading hasil edit, lalu kembali ke **Raw**.
+7. Toggle **Preview** markdown, verifikasi heading dan diagram alir Mermaid hasil edit, lalu kembali ke **Raw**.
 8. Panel Changes menampilkan `README.md`; buka diff dan verifikasi baris hasil edit.
 9. Tambah komentar inline pada baris diff, verifikasi tersimpan lewat API, resolve/reopen komentar, buka dialog kirim ke agent, lalu hapus komentar.
 10. Buka dialog **Cari Kode**, cari `edited by chrome93`, klik hasil, dan verifikasi editor membuka file pada baris yang sesuai.
@@ -72,7 +72,7 @@ Alur yang diuji:
 20. Buat dan rename file lewat file explorer.
 21. Buka **Orchestrator**, buat provider lewat form UI, daftarkan agent lewat API, jalankan mock worker, buat task, dan verifikasi task berubah `COMPLETED` dengan biaya `$0.0050`; buka detail task dan konfirmasi log "Task selesai".
 22. Buka **Setelan**, cabut sesi lain, verifikasi toast sukses dan sesi browser tetap aktif.
-23. Buka dialog riwayat sesi dan verifikasi scope/grup/filter serta pencarian transcript.
+23. Buka dialog riwayat sesi, verifikasi scope/grup/filter serta pencarian transcript, dan hapus sesi nonaktif lewat tombol Hapus Sesi.
 24. Buka **Agent Dashboard / Inbox**, verifikasi kolom board dan tab inbox.
 25. Buka dialog Share dan buat pairing token.
 26. Buka pairing URL di incognito context → auto-login.
@@ -126,7 +126,7 @@ Hasil: **5 test lulus** di Chrome sistem — login, command palette, panel Orche
 - Sesi tmux tidak bertahan setelah host reboot (hanya runtime restart).
 - Log terminal berupa file append-only tanpa rotasi otomatis.
 - Integrasi GitHub write (komentar/review/merge) membutuhkan `GITHUB_TOKEN` dengan scope write; tanpa token, aksi tulis ditolak dengan pesan yang jelas dan tetap bergantung pada rate limit GitHub.
-- Markdown preview belum mendukung Mermaid/diagram; renderer sengaja dibuat ringan agar bundel tetap kecil. Gambar relatif dilayani lewat `/api/files/raw` (hanya tipe gambar, maksimal 10 MB).
+- Markdown preview mendukung diagram alir Mermaid sederhana (flowchart/graph TD/LR) via renderer SVG bawaan tanpa dependensi pihak ketiga. Gambar relatif dilayani lewat `/api/files/raw` (hanya tipe gambar, maksimal 10 MB). Diagram kompleks di luar flowchart tetap tampil sebagai blok kode.
 - Scheduler automations masih in-process, tetapi sudah memakai lock database (`locked_until`/`locked_by`) agar aman bila ada beberapa runtime. Retry memakai jeda 5 menit maksimal 2 kali dan hanya berlaku untuk run terjadwal.
 - Pencarian kode mengikuti `.gitignore`; fallback `git grep` hanya mencari file tracked dan hasil dibatasi 100 match.
 - Orchestrator memakai satu admin; worker agent harus dapat dijangkau runtime, dan `AGENT_KEY_DELIVERY=payload` mengirim API key provider ke worker. Gunakan HTTPS/trusted network atau set `none`.

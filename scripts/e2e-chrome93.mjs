@@ -77,7 +77,7 @@ const dialogValues = [];
 page.on('dialog', async (dialog) => {
   const value = dialogValues.shift();
   try {
-    await dialog.accept(value === null ? undefined : value);
+    await dialog.accept(typeof value === 'string' ? value : undefined);
   } catch {
     // abaikan dialog yang sudah tertutup
   }
@@ -269,7 +269,7 @@ try {
   await page.keyboard.down('Control');
   await page.keyboard.press('a');
   await page.keyboard.up('Control');
-  await page.keyboard.type('# edited by chrome93\n');
+  await page.keyboard.type('# edited by chrome93\n\n```mermaid\ngraph TD\nA[Mulai] --> B[Selesai]\n```\n');
   await page.keyboard.down('Control');
   await page.keyboard.press('s');
   await page.keyboard.up('Control');
@@ -282,13 +282,14 @@ try {
 
   await clickText('button', 'Preview');
   await page.waitForSelector('.markdown-preview h1', { timeout: 15000 });
+  await page.waitForSelector('.markdown-preview svg[aria-label="Diagram alir Mermaid"]', { timeout: 10000 });
   await page.waitForFunction(
     () => (document.querySelector('.markdown-preview h1')?.textContent ?? '').includes('edited by chrome93'),
     { timeout: 10000 }
   );
   await clickText('button', 'Raw');
   await page.waitForFunction(() => !document.querySelector('.markdown-preview'), { timeout: 10000 });
-  console.log('[chrome93] markdown preview OK');
+  console.log('[chrome93] markdown preview + mermaid OK');
 
   await page.waitForFunction(
     () =>
@@ -742,13 +743,39 @@ try {
   if (relogin.status !== 200) throw new Error(`Login ulang E2E gagal: ${relogin.status}`);
   cookie = (relogin.headers.get('set-cookie') ?? '').split(';')[0];
 
+  const e2eSession = await api(
+    '/api/sessions',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        worktreeId: createdWorktree.id,
+        agent: 'opencode',
+        title: 'Sesi E2E Hapus'
+      })
+    },
+    cookie
+  );
+  if (e2eSession.status !== 201) {
+    throw new Error(`Gagal membuat sesi E2E untuk tes hapus: ${JSON.stringify(e2eSession)}`);
+  }
+  await api(`/api/sessions/${e2eSession.body.data.id}/stop`, { method: 'POST' }, cookie);
+
   await clickText('button', 'History');
   await waitText('Riwayat Sesi Agent');
   await page.waitForSelector('select[aria-label="Scope riwayat"]', { timeout: 10000 });
-  await page.waitForSelector('select[aria-label="Kelompok riwayat"]', { timeout: 10000 });
+  await waitText('Sesi E2E Hapus');
+  await clickText('.history-item', 'Sesi E2E Hapus');
+  dialogValues.push(true);
+  await page.evaluate(() => {
+    const button = Array.from(document.querySelectorAll('button')).find((item) =>
+      (item.textContent || '').trim().includes('Hapus Sesi')
+    );
+    window.setTimeout(() => button?.click(), 0);
+  });
+  await waitText('Sesi agent dihapus.');
   await page.click('button[aria-label="Tutup"]');
   await page.waitForFunction(() => !document.body.innerText.includes('Riwayat Sesi Agent'), { timeout: 10000 });
-  console.log('[chrome93] session history dialog OK');
+  console.log('[chrome93] session history dialog + delete session OK');
 
   await clickText('button', 'Inbox');
   await page.waitForSelector('.agent-dashboard', { timeout: 15000 });

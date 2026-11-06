@@ -1266,6 +1266,20 @@ button:disabled {
   letter-spacing: 0.05em;
 }
 
+.md-diagram-wrap {
+  margin: 12px 0 16px;
+  overflow: auto;
+  padding: 6px;
+}
+
+.md-diagram {
+  display: block;
+  margin: 0 auto;
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+}
+
 .md-table-wrap {
   margin: 0 0 14px;
   overflow: auto;

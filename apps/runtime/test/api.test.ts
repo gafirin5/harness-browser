@@ -1483,3 +1483,25 @@ describe('two-factor authentication', () => {
     expect(afterReset.body.data.user.totpEnabled).toBe(false);
   });
 });
+
+describe('csrf origin', () => {
+  it('mengizinkan origin tambahan dari ALLOWED_ORIGINS', async () => {
+    const res = await api
+      .post('/api/projects')
+      .set('Origin', 'https://extra.example.com')
+      .send({ name: 'csrf-allowed', path: '/tmp/dorado-tidak-ada-csrf' });
+    // Origin diizinkan → gagal di validasi path, bukan ditolak CSRF.
+    expect(res.status).not.toBe(403);
+    expect(res.body.error?.code).not.toBe('FORBIDDEN');
+  });
+
+  it('menolak origin yang tidak terdaftar', async () => {
+    const res = await api
+      .post('/api/projects')
+      .set('Origin', 'https://evil.example.com')
+      .send({ name: 'csrf-evil', path: '/tmp/dorado-tidak-ada-csrf' });
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+    expect(res.body.error.message).toBe('Origin tidak diizinkan.');
+  });
+});

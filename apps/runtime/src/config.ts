@@ -2,6 +2,7 @@ import path from 'node:path';
 import os from 'node:os';
 import dotenv from 'dotenv';
 import { z } from 'zod';
+import { parseAllowedOrigins } from './lib/origins.js';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
@@ -26,6 +27,7 @@ const envSchema = z.object({
     ),
   DORADO_AGENTS: z.string().default(''),
   PROJECT_SCAN_ROOTS: z.string().default(''),
+  ALLOWED_ORIGINS: z.string().default(''),
   GITHUB_TOKEN: z.string().default(''),
   APP_TIMEZONE: z.string().min(1).default('Asia/Jakarta'),
   APP_ENCRYPTION_KEY: z.string().default('MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY='),
@@ -107,13 +109,16 @@ export const config = {
   sessionSecret: env.SESSION_SECRET,
   pairingTtlMs: env.PAIRING_TOKEN_TTL_HOURS * 60 * 60 * 1000,
   cookieSecure: env.COOKIE_SECURE ?? new URL(env.PUBLIC_BASE_URL).protocol === 'https:',
-  allowedOrigins: [
-    publicOrigin,
-    `http://localhost:${env.PORT}`,
-    `http://127.0.0.1:${env.PORT}`,
-    'http://localhost:5174',
-    'http://127.0.0.1:5174'
-  ],
+  allowedOrigins: Array.from(
+    new Set([
+      publicOrigin,
+      `http://localhost:${env.PORT}`,
+      `http://127.0.0.1:${env.PORT}`,
+      'http://localhost:5174',
+      'http://127.0.0.1:5174',
+      ...parseAllowedOrigins(env.ALLOWED_ORIGINS)
+    ])
+  ),
   extraAgents: parseExtraAgents(env.DORADO_AGENTS),
   projectScanRoots: env.PROJECT_SCAN_ROOTS.split(',')
     .map((item) => item.trim())

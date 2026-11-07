@@ -221,7 +221,7 @@ Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `ech
 - Ganti password mencabut semua sesi lain; tersedia juga tombol **Cabut Sesi Lain**.
 - Pairing token 32 byte, disimpan sebagai SHA-256, dapat dicabut, dan memiliki masa berlaku.
 - Cookie HttpOnly + SameSite=Lax; `Secure` otomatis bila `PUBLIC_BASE_URL` HTTPS.
-- Origin check untuk request mutasi dan WebSocket.
+- Origin check untuk request mutasi dan WebSocket. Selain `PUBLIC_BASE_URL` dan varian localhost, origin tambahan dapat didaftarkan lewat `ALLOWED_ORIGINS` (pisah koma), mis. saat memakai URL tunnel.
 - Rate limit: login 15/menit/IP, API umum 300/menit/IP, callback agent 120/menit/agent.
 - `/api/health` mengecek database dan mengembalikan 503 bila SQLite tidak siap.
 - Header keamanan: CSP, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, dan `Permissions-Policy`.

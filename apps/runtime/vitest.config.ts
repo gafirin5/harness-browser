@@ -14,6 +14,7 @@ export default defineConfig({
       ADMIN_PASSWORD: 'test-password',
       SESSION_SECRET: 'test-session-secret-0123456789abcdef0123456789abcdef',
       PUBLIC_BASE_URL: 'http://127.0.0.1:7788',
+      ALLOWED_ORIGINS: 'https://extra.example.com, https://another.example.com:8443',
       PAIRING_TOKEN_TTL_HOURS: '1',
       DORADO_AGENTS: JSON.stringify([
         {

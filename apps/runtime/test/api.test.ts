@@ -1505,3 +1505,73 @@ describe('csrf origin', () => {
     expect(res.body.error.message).toBe('Origin tidak diizinkan.');
   });
 });
+
+describe('agent CLI kustom', () => {
+  const customId = 'custom-crud';
+
+  it('admin dapat membuat, mengubah, dan menghapus agent kustom', async () => {
+    const created = await api.post('/api/agents').send({
+      id: customId,
+      name: 'Custom CRUD',
+      command: 'my-agent',
+      args: ['run', '{{prompt}}'],
+      resumeArgs: ['run', '--continue', '{{prompt}}'],
+      interactiveArgs: []
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.data.id).toBe(customId);
+    expect(created.body.data.source).toBe('custom');
+
+    const listed = await api.get('/api/agents');
+    expect(listed.body.data.some((agent: { id: string }) => agent.id === customId)).toBe(true);
+
+    const updated = await api.patch(`/api/agents/${customId}`).send({ name: 'Custom CRUD v2' });
+    expect(updated.status).toBe(200);
+    expect(updated.body.data.name).toBe('Custom CRUD v2');
+
+    const removed = await api.delete(`/api/agents/${customId}`);
+    expect(removed.status).toBe(204);
+    const after = await api.get('/api/agents');
+    expect(after.body.data.some((agent: { id: string }) => agent.id === customId)).toBe(false);
+  });
+
+  it('membiarkan agent kustom menimpa preset dengan id sama, lalu kembali saat dihapus', async () => {
+    const created = await api.post('/api/agents').send({
+      id: 'opencode',
+      name: 'OpenCode (custom)',
+      command: 'opencode',
+      args: ['run', '{{prompt}}']
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.data.source).toBe('custom');
+
+    const overridden = await api.get('/api/agents');
+    const opencode = overridden.body.data.find((agent: { id: string }) => agent.id === 'opencode');
+    expect(opencode.name).toBe('OpenCode (custom)');
+
+    await api.delete('/api/agents/opencode');
+    const restored = await api.get('/api/agents');
+    const restoredOpencode = restored.body.data.find((agent: { id: string }) => agent.id === 'opencode');
+    expect(restoredOpencode.name).toBe('OpenCode');
+    expect(restoredOpencode.source).toBe('builtin');
+  });
+
+  it('menolak id agent yang tidak valid', async () => {
+    const res = await api.post('/api/agents').send({ id: 'Bad Id!', name: 'X', command: 'x', args: [] });
+    expect(res.status).toBe(422);
+  });
+
+  it('menolak mutasi agent dari viewer', async () => {
+    const created = await api
+      .post('/api/users')
+      .send({ username: 'agent-crud-viewer', name: 'Agent Viewer', password: 'viewer-pass-123', role: 'VIEWER' });
+    expect(created.status).toBe(201);
+    const viewer = request.agent(app);
+    const login = await viewer
+      .post('/api/auth/login')
+      .send({ username: 'agent-crud-viewer', password: 'viewer-pass-123' });
+    expect(login.status).toBe(200);
+    const blocked = await viewer.post('/api/agents').send({ id: 'viewer-agent', name: 'X', command: 'x', args: [] });
+    expect(blocked.status).toBe(403);
+  });
+});

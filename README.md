@@ -13,7 +13,7 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - Tambah project dari path repository Git lokal, dengan **penemuan otomatis**: pindai folder proyek untuk mendeteksi repository Git, pilih lewat daftar + autocomplete, atau ketik path manual.
 - Daftar branch dan pembuatan **git worktree** paralel.
 - **Terminal PTY** per worktree dengan xterm.js, resize, replay buffer, dan reconnect.
-- **Sesi agent** dengan adapter CLI; M1 mendukung OpenCode.
+- **Sesi agent** dengan adapter CLI multi-agent: preset bawaan untuk OpenCode, Claude Code, OpenAI Codex, Gemini CLI, Qwen Code, Aider, Cursor Agent, Crush, Factory Droid, Goose, Amp, GitHub Copilot CLI, dan Kilo Code — plus dialog **Kelola Agent** untuk menambah/mengubah agent kustom (command, args, resume args).
 - **File explorer** dengan buat/rename/hapus, plus editor CodeMirror 5: line numbers, syntax highlighting, lazy-loaded (maksimal 1 MB, proteksi path/symlink).
 - Tab terpadu untuk terminal, file, dan diff; indikator file belum disimpan dan Ctrl+S.
 - **Multi-pane terminal** hingga empat pane, dengan pemilih terminal per pane.
@@ -25,7 +25,7 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **Info Runtime**: versi, Node, tmux, data directory, agent CLI, jumlah data, dan tombol **Salin Ringkasan**.
 - **Integrasi GitHub read-only**: info repository, pull request, dan issue per worktree; link keluar ke GitHub, caching 60 detik, token opsional.
 - **Orchestrator terintegrasi**: dashboard realtime (SSE + fallback polling), provider LLM dengan API key terenkripsi, agent worker dengan token/heartbeat, antrean task berprioritas, dispatcher, callback worker, cancel/retry, log, dan perhitungan biaya.
-- **Command palette** (`Ctrl+Shift+P` atau `Ctrl+K`): terminal, agent, worktree, split, orchestrator, search, refresh, history, github, info, settings, share.
+- **Command palette** (`Ctrl+Shift+P` atau `Ctrl+K`): terminal, agent, worktree, split, orchestrator, search, refresh, history, github, info, kelola agent, settings, share.
 - **Quick Open** (`Alt+P`) untuk melompat ke file berdasarkan nama, dan **Jump Palette** (`Alt+J`) untuk pindah cepat antar project, worktree, terminal, file, dan diff.
 - **Shortcut keyboard** (`Alt+/` untuk daftar lengkap): shortcut global bisa di-remap dari dialog, mendeteksi konflik, plus **Ctrl+Enter** untuk submit form/dialog mana pun.
 - **Sesi agent interaktif tanpa prompt awal**: buka agent lalu ketik instruksi langsung di terminal agent.
@@ -99,8 +99,25 @@ npm run dev
 2. **+** di sidebar → klik **Pindai Repository** untuk mendeteksi repo Git secara otomatis (atau ketik path manual).
 3. **+ Worktree** → tentukan branch baru dan base ref.
 4. **+ Terminal** → shell interaktif di worktree.
-5. **Jalankan Agent** → pilih OpenCode, isi prompt, agent berjalan di PTY worktree.
+5. **Jalankan Agent** → pilih agent CLI (lihat di bawah), lalu agent berjalan di PTY worktree.
 6. **Share** → buat pairing token/URL untuk browser lain.
+
+## Agent CLI
+
+Dorado mengenali beberapa agent CLI sekaligus dan menampilkan status **terpasang/tidak** otomatis (berdasarkan `command`). Preset bawaan: OpenCode, Claude Code, OpenAI Codex, Gemini CLI, Qwen Code, Aider, Cursor Agent, Crush, Factory Droid, Goose, Amp, GitHub Copilot CLI, dan Kilo Code.
+
+Setiap preset memiliki tiga mode: **run** (non-interaktif dengan `{{prompt}}`), **resume** (lanjutkan sesi terakhir), dan **interactive** (dibuka tanpa prompt). Dari UI, sesi agent dibuka secara interaktif; mode run/resume dipakai oleh automasi dan tombol **Lanjutkan**.
+
+Kelola agent lewat dialog **Kelola Agent** (command palette "Kelola Agent" atau tombol di Info Runtime), atau lewat env `DORADO_AGENTS`:
+
+```bash
+# Tambah agent baru atau override preset dengan id yang sama.
+DORADO_AGENTS=[{"id":"my-agent","name":"My Agent","command":"my-agent","args":["run","{{prompt}}"],"resumeArgs":["run","--continue","{{prompt}}"],"interactiveArgs":[]}]
+```
+
+Urutan prioritas saat `id` sama: **preset < `DORADO_AGENTS` < agent kustom (dialog)**. Hapus agent kustom untuk kembali ke preset.
+
+> Flag auto-approve (mis. `--yes-always`, `--auto`, `--dangerously-skip-permissions`, `--full-auto`) tidak dipasang default demi keamanan. Tambahkan sendiri lewat `DORADO_AGENTS` atau dialog Kelola Agent bila automation perlu berjalan tanpa konfirmasi.
 
 ## Quick Tunnel
 

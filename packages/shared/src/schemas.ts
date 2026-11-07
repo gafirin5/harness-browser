@@ -193,3 +193,31 @@ export const automationUpdateSchema = z
 export const remoteNodeCreateSchema = z.object({
   name: z.string().trim().min(1, 'Nama node wajib diisi.').max(80)
 });
+
+const argListSchema = z.array(z.string().max(200)).max(50);
+
+export const cliAgentCreateSchema = z.object({
+  id: z
+    .string()
+    .trim()
+    .min(2, 'Id minimal 2 karakter.')
+    .max(40)
+    .regex(/^[a-z0-9][a-z0-9-]*$/, 'Gunakan huruf kecil, angka, dan tanda hubung.'),
+  name: z.string().trim().min(1, 'Nama agent wajib diisi.').max(60),
+  command: z.string().trim().min(1, 'Command wajib diisi.').max(200),
+  args: argListSchema.default([]),
+  resumeArgs: argListSchema.optional(),
+  interactiveArgs: argListSchema.optional(),
+  enabled: z.boolean().default(true)
+});
+
+export const cliAgentUpdateSchema = z
+  .object({
+    name: z.string().trim().min(1).max(60).optional(),
+    command: z.string().trim().min(1).max(200).optional(),
+    args: argListSchema.optional(),
+    resumeArgs: argListSchema.optional(),
+    interactiveArgs: argListSchema.optional(),
+    enabled: z.boolean().optional()
+  })
+  .refine((data) => Object.keys(data).length > 0, 'Tidak ada perubahan yang dikirim.');

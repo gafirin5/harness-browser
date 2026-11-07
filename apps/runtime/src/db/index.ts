@@ -298,6 +298,18 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS tasks_created_ix ON tasks(created_at DESC);
   CREATE INDEX IF NOT EXISTS task_logs_task_ix ON task_logs(task_id, id);
 
+  CREATE TABLE IF NOT EXISTS cli_agents (
+    id               TEXT PRIMARY KEY,
+    name             TEXT NOT NULL,
+    command          TEXT NOT NULL,
+    args             TEXT NOT NULL DEFAULT '[]',
+    resume_args      TEXT,
+    interactive_args TEXT,
+    enabled          INTEGER NOT NULL DEFAULT 1,
+    created_at       TEXT NOT NULL,
+    updated_at       TEXT NOT NULL
+  );
+
   CREATE INDEX IF NOT EXISTS worktrees_project_ix ON worktrees(project_id);
   CREATE INDEX IF NOT EXISTS terminals_worktree_ix ON terminals(worktree_id);
   CREATE INDEX IF NOT EXISTS sessions_worktree_ix ON sessions(worktree_id);

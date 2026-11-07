@@ -204,6 +204,10 @@ export interface AgentInfo {
   command: string;
   args: string[];
   resumeArgs?: string[];
+  interactiveArgs?: string[];
+  docsUrl?: string;
+  source?: 'builtin' | 'env' | 'custom';
+  builtin?: boolean;
   installed: boolean;
 }
 

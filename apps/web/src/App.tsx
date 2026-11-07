@@ -54,6 +54,9 @@ const QuickOpenDialog = lazy(() =>
 );
 const DiffViewer = lazy(() => import('./components/DiffViewer').then((module) => ({ default: module.DiffViewer })));
 const NodesDialog = lazy(() => import('./components/NodesDialog'));
+const AgentsDialog = lazy(() =>
+  import('./components/AgentsDialog').then((module) => ({ default: module.AgentsDialog }))
+);
 
 type DialogState =
   | { type: 'project' }
@@ -108,6 +111,7 @@ export function App(): JSX.Element {
   const [inboxRead, setInboxRead] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [nodesOpen, setNodesOpen] = useState(false);
+  const [agentsOpen, setAgentsOpen] = useState(false);
   const [remoteNodes, setRemoteNodes] = useState<RemoteNodeInfo[]>([]);
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
   const shortcutRef = useRef({
@@ -989,6 +993,12 @@ export function App(): JSX.Element {
       run: () => setNodesOpen(true)
     },
     {
+      id: 'agents',
+      label: 'Kelola Agent',
+      hint: 'Preset & agent CLI kustom',
+      run: () => setAgentsOpen(true)
+    },
+    {
       id: 'git-graph',
       label: 'Git Graph',
       hint: 'Riwayat commit project dan detail per commit (Alt+Shift+G)',
@@ -1721,7 +1731,23 @@ export function App(): JSX.Element {
           />
         </Suspense>
       ) : null}
-      {infoOpen ? <InfoDialog onClose={() => setInfoOpen(false)} /> : null}
+      {infoOpen ? (
+        <InfoDialog
+          onClose={() => setInfoOpen(false)}
+          onManageAgents={() => (setInfoOpen(false), setAgentsOpen(true))}
+        />
+      ) : null}
+      {agentsOpen ? (
+        <Suspense
+          fallback={
+            <div className="orch-overlay">
+              <div className="empty">Memuat agent...</div>
+            </div>
+          }
+        >
+          <AgentsDialog isAdmin={user?.role === 'ADMIN'} onClose={() => setAgentsOpen(false)} />
+        </Suspense>
+      ) : null}
       {githubOpen ? <GitHubDialog worktreeId={selectedWorktreeId} onClose={() => setGithubOpen(false)} /> : null}
       {searchOpen ? (
         <SearchDialog worktreeId={selectedWorktreeId} onClose={() => setSearchOpen(false)} onOpen={openFileAt} />

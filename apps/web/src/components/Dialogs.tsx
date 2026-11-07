@@ -253,6 +253,7 @@ export function NewSessionDialog({
   onCreated: (session: SessionInfo) => void;
 }): JSX.Element {
   const installed = agents.filter((agent) => agent.installed);
+  const notInstalled = agents.filter((agent) => !agent.installed);
   const [agent, setAgent] = useState(installed[0]?.id ?? '');
   const [title, setTitle] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -305,11 +306,24 @@ export function NewSessionDialog({
         ) : null}
         <Field label="Agent">
           <select className="select" value={agent} onChange={(event) => setAgent(event.target.value)}>
-            {agents.map((item) => (
-              <option key={item.id} value={item.id} disabled={!item.installed}>
-                {item.name} {item.installed ? '' : '(belum terpasang)'}
-              </option>
-            ))}
+            {installed.length > 0 ? (
+              <optgroup label="Terpasang">
+                {installed.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </optgroup>
+            ) : null}
+            {notInstalled.length > 0 ? (
+              <optgroup label="Belum terpasang">
+                {notInstalled.map((item) => (
+                  <option key={item.id} value={item.id} disabled>
+                    {item.name} (belum terpasang)
+                  </option>
+                ))}
+              </optgroup>
+            ) : null}
           </select>
         </Field>
         <Field label="Judul sesi">

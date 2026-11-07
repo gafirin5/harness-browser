@@ -69,6 +69,8 @@ interface ExtraAgent {
   command: string;
   args: string[];
   resumeArgs?: string[];
+  interactiveArgs?: string[];
+  docsUrl?: string;
 }
 
 function parseExtraAgents(raw: string): ExtraAgent[] {
@@ -80,6 +82,8 @@ function parseExtraAgents(raw: string): ExtraAgent[] {
       command?: string;
       args?: string[];
       resumeArgs?: string[];
+      interactiveArgs?: string[];
+      docsUrl?: string;
     }>;
     if (!Array.isArray(parsed)) return [];
     return parsed
@@ -89,7 +93,9 @@ function parseExtraAgents(raw: string): ExtraAgent[] {
         name: String(item.name ?? item.id),
         command: String(item.command),
         args: Array.isArray(item.args) ? item.args.map(String) : [],
-        ...(Array.isArray(item.resumeArgs) ? { resumeArgs: item.resumeArgs.map(String) } : {})
+        ...(Array.isArray(item.resumeArgs) ? { resumeArgs: item.resumeArgs.map(String) } : {}),
+        ...(Array.isArray(item.interactiveArgs) ? { interactiveArgs: item.interactiveArgs.map(String) } : {}),
+        ...(item.docsUrl ? { docsUrl: String(item.docsUrl) } : {})
       }));
   } catch {
     return [];

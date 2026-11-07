@@ -54,7 +54,13 @@ export function buildRuntimeSummary(info: Info): string {
   ].join('\n');
 }
 
-export function InfoDialog({ onClose }: { onClose: () => void }): JSX.Element {
+export function InfoDialog({
+  onClose,
+  onManageAgents
+}: {
+  onClose: () => void;
+  onManageAgents?: () => void;
+}): JSX.Element {
   const [info, setInfo] = useState<Info | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { push } = useToast();
@@ -78,6 +84,11 @@ export function InfoDialog({ onClose }: { onClose: () => void }): JSX.Element {
       onClose={onClose}
       footer={
         <>
+          {onManageAgents ? (
+            <button className="btn" onClick={onManageAgents}>
+              Kelola Agent
+            </button>
+          ) : null}
           <button className="btn" onClick={copySummary} disabled={!info}>
             Salin Ringkasan
           </button>

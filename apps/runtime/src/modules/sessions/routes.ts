@@ -2,16 +2,23 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Router } from 'express';
 import { z } from 'zod';
-import { sessionCreateSchema, type SessionHistoryItem, type SessionInfo } from '@dorado/shared';
+import {
+  cliAgentCreateSchema,
+  cliAgentUpdateSchema,
+  sessionCreateSchema,
+  type SessionHistoryItem,
+  type SessionInfo
+} from '@dorado/shared';
 import { config } from '../../config.js';
 import { db, newId, nowIso } from '../../db/index.js';
 import { createAgentToken } from '../../lib/agent-token.js';
 import { AppError, asyncHandler, notFound } from '../../lib/errors.js';
 import { parseWith } from '../../lib/validation.js';
-import { csrfGuard, requireAuth } from '../auth/middleware.js';
+import { csrfGuard, requireAdmin, requireAuth } from '../auth/middleware.js';
 import { terminalManager } from '../terminals/manager.js';
 import { getWorktreeRow } from '../worktrees/routes.js';
-import { buildAgentArgs, getAgent, listAgents } from './agents.js';
+import { agentCommandArgs, getAgent, listAgents } from './agents.js';
+import { createStoredAgent, deleteStoredAgent, storedAgentExists, updateStoredAgent } from './agent-store.js';
 
 interface SessionRow {
   id: string;
@@ -91,8 +98,36 @@ function stripAnsi(input: string): string {
 
 export const agentsRouter = Router();
 agentsRouter.use(csrfGuard, requireAuth);
+
 agentsRouter.get('/', (_req, res) => {
   res.json({ data: listAgents() });
+});
+
+agentsRouter.post('/', requireAdmin, (req, res) => {
+  const body = parseWith(cliAgentCreateSchema, req.body);
+  createStoredAgent(body.id, {
+    name: body.name,
+    command: body.command,
+    args: body.args,
+    resumeArgs: body.resumeArgs,
+    interactiveArgs: body.interactiveArgs,
+    enabled: body.enabled
+  });
+  res.status(201).json({ data: listAgents().find((agent) => agent.id === body.id) ?? null });
+});
+
+agentsRouter.patch('/:id', requireAdmin, (req, res) => {
+  const id = String(req.params.id ?? '');
+  const body = parseWith(cliAgentUpdateSchema, req.body);
+  updateStoredAgent(id, body);
+  res.json({ data: listAgents().find((agent) => agent.id === id) ?? null });
+});
+
+agentsRouter.delete('/:id', requireAdmin, (req, res) => {
+  const id = String(req.params.id ?? '');
+  if (!storedAgentExists(id)) throw notFound('Agent kustom tidak ditemukan.');
+  deleteStoredAgent(id);
+  res.status(204).end();
 });
 
 export const sessionsRouter = Router();
@@ -264,7 +299,7 @@ sessionsRouter.post(
       title: body.title,
       kind: 'agent',
       command: agent.command,
-      args: buildAgentArgs(agent.args, body.prompt),
+      args: agentCommandArgs(agent, body.prompt, 'run'),
       cols: 120,
       rows: 34,
       env: {
@@ -344,7 +379,7 @@ sessionsRouter.post(
       title: `${row.title} (lanjut)`,
       kind: 'agent',
       command: agent.command,
-      args: buildAgentArgs(agent.resumeArgs ?? agent.args, row.prompt),
+      args: agentCommandArgs(agent, row.prompt, 'resume'),
       cols: 120,
       rows: 34,
       env: {

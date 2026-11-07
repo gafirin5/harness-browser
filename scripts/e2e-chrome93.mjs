@@ -394,6 +394,17 @@ try {
   await page.waitForFunction(() => !document.body.innerText.includes('Info Runtime'), { timeout: 10000 });
   console.log('[chrome93] info runtime OK');
 
+  await clickText('button', 'Info');
+  await waitText('Info Runtime');
+  await clickText('button', 'Kelola Agent');
+  await waitText('Preset bawaan siap dipakai');
+  await page.waitForFunction(() => document.body.innerText.includes('OpenCode'), { timeout: 10000 });
+  await page.click('.modal button[aria-label="Tutup"]');
+  await page.waitForFunction(() => !document.body.innerText.includes('Preset bawaan siap dipakai'), {
+    timeout: 10000
+  });
+  console.log('[chrome93] agents dialog OK');
+
   await clickText('button', 'GitHub');
   await waitText('Remote bukan repository GitHub');
   await page.click('button[aria-label="Tutup"]');

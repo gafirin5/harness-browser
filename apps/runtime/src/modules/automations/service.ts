@@ -3,7 +3,7 @@ import { db, newId, nowIso } from '../../db/index.js';
 import { config } from '../../config.js';
 import { createAgentToken } from '../../lib/agent-token.js';
 import { getWorktreeRow } from '../worktrees/routes.js';
-import { buildAgentArgs, getAgent } from '../sessions/agents.js';
+import { agentCommandArgs, getAgent } from '../sessions/agents.js';
 import { terminalManager } from '../terminals/manager.js';
 
 export interface AutomationRow {
@@ -218,7 +218,7 @@ export async function runAutomation(id: string, options: { manual?: boolean } = 
       title: `Auto: ${row.name}`.slice(0, 80),
       kind: 'agent',
       command: agent.command,
-      args: buildAgentArgs(agent.args, row.prompt),
+      args: agentCommandArgs(agent, row.prompt, 'run'),
       cols: 120,
       rows: 34,
       env: {

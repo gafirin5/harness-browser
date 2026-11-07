@@ -1,8 +1,10 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { projectCreateSchema, type Project } from '@dorado/shared';
 import { db, newId, nowIso } from '../../db/index.js';
 import { AppError, asyncHandler, notFound } from '../../lib/errors.js';
 import { listBranches, resolveRepo } from '../../lib/git.js';
+import { discoverRepositories } from '../../lib/discover.js';
 import { parseWith } from '../../lib/validation.js';
 import { csrfGuard, requireAuth } from '../auth/middleware.js';
 import { getNodeTarget } from '../nodes/dispatch.js';
@@ -34,6 +36,22 @@ export function getProject(id: string): Project | null {
 
 export const projectsRouter = Router();
 projectsRouter.use(csrfGuard, requireAuth);
+
+projectsRouter.get(
+  '/discover',
+  asyncHandler(async (req, res) => {
+    const remote = getNodeTarget(req);
+    if (remote) {
+      const data = await remote.call('projects.discover', { q: req.query.q });
+      res.json(data);
+      return;
+    }
+    const schema = z.object({ q: z.string().max(200).optional().default('') });
+    const query = parseWith(schema, req.query);
+    const result = await discoverRepositories(query.q);
+    res.json({ data: result.repos, meta: { total: result.total, truncated: result.truncated } });
+  })
+);
 
 projectsRouter.get(
   '/',

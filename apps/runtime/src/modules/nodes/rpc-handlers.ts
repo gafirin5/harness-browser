@@ -14,6 +14,7 @@ import {
   slugifyBranch
 } from '../../lib/git.js';
 import { parseWith } from '../../lib/validation.js';
+import { discoverRepositories } from '../../lib/discover.js';
 import { terminalManager } from '../terminals/manager.js';
 import { getProject, listProjects } from '../projects/routes.js';
 import { getWorktreeRow } from '../worktrees/routes.js';
@@ -28,6 +29,12 @@ export function createNodeRpcHandlers(client?: { send: (msg: unknown) => void })
 
   // --- Projects ---
   handlers['projects.list'] = () => listProjects();
+
+  handlers['projects.discover'] = async (params: unknown) => {
+    const { q = '' } = (params ?? {}) as { q?: string };
+    const result = await discoverRepositories(q);
+    return { data: result.repos, meta: { total: result.total, truncated: result.truncated } };
+  };
 
   handlers['projects.create'] = async (params: unknown) => {
     const body = parseWith(projectCreateSchema, params);

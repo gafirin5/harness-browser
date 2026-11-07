@@ -25,6 +25,7 @@ const envSchema = z.object({
           : ['1', 'true', 'yes', 'on'].includes(value.toLowerCase())
     ),
   DORADO_AGENTS: z.string().default(''),
+  PROJECT_SCAN_ROOTS: z.string().default(''),
   GITHUB_TOKEN: z.string().default(''),
   APP_TIMEZONE: z.string().min(1).default('Asia/Jakarta'),
   APP_ENCRYPTION_KEY: z.string().default('MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY='),
@@ -114,6 +115,9 @@ export const config = {
     'http://127.0.0.1:5174'
   ],
   extraAgents: parseExtraAgents(env.DORADO_AGENTS),
+  projectScanRoots: env.PROJECT_SCAN_ROOTS.split(',')
+    .map((item) => item.trim())
+    .filter(Boolean),
   githubToken: env.GITHUB_TOKEN,
   appTimezone: env.APP_TIMEZONE,
   encryptionKey,

@@ -7,6 +7,12 @@ function errorText(caught: unknown, fallback: string): string {
   return caught instanceof ApiError ? caught.message : fallback;
 }
 
+interface DiscoveredRepo {
+  path: string;
+  name: string;
+  branch: string | null;
+}
+
 export function AddProjectDialog({
   onClose,
   onCreated
@@ -19,6 +25,37 @@ export function AddProjectDialog({
   const [error, setError] = useState<string | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
+  const [discovering, setDiscovering] = useState(false);
+  const [repos, setRepos] = useState<DiscoveredRepo[]>([]);
+  const [query, setQuery] = useState('');
+  const [discovered, setDiscovered] = useState(false);
+
+  const discover = async (): Promise<void> => {
+    setDiscovering(true);
+    setError(null);
+    try {
+      const response = await apiGet<{ data: DiscoveredRepo[]; meta: { total: number; truncated: boolean } }>(
+        '/projects/discover'
+      );
+      setRepos(response.data);
+      setDiscovered(true);
+    } catch (caught) {
+      setError(errorText(caught, 'Gagal memindai repository.'));
+    } finally {
+      setDiscovering(false);
+    }
+  };
+
+  const filterRepos = (): DiscoveredRepo[] => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return repos;
+    return repos.filter((repo) => repo.name.toLowerCase().includes(needle) || repo.path.toLowerCase().includes(needle));
+  };
+
+  const pickRepo = (repo: DiscoveredRepo): void => {
+    setRepoPath(repo.path);
+    if (!name.trim()) setName(repo.name);
+  };
 
   const submit = async (event: React.FormEvent): Promise<void> => {
     event.preventDefault();
@@ -63,9 +100,55 @@ export function AddProjectDialog({
             value={repoPath}
             onChange={(event) => setRepoPath(event.target.value)}
             placeholder="/home/user/projects/app"
+            list="discovered-repos"
             required
           />
+          <datalist id="discovered-repos">
+            {filterRepos().map((repo) => (
+              <option key={repo.path} value={repo.path}>
+                {repo.name}
+              </option>
+            ))}
+          </datalist>
         </Field>
+
+        <div className="row" style={{ gap: 8, marginBottom: 8 }}>
+          <button className="btn tiny" type="button" onClick={() => void discover()} disabled={discovering}>
+            {discovering ? 'Memindai...' : '🔍 Pindai Repository'}
+          </button>
+          {discovered ? (
+            <input
+              className="input"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Filter nama/path..."
+              aria-label="Filter repository"
+            />
+          ) : null}
+        </div>
+
+        {discovered && !discovering ? (
+          <div className="discover-list">
+            {filterRepos().length === 0 ? (
+              <div className="empty">Tidak ada repository yang cocok.</div>
+            ) : (
+              filterRepos()
+                .slice(0, 50)
+                .map((repo) => (
+                  <button
+                    key={repo.path}
+                    type="button"
+                    className={`discover-item ${repoPath === repo.path ? 'active' : ''}`}
+                    onClick={() => pickRepo(repo)}
+                  >
+                    <span className="discover-name">{repo.name}</span>
+                    {repo.branch ? <span className="badge running mono">{repo.branch}</span> : null}
+                    <span className="discover-path mono">{repo.path}</span>
+                  </button>
+                ))
+            )}
+          </div>
+        ) : null}
       </form>
     </Modal>
   );

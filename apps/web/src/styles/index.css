@@ -2093,6 +2093,56 @@ button:disabled {
   overflow-y: auto;
 }
 
+.discover-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  margin-bottom: 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  padding: 4px;
+}
+
+.discover-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.discover-item:hover {
+  background: var(--panel-2);
+}
+
+.discover-item.active {
+  border-color: var(--accent);
+  background: var(--panel-3);
+}
+
+.discover-name {
+  font-weight: 600;
+  font-size: 12px;
+  flex: 0 0 auto;
+}
+
+.discover-path {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 10.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .node-card {
   display: flex;
   justify-content: space-between;

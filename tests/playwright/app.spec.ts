@@ -47,11 +47,22 @@ test('admin membuat viewer dan viewer masuk mode read-only', async ({ page }) =>
   await expect(page.locator('.topbar-title')).toHaveText('Dorado');
 
   await page.getByRole('button', { name: 'Setelan' }).click();
+  // Tunggu daftar user selesai dimuat agar form stabil sebelum diisi (menghindari
+  // re-render dari loadUsers menimpa input pertama yang controlled).
+  await expect(page.getByRole('cell', { name: 'admin', exact: true })).toBeVisible();
   const userForm = page.locator('.orch-form');
-  await userForm.locator('input').nth(0).fill('pw-viewer');
-  await userForm.locator('input').nth(1).fill('Playwright Viewer');
-  await userForm.locator('input').nth(2).fill('viewer-pass-123');
+  const usernameInput = userForm.locator('input').nth(0);
+  const nameInput = userForm.locator('input').nth(1);
+  const passwordInput = userForm.locator('input').nth(2);
+  await usernameInput.fill('pw-viewer');
+  await nameInput.fill('Playwright Viewer');
+  await passwordInput.fill('viewer-pass-123');
+  // Pastikan tiap nilai benar-benar ter-commit ke input sebelum submit.
+  await expect(usernameInput).toHaveValue('pw-viewer');
+  await expect(nameInput).toHaveValue('Playwright Viewer');
+  await expect(passwordInput).toHaveValue('viewer-pass-123');
   await userForm.getByRole('button', { name: 'Tambah User' }).click();
+  await expect(page.locator('.toast.success')).toContainText('User berhasil dibuat.');
   await expect(page.getByRole('cell', { name: 'pw-viewer' })).toBeVisible();
   await page.locator('.modal button[aria-label="Tutup"]').click();
 

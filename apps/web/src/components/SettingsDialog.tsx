@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { UserInfo, UserRole } from '@dorado/shared';
 import { ApiError, request } from '../lib/api';
 import { Field, Modal, useToast } from './ui';
@@ -45,14 +45,18 @@ export function SettingsDialog({
   const [newRole, setNewRole] = useState<UserRole>('VIEWER');
 
   const isAdmin = currentUser.role === 'ADMIN';
+  const loadUsersSeq = useRef(0);
 
   const loadUsers = useCallback(async (): Promise<void> => {
     if (!isAdmin) return;
+    const seq = ++loadUsersSeq.current;
     try {
       const response = await request<{ data: UserInfo[] }>('/users');
+      if (seq !== loadUsersSeq.current) return;
       setUsers(response.data);
       setUsersError(null);
     } catch (caught) {
+      if (seq !== loadUsersSeq.current) return;
       setUsersError(messageOf(caught, 'Gagal memuat daftar user.'));
     }
   }, [isAdmin]);

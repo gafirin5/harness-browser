@@ -64,6 +64,7 @@ jobs:
           PUBLIC_BASE_URL: http://127.0.0.1:7788
           COOKIE_SECURE: 'false'
           NODE_ENV: development
+          DORADO_AGENTS: '[{"id":"mock","name":"Mock Agent","command":"node","args":["-e","setInterval(()=>{},1000)"]}]'
         run: |
           nohup node apps/runtime/dist/server.js > /tmp/dorado-runtime.log 2>&1 &
           for _ in $(seq 1 30); do

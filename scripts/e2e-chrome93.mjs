@@ -749,13 +749,16 @@ try {
   if (relogin.status !== 200) throw new Error(`Login ulang E2E gagal: ${relogin.status}`);
   cookie = (relogin.headers.get('set-cookie') ?? '').split(';')[0];
 
+  const agentList = await api('/api/agents', {}, cookie);
+  const installedAgent = agentList.body?.data?.find((a) => a.installed)?.id ?? 'opencode';
+
   const e2eSession = await api(
     '/api/sessions',
     {
       method: 'POST',
       body: JSON.stringify({
         worktreeId: createdWorktree.id,
-        agent: 'opencode',
+        agent: installedAgent,
         title: 'Sesi E2E Hapus'
       })
     },

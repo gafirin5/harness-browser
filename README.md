@@ -10,7 +10,7 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **2FA TOTP**: aktifkan lewat QR authenticator, wajibkan kode 6 digit saat login, dan reset 2FA oleh admin.
 - **Audit log**: riwayat login/gagal login, logout, perubahan password, 2FA, user management, dan pairing token (admin saja).
 - **Pengaturan keamanan**: ganti password, cabut sesi browser lain, kelola user, dan atur 2FA. Viewer bersifat read-only.
-- Tambah project dari path repository Git lokal.
+- Tambah project dari path repository Git lokal, dengan **penemuan otomatis**: pindai folder proyek untuk mendeteksi repository Git, pilih lewat daftar + autocomplete, atau ketik path manual.
 - Daftar branch dan pembuatan **git worktree** paralel.
 - **Terminal PTY** per worktree dengan xterm.js, resize, replay buffer, dan reconnect.
 - **Sesi agent** dengan adapter CLI; M1 mendukung OpenCode.
@@ -76,9 +76,13 @@ Default `.env.example`:
 ADMIN_PASSWORD=dorado
 PORT=7788
 DATA_DIR=./data
+# Daftar root (pisah koma) untuk pemindaian repository; kosongkan untuk memakai HOME
+PROJECT_SCAN_ROOTS=
 ```
 
 Data runtime (SQLite, log terminal, worktree) disimpan di `DATA_DIR`. Untuk production, gunakan path di luar repository, misalnya `/var/lib/dorado`.
+
+Penemuan repository memindai `PROJECT_SCAN_ROOTS` (pisah koma) secara rekursif (kedalaman terbatas) dan melewati folder seperti `node_modules`, `.venv`, `dist`, `build`, dan `.cache`. Bila kosong, pemindaian dimulai dari `$HOME`.
 
 ## Mode Pengembangan
 
@@ -92,7 +96,7 @@ npm run dev
 ## Alur Dasar
 
 1. Login dengan username (default `admin`) dan password.
-2. **+** di sidebar → tambahkan path repo Git.
+2. **+** di sidebar → klik **Pindai Repository** untuk mendeteksi repo Git secara otomatis (atau ketik path manual).
 3. **+ Worktree** → tentukan branch baru dan base ref.
 4. **+ Terminal** → shell interaktif di worktree.
 5. **Jalankan Agent** → pilih OpenCode, isi prompt, agent berjalan di PTY worktree.
@@ -231,7 +235,7 @@ Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `ech
 ## Test
 
 ```bash
-npm test                 # 27 test API + 13 test frontend (Testing Library)
+npm test                 # 60 test backend (API/integrasi) + 59 test frontend (Testing Library)
 npm run test:web         # hanya test frontend (Vitest + Testing Library)
 npm run lint             # ESLint
 npm run format:check
@@ -257,7 +261,7 @@ Dokumentasi lengkap:
 
 ## Batasan M1
 
-Belum termasuk: Electron desktop, mobile, cloud relay, Linear, browser/design mode, SSH worktree, multi-user, dan recursive delete. Integrasi GitHub bersifat read-only (belum ada komentar, review, atau merge dari UI). Pencarian kode mengikuti `.gitignore`; file ignored/untracked tidak ikut dicari saat memakai fallback `git grep`.
+Belum termasuk: Electron desktop, mobile, cloud relay, Linear, browser/design mode, SSH worktree, multi-tenant, dan recursive delete. Pencarian kode mengikuti `.gitignore`; file ignored/untracked tidak ikut dicari saat memakai fallback `git grep`.
 
 Orchestrator memakai satu admin, worker agent harus dapat dijangkau dari runtime, dan `AGENT_KEY_DELIVERY=payload` mengirim API key provider ke worker (gunakan HTTPS/trusted network atau ubah ke `none`). Arsip otomatis setelah satu tahun belum termasuk MVP.
 

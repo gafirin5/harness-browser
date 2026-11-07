@@ -49,6 +49,7 @@ Salin `.env.example` menjadi `.env` dan sesuaikan.
 | `TASK_MAX_DURATION_MS` | `3600000` | Batas eksekusi task |
 | `AGENT_KEY_DELIVERY` | `payload` | `payload` atau `none` |
 | `GITHUB_TOKEN` | kosong | Opsional untuk GitHub API |
+| `PROJECT_SCAN_ROOTS` | kosong | Daftar root (pisah koma) untuk penemuan repository; kosong berarti memakai `$HOME` |
 
 Generate secret produksi:
 

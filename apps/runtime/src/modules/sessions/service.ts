@@ -1,4 +1,5 @@
 import type { SessionInfo } from '@dorado/shared';
+import path from 'node:path';
 import { config } from '../../config.js';
 import { db, newId, nowIso } from '../../db/index.js';
 import { createAgentToken } from '../../lib/agent-token.js';
@@ -48,6 +49,7 @@ export interface StartAgentSessionInput {
   title: string;
   prompt?: string;
   mode?: AgentInvocationMode;
+  parentSessionId?: string | null;
 }
 
 /**
@@ -79,15 +81,27 @@ export function startAgentSession(input: StartAgentSessionInput): SessionInfo {
       DORADO_SESSION_TOKEN: agentToken.token,
       DORADO_WORKTREE_ID: worktree.id,
       DORADO_API_URL: config.publicBaseUrl,
-      ...(project ? { DORADO_PROJECT_ID: project.id } : {})
+      ...(project ? { DORADO_PROJECT_ID: project.id } : {}),
+      ...(config.cliBinDir ? { PATH: `${config.cliBinDir}${path.delimiter}${process.env.PATH ?? ''}` } : {})
     }
   });
 
   const createdAt = nowIso();
   db.prepare(
-    `INSERT INTO sessions (id, worktree_id, terminal_id, agent, title, prompt, status, agent_token_hash, created_at, started_at)
-     VALUES (?, ?, ?, ?, ?, ?, 'running', ?, ?, ?)`
-  ).run(id, worktree.id, terminal.id, agent.id, input.title, input.prompt ?? '', agentToken.hash, createdAt, createdAt);
+    `INSERT INTO sessions (id, worktree_id, terminal_id, agent, title, prompt, status, agent_token_hash, parent_session_id, created_at, started_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'running', ?, ?, ?, ?)`
+  ).run(
+    id,
+    worktree.id,
+    terminal.id,
+    agent.id,
+    input.title,
+    input.prompt ?? '',
+    agentToken.hash,
+    input.parentSessionId ?? null,
+    createdAt,
+    createdAt
+  );
 
   const row = db.prepare('SELECT * FROM sessions WHERE id = ?').get(id) as unknown as SessionRow;
   return mapSession(row);

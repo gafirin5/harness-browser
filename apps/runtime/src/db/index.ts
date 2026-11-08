@@ -389,7 +389,9 @@ const addSessionColumn = (name: string, ddl: string): void => {
 };
 addSessionColumn('model', "model TEXT NOT NULL DEFAULT ''");
 addSessionColumn('message_count', 'message_count INTEGER NOT NULL DEFAULT 0');
+addSessionColumn('parent_session_id', 'parent_session_id TEXT');
 db.exec('CREATE INDEX IF NOT EXISTS sessions_agent_token_ix ON sessions(agent_token_hash)');
+db.exec('CREATE INDEX IF NOT EXISTS sessions_parent_ix ON sessions(parent_session_id)');
 
 // Reset status node remote saat startup controller
 db.prepare("UPDATE remote_nodes SET status = 'offline', latency_ms = NULL WHERE status = 'online'").run();

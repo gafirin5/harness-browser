@@ -1,0 +1,126 @@
+#!/usr/bin/env node
+/**
+ * dorado-ctl — CLI sub-agent untuk agent yang berjalan di terminal Dorado.
+ *
+ * Variabel lingkungan (otomatis tersedia di dalam PTY agent):
+ *   DORADO_API_URL        — origin runtime, mis. http://127.0.0.1:7788
+ *   DORADO_SESSION_TOKEN  — token sesi agent (scoped ke project induk)
+ *
+ * Perintah:
+ *   dorado-ctl agents
+ *   dorado-ctl spawn --agent <id> [--branch <name>] --prompt "<text>"
+ *   dorado-ctl status <sessionId>
+ *   dorado-ctl diff <worktreeId>
+ */
+'use strict';
+
+const apiUrl = (process.env.DORADO_API_URL || '').replace(/\/+$/, '');
+const token = process.env.DORADO_SESSION_TOKEN || '';
+
+function usage() {
+  console.error(
+    [
+      'Pemakaian:',
+      '  dorado-ctl agents',
+      '  dorado-ctl spawn --agent <id> [--branch <name>] --prompt "<text>"',
+      '  dorado-ctl status <sessionId>',
+      '  dorado-ctl diff <worktreeId>'
+    ].join('\n')
+  );
+  process.exit(2);
+}
+
+async function call(pathname, options) {
+  const settings = options || {};
+  if (!apiUrl || !token) {
+    console.error('DORADO_API_URL dan DORADO_SESSION_TOKEN wajib diisi (tersedia di terminal agent).');
+    process.exit(2);
+  }
+  const headers = { 'x-dorado-session-token': 'Bearer ' + token };
+  if (settings.body) headers['content-type'] = 'application/json';
+  const response = await fetch(apiUrl + pathname, {
+    method: settings.method || 'GET',
+    headers,
+    body: settings.body ? JSON.stringify(settings.body) : undefined
+  });
+  const text = await response.text();
+  let payload = null;
+  try {
+    payload = text ? JSON.parse(text) : null;
+  } catch {
+    payload = { raw: text };
+  }
+  if (!response.ok) {
+    const message = payload && payload.error && payload.error.message ? payload.error.message : text;
+    console.error('Gagal (HTTP ' + response.status + '): ' + message);
+    process.exit(1);
+  }
+  return payload;
+}
+
+function parseFlags(args) {
+  const flags = {};
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg.indexOf('--') === 0) {
+      const key = arg.slice(2);
+      const value = args[i + 1];
+      if (value === undefined || value.indexOf('--') === 0) {
+        flags[key] = true;
+      } else {
+        flags[key] = value;
+        i += 1;
+      }
+    }
+  }
+  return flags;
+}
+
+async function main() {
+  const argv = process.argv.slice(2);
+  const command = argv[0];
+  const rest = argv.slice(1);
+
+  if (command === 'agents') {
+    const result = await call('/api/agent/agents');
+    console.log(
+      JSON.stringify(
+        result.data.map((agent) => ({ id: agent.id, name: agent.name, installed: agent.installed })),
+        null,
+        2
+      )
+    );
+    return;
+  }
+
+  if (command === 'spawn') {
+    const flags = parseFlags(rest);
+    if (!flags.agent || !flags.prompt) usage();
+    const body = { agentId: flags.agent, prompt: flags.prompt };
+    if (flags.branch) body.branch = flags.branch;
+    const result = await call('/api/agent/subagents', { method: 'POST', body });
+    console.log(JSON.stringify(result.data));
+    return;
+  }
+
+  if (command === 'status') {
+    if (!rest[0]) usage();
+    const result = await call('/api/agent/subagents/' + encodeURIComponent(rest[0]));
+    console.log(JSON.stringify(result.data, null, 2));
+    return;
+  }
+
+  if (command === 'diff') {
+    if (!rest[0]) usage();
+    const result = await call('/api/agent/subagents/diff/' + encodeURIComponent(rest[0]));
+    process.stdout.write(result.data.diff || '');
+    return;
+  }
+
+  usage();
+}
+
+main().catch((error) => {
+  console.error('Terjadi kesalahan: ' + (error && error.message ? error.message : String(error)));
+  process.exit(1);
+});

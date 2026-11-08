@@ -1,5 +1,7 @@
 import path from 'node:path';
 import os from 'node:os';
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import { z } from 'zod';
 import { parseAllowedOrigins } from './lib/origins.js';
@@ -102,6 +104,18 @@ function parseExtraAgents(raw: string): ExtraAgent[] {
   }
 }
 
+function findCliBinDir(): string | null {
+  let dir = path.dirname(fileURLToPath(import.meta.url));
+  for (let i = 0; i < 6; i += 1) {
+    const candidate = path.join(dir, 'scripts', 'bin');
+    if (fs.existsSync(path.join(candidate, 'dorado-ctl'))) return candidate;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
+
 export const config = {
   env: env.NODE_ENV,
   isProduction: env.NODE_ENV === 'production',
@@ -132,6 +146,7 @@ export const config = {
   githubToken: env.GITHUB_TOKEN,
   appTimezone: env.APP_TIMEZONE,
   encryptionKey,
+  cliBinDir: findCliBinDir(),
   dispatchTimeoutMs: env.AGENT_DISPATCH_TIMEOUT_MS,
   healthTimeoutMs: env.AGENT_HEALTH_TIMEOUT_MS,
   heartbeatIntervalMs: env.HEARTBEAT_INTERVAL_MS,

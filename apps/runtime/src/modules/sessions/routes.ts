@@ -10,6 +10,7 @@ import {
 } from '@dorado/shared';
 import { config } from '../../config.js';
 import { db, nowIso } from '../../db/index.js';
+import { stripAnsi } from '../../lib/ansi.js';
 import { AppError, asyncHandler, notFound } from '../../lib/errors.js';
 import { parseWith } from '../../lib/validation.js';
 import { csrfGuard, requireAdmin, requireAuth } from '../auth/middleware.js';
@@ -54,13 +55,6 @@ const transcriptQuerySchema = z.object({
 
 const inboxReadSchema = z.object({ sessionId: z.string().min(1) });
 const inboxReadAllSchema = z.object({ sessionIds: z.array(z.string().min(1)).max(200) });
-
-function stripAnsi(input: string): string {
-  return input
-    .replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, '')
-    .replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, '')
-    .replace(/\r/g, '');
-}
 
 export const agentsRouter = Router();
 agentsRouter.use(csrfGuard, requireAuth);

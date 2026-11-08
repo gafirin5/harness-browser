@@ -62,6 +62,7 @@ dorado/
 - **Terminal**: PTY per worktree (xterm.js), multi-pane (≤4), pencarian, tema/font, persistensi tmux.
 - **Agent CLI**: 13 preset (OpenCode, Claude Code, Codex, Gemini, Qwen, Aider, Cursor, Crush, Droid, Goose, Amp, Copilot, Kilo) + dialog Kelola Agent (agent kustom di DB). Mode run/resume/interactive.
 - **Worktree Racing**: satu prompt di 2–4 agent pada worktree terisolasi, bandingkan diff, merge pemenang, bersihkan yang kalah.
+- **Sub-agent CLI `dorado-ctl`**: agent memunculkan sub-agent di worktree terisolasi (env `DORADO_*` + `PATH` otomatis, cap 4/sesi).
 - **File & Editor**: file explorer, editor CodeMirror 5 (lazy), Markdown preview (Mermaid), Quick Open, pencarian kode (ripgrep/`git grep`).
 - **Git**: status/diff, stage/unstage, commit, pull/push, Git Graph, Annotate Diff.
 - **GitHub**: info repo, PR, issue, review, komentar, merge, tutup issue/PR, label.
@@ -173,7 +174,7 @@ push (branch apa pun) → GitHub Actions
 |---|---|---|
 | 0 | Bundle slimming (lazy xterm, limit total 350 KB) + docs | selesai |
 | 1 | Worktree Racing (multi-agent, pilih pemenang, merge) | selesai |
-| 2 | Sub-agent CLI `dorado-ctl` | rencana |
+| 2 | Sub-agent CLI `dorado-ctl` | selesai |
 | 3 | Live Web Preview + Design Mode DOM inspector | rencana |
 | 4 | CI auto-fix, Issue→Worktree, Linear triage | rencana |
 | 5 | Multimodal (image drop, voice) + agent profiles/quota | rencana |

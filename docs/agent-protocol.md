@@ -194,3 +194,32 @@ curl -X PATCH "$DORADO_API_URL/api/agent/session" \
 ```
 
 `GET /api/agent/session` mengembalikan `model`, `messageCount`, dan `status` sesi saat ini.
+
+## Sub-agent dari Agent CLI (`dorado-ctl`)
+
+Agent yang berjalan di terminal Dorado dapat memunculkan **sub-agent** di worktree
+terisolasi lewat helper `dorado-ctl` (tersedia otomatis di `PATH` dan
+terautentikasi dengan `DORADO_SESSION_TOKEN`; di-scope ke project induk).
+
+```bash
+dorado-ctl agents
+dorado-ctl spawn --agent claude [--branch nama-branch] --prompt "Tulis unit test untuk modul auth"
+dorado-ctl status <sessionId>
+dorado-ctl diff <worktreeId>
+```
+
+`spawn` mengembalikan JSON `{ "worktreeId": "...", "sessionId": "...", "branch": "..." }`.
+Maksimum **4 sub-agent aktif per sesi induk** (melebihi → HTTP 429).
+
+Env yang tersedia di PTY agent: `DORADO_API_URL`, `DORADO_SESSION_TOKEN`,
+`DORADO_SESSION_ID`, `DORADO_WORKTREE_ID`, `DORADO_PROJECT_ID`.
+
+Endpoint (header `x-dorado-session-token: Bearer <token>`):
+
+```
+GET  /api/agent/agents                        → daftar agent CLI + status terpasang
+POST /api/agent/subagents                     → { agentId, prompt, branch? } → sub-agent baru
+GET  /api/agent/subagents/:sessionId          → status + tail transcript + git status
+GET  /api/agent/subagents/diff/:worktreeId    → unified diff sub-worktree
+```
+

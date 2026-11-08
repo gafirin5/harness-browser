@@ -5,7 +5,9 @@ import { gzipSync } from 'node:zlib';
 
 const root = process.argv[2] ?? 'dist';
 const INITIAL_LIMIT = 150 * 1024;
-const TOTAL_LIMIT = 300 * 1024;
+// Total dinaikkan dari 300 KB → 350 KB (Phase 0 Orca-parity) untuk memberi ruang
+// fitur baru yang di-lazy-load. Initial tetap dijaga ketat di 150 KB.
+const TOTAL_LIMIT = 350 * 1024;
 
 const html = await readFile(path.join(root, 'index.html'), 'utf8').catch(() => '');
 const initialRefs = new Set(
@@ -30,8 +32,10 @@ rows.sort((a, b) => b.compressed - a.compressed);
 for (const row of rows) {
   console.log(`${row.initial ? 'initial' : 'lazy   '} ${String(row.compressed).padStart(8)} B  ${row.relative}`);
 }
-console.log(`[check-bundle] initial ${(initialTotal / 1024).toFixed(1)} KB gzip (batas 150 KB)`);
-console.log(`[check-bundle] total   ${(total / 1024).toFixed(1)} KB gzip termasuk chunk lazy (batas 300 KB)`);
+console.log(`[check-bundle] initial ${(initialTotal / 1024).toFixed(1)} KB gzip (batas ${INITIAL_LIMIT / 1024} KB)`);
+console.log(
+  `[check-bundle] total   ${(total / 1024).toFixed(1)} KB gzip termasuk chunk lazy (batas ${TOTAL_LIMIT / 1024} KB)`
+);
 if (initialTotal > INITIAL_LIMIT || total > TOTAL_LIMIT) process.exit(1);
 
 async function collect(dir) {

@@ -15,7 +15,6 @@ import { submitOnCtrlEnter } from './lib/keyboard';
 import { loadTerminalPrefs, saveTerminalPrefs, type TerminalPrefs } from './lib/terminal-prefs';
 import { actionForEvent, loadKeymap, saveKeymap, type Keymap } from './lib/keymap';
 import { Login } from './components/Login';
-import { TerminalPane } from './components/TerminalPane';
 import { FileEditor } from './components/FileEditor';
 import { FileTree } from './components/FileTree';
 import { ChangesPanel } from './components/ChangesPanel';
@@ -56,6 +55,9 @@ const DiffViewer = lazy(() => import('./components/DiffViewer').then((module) =>
 const NodesDialog = lazy(() => import('./components/NodesDialog'));
 const AgentsDialog = lazy(() =>
   import('./components/AgentsDialog').then((module) => ({ default: module.AgentsDialog }))
+);
+const TerminalPane = lazy(() =>
+  import('./components/TerminalPane').then((module) => ({ default: module.TerminalPane }))
 );
 
 type DialogState =
@@ -1647,14 +1649,16 @@ export function App(): JSX.Element {
                         </div>
                       ) : null}
                       <div className="pane-body">
-                        <TerminalPane
-                          key={`${terminalId}:${terminalVersion}`}
-                          terminalId={terminalId}
-                          active={index === 0}
-                          searchNonce={index === 0 ? searchNonce : 0}
-                          resetNonce={index === 0 ? resetNonce : 0}
-                          prefs={terminalPrefs}
-                        />
+                        <Suspense fallback={<div className="empty">Memuat terminal...</div>}>
+                          <TerminalPane
+                            key={`${terminalId}:${terminalVersion}`}
+                            terminalId={terminalId}
+                            active={index === 0}
+                            searchNonce={index === 0 ? searchNonce : 0}
+                            resetNonce={index === 0 ? resetNonce : 0}
+                            prefs={terminalPrefs}
+                          />
+                        </Suspense>
                       </div>
                     </div>
                   );

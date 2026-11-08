@@ -514,6 +514,46 @@ try {
   await page.waitForFunction(() => !document.body.innerText.includes('Cek Pembaruan'), { timeout: 10000 });
   console.log('[chrome93] update dialog OK');
 
+  await page.keyboard.down('Control');
+  await page.keyboard.down('Shift');
+  await page.keyboard.press('p');
+  await page.keyboard.up('Shift');
+  await page.keyboard.up('Control');
+  await page.waitForSelector('.palette', { timeout: 10000 });
+  await page.type('.palette-input', 'Tampilan & Tema');
+  await page.waitForFunction(
+    () =>
+      Array.from(document.querySelectorAll('.palette-item')).some((item) =>
+        (item.textContent || '').includes('Tampilan')
+      ),
+    { timeout: 10000 }
+  );
+  await page.evaluate(() => {
+    const item = Array.from(document.querySelectorAll('.palette-item')).find((el) =>
+      (el.textContent || '').includes('Tampilan')
+    );
+    item?.click();
+  });
+  await waitText('Dorado Gold');
+  await page.evaluate(() => {
+    const card = Array.from(document.querySelectorAll('.skin-card')).find((el) =>
+      (el.textContent || '').includes('Tokyo Night')
+    );
+    card?.click();
+  });
+  await page.waitForFunction(() => document.documentElement.getAttribute('data-skin') === 'tokyo-night', {
+    timeout: 5000
+  });
+  await page.evaluate(() => {
+    const card = Array.from(document.querySelectorAll('.skin-card')).find((el) =>
+      (el.textContent || '').includes('Dorado Gold')
+    );
+    card?.click();
+  });
+  await page.click('.modal button[aria-label="Tutup"]');
+  await page.waitForFunction(() => !document.body.innerText.includes('Dorado Gold'), { timeout: 10000 });
+  console.log('[chrome93] appearance studio OK');
+
   await clickText('button', 'GitHub');
   await waitText('Remote bukan repository GitHub');
   await page.click('button[aria-label="Tutup"]');

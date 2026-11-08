@@ -10,9 +10,18 @@ import type {
   UserInfo,
   Worktree
 } from '@dorado/shared';
-import { ApiError, apiDelete, apiGet, apiPost, setActiveNodeId as setActiveNodeApi } from './lib/api';
+import { ApiError, apiDelete, apiGet, apiPost, apiPut, setActiveNodeId as setActiveNodeApi } from './lib/api';
 import { submitOnCtrlEnter } from './lib/keyboard';
 import { loadTerminalPrefs, saveTerminalPrefs, type TerminalPrefs } from './lib/terminal-prefs';
+import {
+  applyAppearance,
+  DEFAULT_APPEARANCE,
+  loadAppearanceLocal,
+  normalizeAppearance,
+  saveAppearanceLocal,
+  SKIN_TERMINAL_THEME,
+  type Appearance
+} from './lib/appearance';
 import { actionForEvent, loadKeymap, saveKeymap, type Keymap } from './lib/keymap';
 import { Login } from './components/Login';
 import { FileEditor } from './components/FileEditor';
@@ -69,6 +78,9 @@ const PreviewDialog = lazy(() =>
 const UpdateDialog = lazy(() =>
   import('./components/UpdateDialog').then((module) => ({ default: module.UpdateDialog }))
 );
+const AppearanceDialog = lazy(() =>
+  import('./components/AppearanceDialog').then((module) => ({ default: module.AppearanceDialog }))
+);
 
 type DialogState =
   | { type: 'project' }
@@ -115,6 +127,40 @@ export function App(): JSX.Element {
   const [terminalSettingsOpen, setTerminalSettingsOpen] = useState(false);
   const [terminalPrefs, setTerminalPrefs] = useState<TerminalPrefs>(() => loadTerminalPrefs());
   const [keymap, setKeymap] = useState<Keymap>(() => loadKeymap());
+
+  useEffect(() => {
+    const local = loadAppearanceLocal();
+    applyAppearance(local);
+    setAppearance(local);
+  }, []);
+
+  useEffect(() => {
+    if (!booted) return;
+    apiGet<{ data: { appearance?: unknown } }>('/user/preferences')
+      .then((response) => {
+        const stored = response.data?.appearance;
+        if (stored) {
+          const merged = normalizeAppearance(stored);
+          applyAppearance(merged);
+          setAppearance(merged);
+          saveAppearanceLocal(merged);
+        }
+      })
+      .catch(() => undefined);
+  }, [booted]);
+
+  const changeAppearance = (next: Appearance): void => {
+    setAppearance(next);
+    applyAppearance(next);
+    saveAppearanceLocal(next);
+    const theme = SKIN_TERMINAL_THEME[next.skin];
+    setTerminalPrefs((current) => {
+      const updated = { ...current, theme };
+      saveTerminalPrefs(updated);
+      return updated;
+    });
+    void apiPut('/user/preferences', { appearance: next }).catch(() => undefined);
+  };
   const [resetNonce, setResetNonce] = useState(0);
   const [dashboardOpen, setDashboardOpen] = useState(false);
   const [dashboardTab, setDashboardTab] = useState<'board' | 'inbox'>('board');
@@ -128,6 +174,8 @@ export function App(): JSX.Element {
   const [triageOpen, setTriageOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [updateOpen, setUpdateOpen] = useState(false);
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [appearance, setAppearance] = useState<Appearance>(DEFAULT_APPEARANCE);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [remoteNodes, setRemoteNodes] = useState<RemoteNodeInfo[]>([]);
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
@@ -1040,6 +1088,12 @@ export function App(): JSX.Element {
       run: () => setUpdateOpen(true)
     },
     {
+      id: 'appearance',
+      label: 'Tampilan & Tema',
+      hint: 'Pilih tema warna workspace',
+      run: () => setAppearanceOpen(true)
+    },
+    {
       id: 'git-graph',
       label: 'Git Graph',
       hint: 'Riwayat commit project dan detail per commit (Alt+Shift+G)',
@@ -1848,6 +1902,21 @@ export function App(): JSX.Element {
           }
         >
           <UpdateDialog isAdmin={user?.role === 'ADMIN'} onClose={() => setUpdateOpen(false)} />
+        </Suspense>
+      ) : null}
+      {appearanceOpen ? (
+        <Suspense
+          fallback={
+            <div className="orch-overlay">
+              <div className="empty">Memuat tema...</div>
+            </div>
+          }
+        >
+          <AppearanceDialog
+            appearance={appearance}
+            onChange={changeAppearance}
+            onClose={() => setAppearanceOpen(false)}
+          />
         </Suspense>
       ) : null}
       {githubOpen ? <GitHubDialog worktreeId={selectedWorktreeId} onClose={() => setGithubOpen(false)} /> : null}

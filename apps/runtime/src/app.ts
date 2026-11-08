@@ -35,6 +35,7 @@ import { attachmentsRouter } from './modules/attachments/routes.js';
 import { profilesRouter } from './modules/profiles/routes.js';
 import { previewRouter } from './modules/preview/routes.js';
 import { updateRouter } from './modules/update/routes.js';
+import { userRouter } from './modules/preferences/routes.js';
 
 export function createApp(): express.Express {
   const app = express();
@@ -146,6 +147,10 @@ export function createApp(): express.Express {
       next();
       return;
     }
+    if (req.path.startsWith('/user/')) {
+      next();
+      return;
+    }
     const user = res.locals.user as { role?: string } | undefined;
     if (!user || user.role !== 'ADMIN') {
       next(new AppError(403, 'FORBIDDEN', 'Mode viewer tidak diizinkan melakukan perubahan.'));
@@ -181,6 +186,7 @@ export function createApp(): express.Express {
   app.use('/api/settings', settingsRouter);
   app.use('/api/profiles', profilesRouter);
   app.use('/api/update', updateRouter);
+  app.use('/api/user', userRouter);
   app.use('/api', attachmentsRouter);
   app.use('/api', racesRouter);
   app.use('/api', triageRouter);

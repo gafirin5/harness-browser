@@ -307,13 +307,22 @@ try {
   await waitText('edited by chrome93');
   console.log('[chrome93] git status + diff OK');
 
-  await page.evaluate(() => {
-    const button = Array.from(document.querySelectorAll('.diff-line-no')).find(
-      (item) => (item.textContent || '').trim().length > 0 && !item.disabled
-    );
-    button?.click();
-  });
-  await page.waitForSelector('.diff-comment-box textarea', { timeout: 10000 });
+  await page.waitForSelector('.diff-line-no', { timeout: 15000 });
+  const gutterLines = await page.$$('.diff-line-no');
+  let composerOpen = false;
+  for (const node of gutterLines) {
+    const text = await node.evaluate((el) => (el.textContent || '').trim());
+    if (!text) continue;
+    await node.click().catch(() => undefined);
+    try {
+      await page.waitForSelector('.diff-comment-box textarea', { timeout: 1500 });
+      composerOpen = true;
+      break;
+    } catch {
+      // baris ini tidak membuka composer (mis. baris hapus); coba baris berikutnya
+    }
+  }
+  if (!composerOpen) throw new Error('Composer komentar diff tidak terbuka.');
   await page.type('.diff-comment-box textarea', 'Komentar E2E untuk agent');
   await page.keyboard.press('Enter');
   await waitText('Komentar E2E untuk agent');

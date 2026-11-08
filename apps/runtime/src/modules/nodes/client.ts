@@ -1,6 +1,8 @@
+import fs from 'node:fs';
 import os from 'node:os';
+import path from 'node:path';
 import { WebSocket } from 'ws';
-import type { NodeHelloParams, NodeRpcRequest } from '@dorado/shared';
+import type { ControllerIdentity, NodeHelloParams, NodeHelloResponse, NodeRpcRequest } from '@dorado/shared';
 import { listAgents } from '../sessions/agents.js';
 import { createNodeRpcHandlers } from './rpc-handlers.js';
 
@@ -11,9 +13,23 @@ export interface NodeClientOptions {
   onConnect?: () => void;
   onDisconnect?: () => void;
   onError?: (err: Error) => void;
+  onController?: (controller: ControllerIdentity) => void;
 }
 
 export type NodeRpcHandler = (params: unknown) => Promise<unknown> | unknown;
+
+interface NodeStateFile {
+  controllerUrl: string;
+  connected: boolean;
+  connectedAt: string | null;
+  disconnectedAt: string | null;
+  controller: ControllerIdentity | null;
+}
+
+/** Lokasi state file node (dipakai juga oleh `npm run node:status`). */
+export function nodeStateFilePath(): string {
+  return process.env.DORADO_NODE_STATE_FILE ?? path.join(os.homedir(), '.dorado-node', 'state.json');
+}
 
 export class DoradoNodeClient {
   private ws: WebSocket | null = null;
@@ -21,6 +37,9 @@ export class DoradoNodeClient {
   private reconnectTimer: NodeJS.Timeout | null = null;
   private retryCount = 0;
   private handlers = new Map<string, NodeRpcHandler>();
+  private controller: ControllerIdentity | null = null;
+  private connectedAt: string | null = null;
+  private helloId: string | null = null;
 
   constructor(private options: NodeClientOptions) {
     this.registerBuiltinHandlers();
@@ -32,6 +51,10 @@ export class DoradoNodeClient {
 
   public registerHandler(method: string, handler: NodeRpcHandler): void {
     this.handlers.set(method, handler);
+  }
+
+  public getController(): ControllerIdentity | null {
+    return this.controller;
   }
 
   public connect(): void {
@@ -55,23 +78,32 @@ export class DoradoNodeClient {
 
     socket.on('open', () => {
       this.retryCount = 0;
+      this.connectedAt = new Date().toISOString();
       this.sendHello();
+      this.writeState(true);
       this.options.onConnect?.();
     });
 
     socket.on('message', async (raw) => {
-      let req: NodeRpcRequest;
+      let message: NodeRpcRequest & { ok?: boolean; data?: NodeHelloResponse };
       try {
-        req = JSON.parse(String(raw)) as NodeRpcRequest;
+        message = JSON.parse(String(raw)) as typeof message;
       } catch {
         return;
       }
-      if (!req.id || !req.method) return;
-      await this.handleRequest(req);
+      if (this.helloId && message.id === this.helloId && message.data?.controller) {
+        this.controller = message.data.controller;
+        this.options.onController?.(message.data.controller);
+        this.writeState(true);
+        return;
+      }
+      if (!message.id || !message.method) return;
+      await this.handleRequest(message);
     });
 
     socket.on('close', () => {
       this.ws = null;
+      this.writeState(false);
       this.options.onDisconnect?.();
       if (!this.closedExplicitly && this.options.autoReconnect !== false) {
         this.scheduleReconnect();
@@ -99,6 +131,7 @@ export class DoradoNodeClient {
       }
       this.ws = null;
     }
+    this.writeState(false);
   }
 
   public isConnected(): boolean {
@@ -112,7 +145,8 @@ export class DoradoNodeClient {
       version: '0.1.0',
       agents: listAgents()
     };
-    this.send({ id: `hello_${Date.now()}`, method: 'node.hello', params });
+    this.helloId = `hello_${Date.now()}`;
+    this.send({ id: this.helloId, method: 'node.hello', params });
   }
 
   private registerBuiltinHandlers(): void {
@@ -153,6 +187,23 @@ export class DoradoNodeClient {
 
   private handleError(err: Error): void {
     this.options.onError?.(err);
+  }
+
+  private writeState(connected: boolean): void {
+    const payload: NodeStateFile = {
+      controllerUrl: this.options.controllerUrl,
+      connected,
+      connectedAt: this.connectedAt,
+      disconnectedAt: connected ? null : new Date().toISOString(),
+      controller: this.controller
+    };
+    const file = nodeStateFilePath();
+    try {
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, `${JSON.stringify(payload, null, 2)}\n`);
+    } catch {
+      // abaikan kegagalan menulis state (mis. path read-only)
+    }
   }
 
   private scheduleReconnect(): void {

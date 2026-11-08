@@ -1,8 +1,12 @@
+import fs from 'node:fs';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
+import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import request from 'supertest';
+import type { ControllerIdentity } from '@dorado/shared';
 import { createApp } from '../src/app.js';
+import { config } from '../src/config.js';
 import { DoradoNodeClient } from '../src/modules/nodes/client.js';
 import { nodeManager } from '../src/modules/nodes/manager.js';
 import { setupTerminalWebSocket } from '../src/ws.js';
@@ -15,6 +19,7 @@ describe('remote nodes federation', () => {
   let adminCookie = '';
 
   beforeAll(async () => {
+    process.env.DORADO_NODE_STATE_FILE = path.join(config.dataDir, 'node-state-test.json');
     const app = createApp();
     server = http.createServer(app);
     setupTerminalWebSocket(server);
@@ -103,12 +108,16 @@ describe('remote nodes federation', () => {
 
     // 3. Hubungkan dengan token valid
     let connected = false;
+    const captured: { controller: ControllerIdentity | null } = { controller: null };
     const client = new DoradoNodeClient({
       controllerUrl,
       token: created.token,
       autoReconnect: false,
       onConnect: () => {
         connected = true;
+      },
+      onController: (info) => {
+        captured.controller = info;
       }
     });
 
@@ -117,7 +126,7 @@ describe('remote nodes federation', () => {
     // Tunggu hingga terhubung dan handshake node.hello selesai
     for (let i = 0; i < 40; i += 1) {
       const row = nodeManager.get(created.id);
-      if (connected && row?.status === 'online' && row.hostname) {
+      if (connected && row?.status === 'online' && row.hostname && captured.controller) {
         break;
       }
       await new Promise((r) => setTimeout(r, 100));
@@ -128,6 +137,21 @@ describe('remote nodes federation', () => {
     expect(onlineNode?.hostname).toBeTruthy();
     expect(onlineNode?.platform).toBeTruthy();
     expect(Array.isArray(onlineNode?.agents)).toBe(true);
+
+    // Node menerima identitas controller + menulis state file
+    expect(captured.controller).toBeTruthy();
+    expect(captured.controller?.id).toMatch(/^ctrl_/);
+    expect(captured.controller?.name).toBeTruthy();
+    expect(captured.controller?.url).toBeTruthy();
+    expect(captured.controller?.version).toBe('0.1.0');
+    const statePath = process.env.DORADO_NODE_STATE_FILE as string;
+    expect(fs.existsSync(statePath)).toBe(true);
+    const state = JSON.parse(fs.readFileSync(statePath, 'utf8')) as {
+      connected: boolean;
+      controller: { id: string } | null;
+    };
+    expect(state.connected).toBe(true);
+    expect(state.controller?.id).toBe(captured.controller?.id);
 
     // 4. Test Controller memanggil ping ke Node
     const activeConn = nodeManager.getConnection(created.id);

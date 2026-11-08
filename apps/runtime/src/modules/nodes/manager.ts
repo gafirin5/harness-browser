@@ -1,7 +1,9 @@
 import crypto from 'node:crypto';
+import os from 'node:os';
 import type { WebSocket } from 'ws';
 import type {
   AgentInfo,
+  ControllerIdentity,
   NodeHelloParams,
   NodeRpcRequest,
   NodeRpcResponse,
@@ -11,6 +13,7 @@ import type {
 import { config } from '../../config.js';
 import { db, newId, nowIso } from '../../db/index.js';
 import { AppError } from '../../lib/errors.js';
+import { getSetting, setSetting } from '../settings/service.js';
 
 interface RemoteNodeRow {
   id: string;
@@ -36,6 +39,22 @@ export function generateNodeToken(): string {
 export function buildPairCommand(token: string): string {
   const wsUrl = `${config.publicBaseUrl.replace(/^http/i, 'ws')}/ws/nodes/connect`;
   return `DORADO_CONTROLLER_URL="${wsUrl}" DORADO_NODE_TOKEN="${token}" npm run node`;
+}
+
+/** Identitas instance controller (stabil antar restart) untuk dikirim ke node. */
+export function controllerIdentity(): ControllerIdentity {
+  let instanceId = getSetting('controller_instance_id');
+  if (!instanceId) {
+    instanceId = `ctrl_${crypto.randomBytes(8).toString('hex')}`;
+    setSetting('controller_instance_id', instanceId);
+  }
+  return {
+    id: instanceId,
+    name: config.controllerName,
+    url: config.publicBaseUrl,
+    version: '0.1.0',
+    hostname: os.hostname()
+  };
 }
 
 function mapNodeRow(row: RemoteNodeRow): RemoteNodeInfo {
@@ -252,7 +271,7 @@ export class NodeConnection {
          SET hostname = ?, platform = ?, agents_json = ?, status = 'online', last_seen_at = ?
          WHERE id = ?`
       ).run(params?.hostname ?? null, params?.platform ?? null, JSON.stringify(agents), nowIso(), this.nodeId);
-      this.sendResponse(req.id, true, { status: 'registered' });
+      this.sendResponse(req.id, true, { status: 'registered', controller: controllerIdentity() });
       void this.ping();
       return;
     }

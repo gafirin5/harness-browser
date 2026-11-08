@@ -37,6 +37,7 @@ Salin `.env.example` menjadi `.env` dan sesuaikan.
 | `HOST` | `127.0.0.1` | Bind address; gunakan reverse proxy |
 | `PUBLIC_BASE_URL` | `http://localhost:7788` | Origin publik; dipakai callback worker dan CSRF |
 | `ALLOWED_ORIGINS` | kosong | Origin tambahan yang diizinkan (pisah koma), mis. URL tunnel; `PUBLIC_BASE_URL` otomatis diizinkan |
+| `CONTROLLER_NAME` | hostname | Nama controller yang dikirim ke node (tampil di console node & `npm run node:status`) |
 | `DATA_DIR` | `./data` | SQLite, log terminal, worktree |
 | `ADMIN_PASSWORD` | `dorado` | Seed awal password admin (`admin`); wajib diganti di production |
 | `SESSION_SECRET` | dev | Minimal 32 karakter; wajib diganti |

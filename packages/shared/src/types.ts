@@ -142,6 +142,19 @@ export interface NodeHelloParams {
   agents: AgentInfo[];
 }
 
+export interface ControllerIdentity {
+  id: string;
+  name: string;
+  url: string;
+  version: string;
+  hostname: string;
+}
+
+export interface NodeHelloResponse {
+  status: string;
+  controller?: ControllerIdentity;
+}
+
 export interface NodeRpcRequest<T = unknown> {
   id: string;
   method: string;

@@ -19,7 +19,13 @@ const client = new DoradoNodeClient({
   token,
   autoReconnect: true,
   onConnect: () => {
-    console.log('[dorado-node] Berhasil terhubung ke controller.');
+    console.log('[dorado-node] Terhubung ke controller (menunggu identitas)...');
+  },
+  onController: (controller) => {
+    console.log(
+      `[dorado-node] Controller: ${controller.name} (${controller.url}) v${controller.version} ` +
+        `id=${controller.id} host=${controller.hostname}`
+    );
   },
   onDisconnect: () => {
     console.log('[dorado-node] Terputus dari controller. Menunggu koneksi ulang...');

@@ -71,7 +71,7 @@ dorado/
 - **Git**: status/diff, stage/unstage, commit, pull/push, Git Graph, Annotate Diff.
 - **GitHub**: info repo, PR, issue, review, komentar, merge, tutup issue/PR, label.
 - **Orchestrator**: dashboard realtime (SSE), provider LLM (key terenkripsi), worker agent, task queue berprioritas, dispatcher, biaya.
-- **Remote Nodes Federation**: kendalikan mesin Dorado lain via reverse WebSocket.
+- **Remote Nodes Federation**: kendalikan mesin Dorado lain via reverse WebSocket. Node (sisi yang dikendalikan) melihat identitas controller (nama/URL/versi/id instance) di console + `npm run node:status`.
 - **Produktivitas**: command palette, jump palette, shortcut remap, quick commands, scheduled automations, Agent Dashboard/Inbox, notifikasi, session history, Info Runtime.
 - **Infra**: quick tunnel Cloudflare, backup/restore, gate Chrome 93.
 
@@ -104,6 +104,7 @@ remote_nodes · settings · admin_credentials · cli_agents · agent_profiles
 | `APP_TIMEZONE` | `Asia/Jakarta` | Batas hari dashboard dan kode task |
 | `DORADO_AGENTS` | kosong | Agent tambahan/override (JSON) |
 | `PROJECT_SCAN_ROOTS` | kosong | Root pemindaian repo (pisah koma; kosong = HOME) |
+| `CONTROLLER_NAME` | hostname | Nama controller yang dikirim ke node |
 | `GITHUB_TOKEN` | kosong | Opsional untuk GitHub API |
 | `AGENT_*`, `TASK_MAX_DURATION_MS` | — | Konfigurasi orchestrator |
 

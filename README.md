@@ -45,7 +45,7 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **Scheduled Automations**: buat prompt agent berjadwal (manual, preset 5m–24h, atau cron sederhana), aktif/nonaktif, run now, riwayat eksekusi, zona waktu `APP_TIMEZONE`, retry otomatis saat gagal, dan lock scheduler untuk mencegah run ganda.
 - **GitHub write actions**: komentar PR/issue, review **Comment/Approve/Request changes**, merge, tutup issue/PR, atur label, dan lihat diskusi/review dari dialog GitHub (butuh `GITHUB_TOKEN` dengan scope write).
 - **Terminal polish**: link HTTP(S) bisa diklik, salin seleksi lewat context menu atau keymap, reset terminal, serta tema/font/ukuran dan keymap cari/salin yang tersimpan di localStorage.
-- **Remote Nodes Federation** (`Alt+N` atau tombol **Nodes** di topbar): kendalikan mesin/server Dorado lain dari satu Controller via koneksi reverse WebSocket aman (tembus NAT/Firewall), monitoring status online dan latensi realtime, pendaftaran node one-liner, rotasi token, dan dropdown node switcher di sidebar.
+- **Remote Nodes Federation** (`Alt+N` atau tombol **Nodes** di topbar): kendalikan mesin/server Dorado lain dari satu Controller via koneksi reverse WebSocket aman (tembus NAT/Firewall), monitoring status online dan latensi realtime, pendaftaran node one-liner, rotasi token, dan dropdown node switcher di sidebar. Node (sisi yang dikendalikan) juga **melihat controller-nya**: identitas controller (nama, URL, versi, id instance) tampil di console node dan lewat `npm run node:status`.
 - **Resume sesi** agent dengan konteks percakapan (OpenCode `--continue`), serta stop sesi berjalan.
 - **Persistensi terminal/agent sejati** setelah runtime restart melalui tmux, dengan tombol Restart untuk shell.
 - Hentikan sesi, tutup terminal, hapus worktree (dengan proteksi sesi aktif).
@@ -177,6 +177,30 @@ GITHUB_TOKEN=ghp_xxx
 ```
 
 Tanpa token, hanya repository publik yang dapat dibaca dan rate limit GitHub lebih rendah. Integrasi ini read-only: pull request dan issue ditampilkan, lalu dibuka di GitHub untuk aksi lanjutan. Hasil API di-cache 60 detik di memori.
+
+## Remote Nodes
+
+Controller mengendalikan mesin Dorado lain lewat koneksi **reverse WebSocket** (tembus NAT/Firewall). Buka **Nodes** (`Alt+N`) → buat node → salin perintah one-liner, contoh:
+
+```bash
+DORADO_CONTROLLER_URL="wss://<controller>/ws/nodes/connect" \
+DORADO_NODE_TOKEN="dnode_..." \
+npm run node
+```
+
+Saat terhubung, node menampilkan **controller yang mengendalikannya** di console:
+
+```
+[dorado-node] Controller: Kantor Jakarta (https://…trycloudflare.com) v0.1.0 id=ctrl_… host=…
+```
+
+Cek kapan saja lewat perintah status (membaca state file `~/.dorado-node/state.json`, dapat diubah via `DORADO_NODE_STATE_FILE`):
+
+```bash
+npm run node:status
+```
+
+Identitas controller (nama + URL + versi + id instance) dikirim controller pada saat handshake `node.hello`; id instance disimpan stabil di tabel `settings`. Nama controller diatur lewat env `CONTROLLER_NAME` (default: hostname).
 
 ## Arsitektur
 

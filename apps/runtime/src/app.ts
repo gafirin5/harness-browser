@@ -30,6 +30,8 @@ import { automationsRouter } from './modules/automations/routes.js';
 import { racesRouter } from './modules/races/routes.js';
 import { triageRouter } from './modules/triage/routes.js';
 import { settingsRouter } from './modules/settings/routes.js';
+import { attachmentsRouter } from './modules/attachments/routes.js';
+import { profilesRouter } from './modules/profiles/routes.js';
 
 export function createApp(): express.Express {
   const app = express();
@@ -168,6 +170,8 @@ export function createApp(): express.Express {
   app.use('/api/orchestrator/agent', orchestratorAgentRouter);
   app.use('/api/orchestrator', orchestratorRouter);
   app.use('/api/settings', settingsRouter);
+  app.use('/api/profiles', profilesRouter);
+  app.use('/api', attachmentsRouter);
   app.use('/api', racesRouter);
   app.use('/api', triageRouter);
 

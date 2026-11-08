@@ -52,6 +52,7 @@ interface TerminalRow {
 }
 
 export type TerminalExitListener = (terminalId: string, code: number, stopped: boolean) => void;
+export type TerminalOutputListener = (terminalId: string, data: string) => void;
 
 function mapTerminal(row: TerminalRow): TerminalInfo {
   return {
@@ -116,9 +117,17 @@ function hasSession(id: string): boolean {
 class TerminalManager {
   private runtimes = new Map<string, Runtime>();
   private exitListeners = new Set<TerminalExitListener>();
+  private outputListeners = new Set<TerminalOutputListener>();
 
   onExit(listener: TerminalExitListener): void {
     this.exitListeners.add(listener);
+  }
+
+  onOutput(listener: TerminalOutputListener): () => void {
+    this.outputListeners.add(listener);
+    return () => {
+      this.outputListeners.delete(listener);
+    };
   }
 
   getRow(id: string): TerminalRow | null {
@@ -287,6 +296,9 @@ class TerminalManager {
       } catch {
         // abaikan write ke stream yang sudah ditutup
       }
+    }
+    if (this.outputListeners.size > 0 && data.length > 0 && data.length < 8192) {
+      for (const listener of this.outputListeners) listener(runtime.id, data);
     }
   }
 

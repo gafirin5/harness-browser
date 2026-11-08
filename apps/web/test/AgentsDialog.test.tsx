@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AgentsDialog } from '../src/components/AgentsDialog';
 import { ToastProvider } from '../src/components/ui';
@@ -12,6 +12,11 @@ vi.mock('../src/lib/api', async (importOriginal) => {
 const mockedApiGet = vi.mocked(apiGet);
 const mockedApiPost = vi.mocked(apiPost);
 
+function mockAgents(data: unknown[]): void {
+  mockedApiGet.mockImplementation(((path: string) =>
+    Promise.resolve(path === '/profiles' ? { data: [] } : { data })) as never);
+}
+
 function renderDialog(isAdmin: boolean): void {
   render(
     <ToastProvider>
@@ -21,24 +26,26 @@ function renderDialog(isAdmin: boolean): void {
 }
 
 describe('AgentsDialog', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('menampilkan preset bawaan dan agent kustom dengan aksi berbeda', async () => {
-    mockedApiGet.mockResolvedValue({
-      data: [
-        {
-          id: 'opencode',
-          name: 'OpenCode',
-          command: 'opencode',
-          args: ['--prompt', '{{prompt}}'],
-          installed: true,
-          source: 'builtin',
-          builtin: true
-        },
-        { id: 'mine', name: 'Mine', command: 'mine', args: [], installed: false, source: 'custom' }
-      ]
-    });
+    mockAgents([
+      {
+        id: 'opencode',
+        name: 'OpenCode',
+        command: 'opencode',
+        args: ['--prompt', '{{prompt}}'],
+        installed: true,
+        source: 'builtin',
+        builtin: true
+      },
+      { id: 'mine', name: 'Mine', command: 'mine', args: [], installed: false, source: 'custom' }
+    ]);
     renderDialog(true);
 
-    await waitFor(() => expect(screen.getByText('OpenCode')).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByText('OpenCode').length).toBeGreaterThan(0));
     expect(screen.getByText('Bawaan')).toBeTruthy();
     expect(screen.getByText('Kustom')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Override' })).toBeTruthy();
@@ -47,24 +54,22 @@ describe('AgentsDialog', () => {
   });
 
   it('tombol Override mengisi form dengan nilai agent', async () => {
-    mockedApiGet.mockResolvedValue({
-      data: [
-        {
-          id: 'claude',
-          name: 'Claude Code',
-          command: 'claude',
-          args: ['-p', '{{prompt}}'],
-          resumeArgs: ['-c', '-p', '{{prompt}}'],
-          interactiveArgs: [],
-          installed: true,
-          source: 'builtin',
-          builtin: true
-        }
-      ]
-    });
+    mockAgents([
+      {
+        id: 'claude',
+        name: 'Claude Code',
+        command: 'claude',
+        args: ['-p', '{{prompt}}'],
+        resumeArgs: ['-c', '-p', '{{prompt}}'],
+        interactiveArgs: [],
+        installed: true,
+        source: 'builtin',
+        builtin: true
+      }
+    ]);
     renderDialog(true);
 
-    await waitFor(() => expect(screen.getByText('Claude Code')).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByText('Claude Code').length).toBeGreaterThan(0));
     fireEvent.click(screen.getByRole('button', { name: 'Override' }));
 
     expect(screen.getByPlaceholderText('mis. claude')).toHaveValue('claude');
@@ -73,7 +78,7 @@ describe('AgentsDialog', () => {
   });
 
   it('menambah agent kustom memanggil API POST', async () => {
-    mockedApiGet.mockResolvedValue({ data: [] });
+    mockAgents([]);
     mockedApiPost.mockResolvedValue({
       data: { id: 'mine', name: 'Mine', command: 'mine', args: [], installed: false, source: 'custom' }
     });
@@ -94,22 +99,20 @@ describe('AgentsDialog', () => {
   });
 
   it('viewer tidak melihat form pengelolaan', async () => {
-    mockedApiGet.mockResolvedValue({
-      data: [
-        {
-          id: 'opencode',
-          name: 'OpenCode',
-          command: 'opencode',
-          args: [],
-          installed: true,
-          source: 'builtin',
-          builtin: true
-        }
-      ]
-    });
+    mockAgents([
+      {
+        id: 'opencode',
+        name: 'OpenCode',
+        command: 'opencode',
+        args: [],
+        installed: true,
+        source: 'builtin',
+        builtin: true
+      }
+    ]);
     renderDialog(false);
 
-    await waitFor(() => expect(screen.getByText('OpenCode')).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByText('OpenCode').length).toBeGreaterThan(0));
     expect(screen.queryByRole('button', { name: '+ Tambah Agent' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Override' })).toBeNull();
     expect(screen.getByText('Hanya admin yang dapat menambah atau mengubah agent.')).toBeTruthy();

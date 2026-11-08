@@ -333,6 +333,19 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS agent_races_project_ix ON agent_races(project_id, created_at DESC);
   CREATE INDEX IF NOT EXISTS agent_race_entries_race_ix ON agent_race_entries(race_id);
 
+  CREATE TABLE IF NOT EXISTS agent_profiles (
+    id                 TEXT PRIMARY KEY,
+    name               TEXT NOT NULL,
+    agent_id           TEXT NOT NULL,
+    env_encrypted      TEXT NOT NULL,
+    is_active          INTEGER NOT NULL DEFAULT 0,
+    rate_limited_until TEXT,
+    created_at         TEXT NOT NULL,
+    updated_at         TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS agent_profiles_agent_ix ON agent_profiles(agent_id, is_active);
+
   CREATE INDEX IF NOT EXISTS worktrees_project_ix ON worktrees(project_id);
   CREATE INDEX IF NOT EXISTS terminals_worktree_ix ON terminals(worktree_id);
   CREATE INDEX IF NOT EXISTS sessions_worktree_ix ON sessions(worktree_id);

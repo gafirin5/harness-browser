@@ -5,6 +5,7 @@ import { db, newId, nowIso } from '../../db/index.js';
 import { createAgentToken } from '../../lib/agent-token.js';
 import { AppError, notFound } from '../../lib/errors.js';
 import { getProject } from '../projects/routes.js';
+import { getActiveProfileEnv } from '../profiles/service.js';
 import { terminalManager } from '../terminals/manager.js';
 import { getWorktreeRow } from '../worktrees/routes.js';
 import { agentCommandArgs, getAgent, type AgentInvocationMode } from './agents.js';
@@ -68,6 +69,7 @@ export function startAgentSession(input: StartAgentSessionInput): SessionInfo {
   const project = getProject(worktree.project_id);
   const id = newId();
   const agentToken = createAgentToken();
+  const profileEnv = getActiveProfileEnv(agent.id) ?? {};
   const terminal = terminalManager.create({
     worktreeId: worktree.id,
     title: input.title,
@@ -77,6 +79,7 @@ export function startAgentSession(input: StartAgentSessionInput): SessionInfo {
     cols: 120,
     rows: 34,
     env: {
+      ...profileEnv,
       DORADO_SESSION_ID: id,
       DORADO_SESSION_TOKEN: agentToken.token,
       DORADO_WORKTREE_ID: worktree.id,

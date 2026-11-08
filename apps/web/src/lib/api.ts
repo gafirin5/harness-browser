@@ -84,6 +84,32 @@ export function terminalWsUrl(terminalId: string): string {
   return `${protocol}//${location.host}/ws/terminals/${terminalId}${query}`;
 }
 
+export async function uploadAttachment(worktreeId: string, file: File): Promise<{ path: string; mention: string }> {
+  const headers: Record<string, string> = { 'content-type': 'application/octet-stream' };
+  if (activeNodeId) headers['x-dorado-node-id'] = activeNodeId;
+  const response = await fetch(`/api/worktrees/${worktreeId}/attachments?name=${encodeURIComponent(file.name)}`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers,
+    body: file
+  });
+  const text = await response.text();
+  let payload: { data?: { path: string; mention: string }; error?: { message?: string } } | null = null;
+  try {
+    payload = text ? JSON.parse(text) : null;
+  } catch {
+    payload = null;
+  }
+  if (!response.ok || !payload?.data) {
+    throw new ApiError(
+      response.status,
+      'HTTP_ERROR',
+      payload?.error?.message ?? `Upload gagal (HTTP ${response.status}).`
+    );
+  }
+  return payload.data;
+}
+
 export async function copyText(text: string): Promise<boolean> {
   if (window.isSecureContext && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
     try {

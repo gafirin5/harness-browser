@@ -1671,6 +1671,7 @@ export function App(): JSX.Element {
                           <TerminalPane
                             key={`${terminalId}:${terminalVersion}`}
                             terminalId={terminalId}
+                            worktreeId={pane.worktreeId}
                             active={index === 0}
                             searchNonce={index === 0 ? searchNonce : 0}
                             resetNonce={index === 0 ? resetNonce : 0}

@@ -1,18 +1,20 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { SearchAddon } from '@xterm/addon-search';
-import { copyText, terminalWsUrl } from '../lib/api';
+import { copyText, terminalWsUrl, uploadAttachment } from '../lib/api';
 import { FONT_FAMILIES, TERMINAL_THEMES, matchesCombo, type TerminalPrefs } from '../lib/terminal-prefs';
 
 export function TerminalPane({
   terminalId,
+  worktreeId,
   active = true,
   searchNonce = 0,
   resetNonce = 0,
   prefs
 }: {
   terminalId: string;
+  worktreeId: string;
   active?: boolean;
   searchNonce?: number;
   resetNonce?: number;
@@ -23,8 +25,12 @@ export function TerminalPane({
   const fitRef = useRef<FitAddon | null>(null);
   const searchRef = useRef<SearchAddon | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const sendRef = useRef<((message: unknown) => void) | null>(null);
+  const recognitionRef = useRef<{ stop: () => void } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [listening, setListening] = useState(false);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -114,6 +120,7 @@ export function TerminalPane({
     const send = (message: unknown): void => {
       if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
     };
+    sendRef.current = send;
 
     const connect = (): void => {
       if (disposed) return;
@@ -189,6 +196,7 @@ export function TerminalPane({
       searchRef.current = null;
       fitRef.current = null;
       terminalRef.current = null;
+      sendRef.current = null;
       if (core?.viewport) {
         core.viewport.syncScrollArea = () => undefined;
       }
@@ -254,6 +262,53 @@ export function TerminalPane({
     if (active && searchNonce > 0) setSearchOpen(true);
   }, [active, searchNonce]);
 
+  const uploadFiles = useCallback(
+    async (files: FileList | null): Promise<void> => {
+      if (!files || files.length === 0) return;
+      for (const file of Array.from(files).slice(0, 5)) {
+        if (file.size > 5 * 1024 * 1024) {
+          terminalRef.current?.write(`\r\n\x1b[31m[file ${file.name} melebihi 5 MB, dilewati]\x1b[0m\r\n`);
+          continue;
+        }
+        try {
+          const result = await uploadAttachment(worktreeId, file);
+          sendRef.current?.({ type: 'input', data: `@${result.path} ` });
+        } catch (error) {
+          terminalRef.current?.write(`\r\n\x1b[31m[upload gagal: ${(error as Error).message}]\x1b[0m\r\n`);
+        }
+      }
+    },
+    [worktreeId]
+  );
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return undefined;
+    const onPaste = (event: ClipboardEvent): void => {
+      if (event.clipboardData?.files?.length) {
+        event.preventDefault();
+        void uploadFiles(event.clipboardData.files);
+      }
+    };
+    const onDrop = (event: DragEvent): void => {
+      if (event.dataTransfer?.files?.length) {
+        event.preventDefault();
+        void uploadFiles(event.dataTransfer.files);
+      }
+    };
+    const onDragover = (event: DragEvent): void => {
+      event.preventDefault();
+    };
+    window.addEventListener('paste', onPaste);
+    host.addEventListener('drop', onDrop);
+    host.addEventListener('dragover', onDragover);
+    return () => {
+      window.removeEventListener('paste', onPaste);
+      host.removeEventListener('drop', onDrop);
+      host.removeEventListener('dragover', onDragover);
+    };
+  }, [uploadFiles]);
+
   const find = (direction: 'next' | 'previous', incremental = false): void => {
     if (!query) {
       searchRef.current?.clearDecorations();
@@ -264,9 +319,71 @@ export function TerminalPane({
     else searchRef.current?.findNext(query, options);
   };
 
+  const speechCtor =
+    typeof window !== 'undefined'
+      ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ((window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition)
+      : undefined;
+
+  const toggleVoice = (): void => {
+    if (!speechCtor) return;
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const recognition = new (speechCtor as new () => any)();
+    recognition.lang = 'id-ID';
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onresult = (event: any): void => {
+      let text = '';
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        if (result?.isFinal) text += result[0].transcript;
+      }
+      if (text && sendRef.current) sendRef.current({ type: 'input', data: text });
+    };
+    recognition.onend = (): void => setListening(false);
+    recognition.onerror = (): void => setListening(false);
+    recognition.start();
+    recognitionRef.current = recognition;
+    setListening(true);
+  };
+
   return (
     <>
       <div className="terminal-host" ref={hostRef} />
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept=".png,.jpg,.jpeg,.webp,.gif,.txt,.md,.json,.pdf"
+        style={{ display: 'none' }}
+        onChange={(event) => {
+          void uploadFiles(event.target.files);
+          event.target.value = '';
+        }}
+      />
+      <button
+        className="terminal-attach btn tiny"
+        onClick={() => fileInputRef.current?.click()}
+        title="Lampirkan file/gambar (atau tempel/drop)"
+        aria-label="Lampirkan file"
+      >
+        📎
+      </button>
+      {speechCtor ? (
+        <button
+          className={`terminal-mic btn tiny ${listening ? 'active' : ''}`}
+          onClick={toggleVoice}
+          title={listening ? 'Hentikan dikte' : 'Dikte suara ke terminal'}
+          aria-label="Dikte suara"
+        >
+          {listening ? '⏹' : '🎤'}
+        </button>
+      ) : null}
       {searchOpen ? (
         <div className="terminal-search">
           <input

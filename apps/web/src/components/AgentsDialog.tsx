@@ -20,6 +20,28 @@ const SOURCE_LABEL: Record<string, string> = {
   custom: 'Kustom'
 };
 
+interface ProfileInfo {
+  id: string;
+  name: string;
+  agentId: string;
+  isActive: boolean;
+  envKeys: string[];
+  rateLimitedUntil: string | null;
+  updatedAt: string;
+}
+
+function parseEnv(text: string): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const index = trimmed.indexOf('=');
+    if (index <= 0) continue;
+    env[trimmed.slice(0, index).trim()] = trimmed.slice(index + 1).trim();
+  }
+  return env;
+}
+
 export function AgentsDialog({ isAdmin, onClose }: { isAdmin: boolean; onClose: () => void }): JSX.Element {
   const { push } = useToast();
   const [agents, setAgents] = useState<AgentInfo[]>([]);
@@ -35,6 +57,11 @@ export function AgentsDialog({ isAdmin, onClose }: { isAdmin: boolean; onClose: 
   const [resumeText, setResumeText] = useState('');
   const [interactiveText, setInteractiveText] = useState('');
 
+  const [profiles, setProfiles] = useState<ProfileInfo[]>([]);
+  const [profileName, setProfileName] = useState('');
+  const [profileAgent, setProfileAgent] = useState('');
+  const [profileEnvText, setProfileEnvText] = useState('');
+
   const load = useCallback(async (): Promise<void> => {
     setLoading(true);
     try {
@@ -48,9 +75,19 @@ export function AgentsDialog({ isAdmin, onClose }: { isAdmin: boolean; onClose: 
     }
   }, []);
 
+  const loadProfiles = useCallback(async (): Promise<void> => {
+    try {
+      const response = await apiGet<{ data: ProfileInfo[] }>('/profiles');
+      setProfiles(response.data);
+    } catch {
+      // abaikan bila gagal (mis. bukan admin)
+    }
+  }, []);
+
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadProfiles();
+  }, [load, loadProfiles]);
 
   const resetForm = (): void => {
     setEditingId(null);
@@ -112,6 +149,52 @@ export function AgentsDialog({ isAdmin, onClose }: { isAdmin: boolean; onClose: 
       await load();
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : 'Gagal menghapus agent.');
+    }
+  };
+
+  const saveProfile = async (): Promise<void> => {
+    if (!profileName.trim() || !profileAgent.trim()) {
+      setError('Nama dan agent profil wajib diisi.');
+      return;
+    }
+    setPending(true);
+    setError(null);
+    try {
+      await apiPost('/profiles', {
+        name: profileName.trim(),
+        agentId: profileAgent.trim(),
+        env: parseEnv(profileEnvText)
+      });
+      push('success', 'Profil disimpan.');
+      setProfileName('');
+      setProfileAgent('');
+      setProfileEnvText('');
+      await loadProfiles();
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : 'Gagal menyimpan profil.');
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const activateProfile = async (profile: ProfileInfo): Promise<void> => {
+    try {
+      await apiPost(`/profiles/${profile.id}/activate`);
+      push('success', `Profil ${profile.name} diaktifkan.`);
+      await loadProfiles();
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : 'Gagal mengaktifkan profil.');
+    }
+  };
+
+  const removeProfile = async (profile: ProfileInfo): Promise<void> => {
+    if (!window.confirm(`Hapus profil "${profile.name}"?`)) return;
+    try {
+      await apiDelete(`/profiles/${profile.id}`);
+      push('success', 'Profil dihapus.');
+      await loadProfiles();
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : 'Gagal menghapus profil.');
     }
   };
 
@@ -246,6 +329,74 @@ export function AgentsDialog({ isAdmin, onClose }: { isAdmin: boolean; onClose: 
                     Override
                   </button>
                 )}
+              </div>
+            ) : null}
+          </div>
+        ))}
+      </div>
+
+      <div className="section-label">Profil Agent (env / akun)</div>
+      {isAdmin ? (
+        <div className="orch-form">
+          <div className="row" style={{ gap: 8 }}>
+            <Field label="Nama profil">
+              <input
+                className="input"
+                value={profileName}
+                onChange={(event) => setProfileName(event.target.value)}
+                placeholder="Claude Pro A"
+              />
+            </Field>
+            <Field label="Agent">
+              <select className="select" value={profileAgent} onChange={(event) => setProfileAgent(event.target.value)}>
+                <option value="">Pilih agent...</option>
+                {agents.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <Field label="Env (satu per baris, KEY=value)">
+            <textarea
+              className="textarea"
+              rows={3}
+              value={profileEnvText}
+              onChange={(event) => setProfileEnvText(event.target.value)}
+              placeholder={'ANTHROPIC_API_KEY=sk-...\nCLAUDE_CONFIG_DIR=/home/user/.claude-b'}
+            />
+          </Field>
+          <div className="orch-form-actions">
+            <button className="btn tiny primary" onClick={() => void saveProfile()} disabled={pending}>
+              + Tambah Profil
+            </button>
+          </div>
+        </div>
+      ) : null}
+      <div className="quick-command-list">
+        {profiles.length === 0 ? <div className="empty">Belum ada profil.</div> : null}
+        {profiles.map((profile) => (
+          <div className="quick-command-row" key={profile.id}>
+            <div className="quick-command-info">
+              <div className="quick-command-label">
+                {profile.name}
+                <span className="badge">{profile.agentId}</span>
+                {profile.isActive ? <span className="badge completed">aktif</span> : null}
+                {profile.rateLimitedUntil ? <span className="badge failed">cooldown</span> : null}
+              </div>
+              <code className="quick-command-code">{profile.envKeys.join(', ') || '(tanpa env)'}</code>
+            </div>
+            {isAdmin ? (
+              <div className="quick-command-actions">
+                {!profile.isActive ? (
+                  <button className="btn tiny" onClick={() => void activateProfile(profile)}>
+                    Aktifkan
+                  </button>
+                ) : null}
+                <button className="btn tiny ghost" onClick={() => void removeProfile(profile)}>
+                  Hapus
+                </button>
               </div>
             ) : null}
           </div>

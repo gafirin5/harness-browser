@@ -17,6 +17,7 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **Worktree Racing**: jalankan satu prompt di 2–4 agent pada worktree terisolasi, bandingkan diff (file/+/-), lalu merge pemenang ke base branch dalam satu klik dan bersihkan worktree yang kalah.
 - **Sub-agent CLI (`dorado-ctl`)**: agent yang berjalan di terminal bisa memunculkan sub-agent di worktree terisolasi dan memantau status/diff-nya (env `DORADO_*` + `PATH` disuntik otomatis, cap konkurensi per sesi).
 - **Triage CI & Issue**: perbaiki kegagalan GitHub Actions otomatis (ambil log gagal + umpan balik review → prompt agent), dan buat worktree dari issue **GitHub/Linear** dalam satu klik (Linear key disimpan terenkripsi).
+- **Multimodal & Profil**: lampirkan gambar/file (tombol 📎, drag-drop, atau tempel) yang disimpan di `.dorado-attachments/` worktree + dikirim sebagai `@path` ke agent; **dikte suara** ke terminal (Web Speech API, Chrome 93); **profil agent** (env/akun berganti) dengan badge cooldown otomatis saat terdeteksi rate-limit.
 - **File explorer** dengan buat/rename/hapus, plus editor CodeMirror 5: line numbers, syntax highlighting, lazy-loaded (maksimal 1 MB, proteksi path/symlink).
 - Tab terpadu untuk terminal, file, dan diff; indikator file belum disimpan dan Ctrl+S.
 - **Multi-pane terminal** hingga empat pane, dengan pemilih terminal per pane.

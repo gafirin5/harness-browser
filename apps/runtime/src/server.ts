@@ -7,9 +7,11 @@ import { startHeartbeat, stopHeartbeat } from './modules/orchestrator/heartbeat.
 import { startReconcile, stopReconcile } from './modules/orchestrator/reconcile.js';
 import { startAutomations, stopAutomations } from './modules/automations/service.js';
 import { nodeManager } from './modules/nodes/manager.js';
+import { startRateLimitDetector } from './modules/profiles/detector.js';
 import { setupTerminalWebSocket } from './ws.js';
 
 terminalManager.reconcileOnStartup();
+const stopRateLimitDetector = startRateLimitDetector();
 
 const app = createApp();
 const server = http.createServer(app);
@@ -33,6 +35,7 @@ function shutdown(signal: string): void {
   stopHeartbeat();
   stopReconcile();
   stopAutomations();
+  stopRateLimitDetector();
   nodeManager.shutdown();
   terminalManager.shutdown();
   server.close(() => process.exit(0));

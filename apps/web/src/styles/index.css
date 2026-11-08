@@ -2156,6 +2156,28 @@ button:disabled {
   font-size: 12px;
 }
 
+.terminal-mic {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 5;
+  opacity: 0.85;
+}
+
+.terminal-attach {
+  position: absolute;
+  top: 6px;
+  right: 42px;
+  z-index: 5;
+  opacity: 0.85;
+}
+
+.terminal-mic.active {
+  background: var(--accent);
+  color: #1a1000;
+  opacity: 1;
+}
+
 .node-card {
   display: flex;
   justify-content: space-between;

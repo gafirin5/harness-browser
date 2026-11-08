@@ -918,6 +918,26 @@ try {
   await page.click('button[aria-label="Tutup"]');
   console.log('[chrome93] share/pairing dialog OK');
 
+  await page.setViewport({ width: 390, height: 780 });
+  await page.waitForSelector('.mobile-bar', { timeout: 10000, visible: true });
+  await page.evaluate(() => {
+    const button = Array.from(document.querySelectorAll('.mobile-bar button')).find((item) =>
+      (item.textContent || '').includes('Project')
+    );
+    button?.click();
+  });
+  await page.waitForFunction(() => document.querySelector('.app')?.classList.contains('sidebar-open'), {
+    timeout: 5000
+  });
+  await page.evaluate(() => {
+    document.querySelector('.mobile-scrim')?.click();
+  });
+  await page.waitForFunction(() => !document.querySelector('.app')?.classList.contains('sidebar-open'), {
+    timeout: 5000
+  });
+  await page.setViewport({ width: 1366, height: 768 });
+  console.log('[chrome93] mobile companion OK');
+
   const tokens = await api('/api/pairing', { method: 'POST', body: JSON.stringify({ label: 'E2E browser' }) }, cookie);
   if (tokens.status !== 201) throw new Error('Gagal membuat token pairing');
   const pairUrl = tokens.body.data.pairUrl.replace(/^https?:\/\/[^/]+/, base);

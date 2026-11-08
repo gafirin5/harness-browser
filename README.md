@@ -19,6 +19,7 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **Triage CI & Issue**: perbaiki kegagalan GitHub Actions otomatis (ambil log gagal + umpan balik review → prompt agent), dan buat worktree dari issue **GitHub/Linear** dalam satu klik (Linear key disimpan terenkripsi).
 - **Multimodal & Profil**: lampirkan gambar/file (tombol 📎, drag-drop, atau tempel) yang disimpan di `.dorado-attachments/` worktree + dikirim sebagai `@path` ke agent; **dikte suara** ke terminal (Web Speech API, Chrome 93); **profil agent** (env/akun berganti) dengan badge cooldown otomatis saat terdeteksi rate-limit.
 - **Live Preview & Design Mode**: pratinjau app yang jalan di worktree lewat reverse-proxy (`/api/preview/:worktreeId/:port`), deteksi port otomatis, dan **pengambil elemen DOM** (klik elemen → kirim selector + computed styles + HTML ke terminal agent). Proxy hanya 127.0.0.1 (GET/HEAD), menolak port runtime.
+- **Mobile Companion**: tata letak responsif (`≤768px`) dengan bottom-nav (Project/Inbox/Aksi/Preview) dan sidebar sebagai overlay — nyaman diakses lewat tunnel dari ponsel.
 - **File explorer** dengan buat/rename/hapus, plus editor CodeMirror 5: line numbers, syntax highlighting, lazy-loaded (maksimal 1 MB, proteksi path/symlink).
 - Tab terpadu untuk terminal, file, dan diff; indikator file belum disimpan dan Ctrl+S.
 - **Multi-pane terminal** hingga empat pane, dengan pemilih terminal per pane.

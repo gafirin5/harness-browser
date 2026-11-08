@@ -124,6 +124,7 @@ export function App(): JSX.Element {
   const [raceOpen, setRaceOpen] = useState(false);
   const [triageOpen, setTriageOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [remoteNodes, setRemoteNodes] = useState<RemoteNodeInfo[]>([]);
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
   const shortcutRef = useRef({
@@ -1145,7 +1146,7 @@ export function App(): JSX.Element {
   ];
 
   return (
-    <div className="app">
+    <div className={`app ${mobileSidebarOpen ? 'sidebar-open' : ''}`}>
       <header className="topbar">
         <span className="brand-mark">D</span>
         <span className="topbar-title">Dorado</span>
@@ -2042,6 +2043,36 @@ export function App(): JSX.Element {
       ) : null}
 
       {dialog?.type === 'share' ? <ShareDialog onClose={() => setDialog(null)} /> : null}
+
+      <div className="mobile-scrim" onClick={() => setMobileSidebarOpen(false)} />
+      <nav className="mobile-bar" aria-label="Navigasi mobile">
+        <button className={mobileSidebarOpen ? 'active' : ''} onClick={() => setMobileSidebarOpen((value) => !value)}>
+          <span>☰</span>
+          <span>Project</span>
+        </button>
+        <button
+          onClick={() => {
+            setDashboardTab('inbox');
+            setDashboardOpen(true);
+          }}
+        >
+          <span>🔔</span>
+          <span>Inbox</span>
+        </button>
+        <button onClick={() => setPaletteOpen(true)}>
+          <span>⌘</span>
+          <span>Aksi</span>
+        </button>
+        <button
+          onClick={() => {
+            setPreviewOpen(true);
+            setMobileSidebarOpen(false);
+          }}
+        >
+          <span>▶</span>
+          <span>Preview</span>
+        </button>
+      </nav>
     </div>
   );
 }

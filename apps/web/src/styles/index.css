@@ -3422,3 +3422,88 @@ button:disabled {
     flex-basis: 220px;
   }
 }
+
+/* ---------- mobile companion ---------- */
+
+.mobile-bar,
+.mobile-scrim {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .topbar {
+    gap: 8px;
+    padding: 0 8px;
+    overflow-x: auto;
+  }
+
+  .topbar-title,
+  .topbar-status {
+    display: none;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 46px;
+    bottom: 0;
+    left: 0;
+    z-index: 40;
+    width: 264px;
+    flex-basis: 264px;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+  }
+
+  .app.sidebar-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .mobile-scrim {
+    position: fixed;
+    top: 46px;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 39;
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  .app.sidebar-open .mobile-scrim {
+    display: block;
+  }
+
+  .main {
+    padding-bottom: 54px;
+  }
+
+  .mobile-bar {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 41;
+    height: 52px;
+    border-top: 1px solid var(--border-soft);
+    background: var(--panel);
+    display: flex;
+    align-items: stretch;
+  }
+
+  .mobile-bar button {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    background: transparent;
+    border: 0;
+    color: var(--muted);
+    font-size: 10.5px;
+    cursor: pointer;
+  }
+
+  .mobile-bar button.active {
+    color: var(--accent);
+  }
+}

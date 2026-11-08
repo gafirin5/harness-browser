@@ -1,6 +1,6 @@
 import type { TerminalThemeName } from './terminal-prefs';
 
-export type SkinName = 'dorado-gold' | 'orca-dark' | 'tokyo-night' | 'catppuccin' | 'matrix-term' | 'daylight-frost';
+export type SkinName = string;
 export type LayoutName = 'orca-studio' | 'zen-focus';
 
 export interface Appearance {
@@ -23,7 +23,7 @@ export const LAYOUTS: Array<{ id: LayoutName; name: string; hint: string }> = [
 ];
 
 /** Peta skin → tema terminal xterm yang serasi. */
-export const SKIN_TERMINAL_THEME: Record<SkinName, TerminalThemeName> = {
+export const SKIN_TERMINAL_THEME: Record<string, TerminalThemeName> = {
   'dorado-gold': 'dark',
   'orca-dark': 'dark',
   'tokyo-night': 'dark',
@@ -33,10 +33,11 @@ export const SKIN_TERMINAL_THEME: Record<SkinName, TerminalThemeName> = {
 };
 
 const STORAGE_KEY = 'dorado.appearance';
+const SKIN_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
 export const DEFAULT_APPEARANCE: Appearance = { skin: 'dorado-gold', layout: 'orca-studio' };
 
 function isSkin(value: unknown): value is SkinName {
-  return SKINS.some((skin) => skin.id === value);
+  return typeof value === 'string' && SKIN_RE.test(value);
 }
 function isLayout(value: unknown): value is LayoutName {
   return LAYOUTS.some((layout) => layout.id === value);
@@ -69,4 +70,16 @@ export function saveAppearanceLocal(appearance: Appearance): void {
 export function applyAppearance(appearance: Appearance): void {
   document.documentElement.setAttribute('data-skin', appearance.skin);
   document.documentElement.setAttribute('data-layout', appearance.layout);
+}
+
+/** Muat (ulang) CSS plugin dari server sebagai <link> terpisah (0 KB bundle). */
+export function refreshPluginStyles(): void {
+  let link = document.getElementById('dorado-plugins') as HTMLLinkElement | null;
+  if (!link) {
+    link = document.createElement('link');
+    link.id = 'dorado-plugins';
+    link.rel = 'stylesheet';
+    document.head.appendChild(link);
+  }
+  link.href = `/api/plugins/styles.css?t=${Date.now()}`;
 }

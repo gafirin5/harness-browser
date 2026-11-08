@@ -36,6 +36,7 @@ import { profilesRouter } from './modules/profiles/routes.js';
 import { previewRouter } from './modules/preview/routes.js';
 import { updateRouter } from './modules/update/routes.js';
 import { userRouter } from './modules/preferences/routes.js';
+import { pluginsRouter } from './modules/plugins/routes.js';
 
 export function createApp(): express.Express {
   const app = express();
@@ -98,6 +99,10 @@ export function createApp(): express.Express {
       return;
     }
     if (req.path.startsWith('/agent/')) {
+      next();
+      return;
+    }
+    if (req.path === '/plugins/styles.css') {
       next();
       return;
     }
@@ -187,6 +192,7 @@ export function createApp(): express.Express {
   app.use('/api/profiles', profilesRouter);
   app.use('/api/update', updateRouter);
   app.use('/api/user', userRouter);
+  app.use('/api/plugins', pluginsRouter);
   app.use('/api', attachmentsRouter);
   app.use('/api', racesRouter);
   app.use('/api', triageRouter);

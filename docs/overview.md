@@ -68,6 +68,7 @@ dorado/
 - **Live Preview & Design Mode**: reverse-proxy `ALL /api/preview/:worktreeId/:port/*` (127.0.0.1, GET/HEAD, tolak port runtime), deteksi port `/worktrees/:id/ports`, skrip inspector `/api/preview/inspector.js`.
 - **Mobile Companion**: `@media (max-width:768px)` — bottom-nav (Project/Inbox/Aksi/Preview) + sidebar overlay.
 - **Tema & Tampilan**: 6 skin via `[data-skin]` (override token CSS) + Appearance Studio; preferensi per-user di `/api/user/preferences`.
+- **Plugin/Tema Kustom**: `DATA_DIR/plugins` + `GET /api/plugins`, `GET /api/plugins/styles.css` (tersanitasi), POST/DELETE admin — 0 KB bundle web.
 - **File & Editor**: file explorer, editor CodeMirror 5 (lazy), Markdown preview (Mermaid), Quick Open, pencarian kode (ripgrep/`git grep`).
 - **Git**: status/diff, stage/unstage, commit, pull/push, Git Graph, Annotate Diff.
 - **GitHub**: info repo, PR, issue, review, komentar, merge, tutup issue/PR, label.

@@ -195,6 +195,15 @@ export interface UpdateHistoryEntry {
   ok: boolean;
 }
 
+export interface PluginInfo {
+  id: string;
+  name: string;
+  version: string | null;
+  type: string;
+  vars: string[];
+  hasCss: boolean;
+}
+
 export interface UpdateStepInfo {
   step: string;
   ok: boolean;

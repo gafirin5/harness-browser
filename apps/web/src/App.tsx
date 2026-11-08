@@ -18,6 +18,7 @@ import {
   DEFAULT_APPEARANCE,
   loadAppearanceLocal,
   normalizeAppearance,
+  refreshPluginStyles,
   saveAppearanceLocal,
   SKIN_TERMINAL_THEME,
   type Appearance
@@ -136,6 +137,7 @@ export function App(): JSX.Element {
 
   useEffect(() => {
     if (!booted) return;
+    refreshPluginStyles();
     apiGet<{ data: { appearance?: unknown } }>('/user/preferences')
       .then((response) => {
         const stored = response.data?.appearance;
@@ -153,7 +155,7 @@ export function App(): JSX.Element {
     setAppearance(next);
     applyAppearance(next);
     saveAppearanceLocal(next);
-    const theme = SKIN_TERMINAL_THEME[next.skin];
+    const theme = SKIN_TERMINAL_THEME[next.skin] ?? 'dark';
     setTerminalPrefs((current) => {
       const updated = { ...current, theme };
       saveTerminalPrefs(updated);
@@ -1920,7 +1922,9 @@ export function App(): JSX.Element {
         >
           <AppearanceDialog
             appearance={appearance}
+            isAdmin={user?.role === 'ADMIN'}
             onChange={changeAppearance}
+            onPluginsChanged={refreshPluginStyles}
             onClose={() => setAppearanceOpen(false)}
           />
         </Suspense>

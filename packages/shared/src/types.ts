@@ -211,6 +211,30 @@ export interface AgentInfo {
   installed: boolean;
 }
 
+export interface RaceEntry {
+  id: string;
+  worktreeId: string;
+  agentId: string;
+  sessionId: string;
+  branch: string;
+  status: 'running' | 'won' | 'lost';
+  sessionStatus: string;
+  filesChanged: number;
+  insertions: number;
+  deletions: number;
+}
+
+export interface Race {
+  id: string;
+  projectId: string;
+  baseBranch: string;
+  prompt: string;
+  status: 'running' | 'completed';
+  winnerWorktreeId: string | null;
+  createdAt: string;
+  entries: RaceEntry[];
+}
+
 export interface PairingTokenInfo {
   id: string;
   label: string;

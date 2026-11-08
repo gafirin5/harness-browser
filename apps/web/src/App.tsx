@@ -59,6 +59,7 @@ const AgentsDialog = lazy(() =>
 const TerminalPane = lazy(() =>
   import('./components/TerminalPane').then((module) => ({ default: module.TerminalPane }))
 );
+const RaceDialog = lazy(() => import('./components/RaceDialog').then((module) => ({ default: module.RaceDialog })));
 
 type DialogState =
   | { type: 'project' }
@@ -114,6 +115,7 @@ export function App(): JSX.Element {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [nodesOpen, setNodesOpen] = useState(false);
   const [agentsOpen, setAgentsOpen] = useState(false);
+  const [raceOpen, setRaceOpen] = useState(false);
   const [remoteNodes, setRemoteNodes] = useState<RemoteNodeInfo[]>([]);
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
   const shortcutRef = useRef({
@@ -1001,6 +1003,12 @@ export function App(): JSX.Element {
       run: () => setAgentsOpen(true)
     },
     {
+      id: 'race',
+      label: 'Worktree Racing',
+      hint: 'Jalankan prompt di beberapa agent lalu merge pemenang',
+      run: () => setRaceOpen(true)
+    },
+    {
       id: 'git-graph',
       label: 'Git Graph',
       hint: 'Riwayat commit project dan detail per commit (Alt+Shift+G)',
@@ -1750,6 +1758,17 @@ export function App(): JSX.Element {
           }
         >
           <AgentsDialog isAdmin={user?.role === 'ADMIN'} onClose={() => setAgentsOpen(false)} />
+        </Suspense>
+      ) : null}
+      {raceOpen ? (
+        <Suspense
+          fallback={
+            <div className="orch-overlay">
+              <div className="empty">Memuat race...</div>
+            </div>
+          }
+        >
+          <RaceDialog projects={projects} agents={agents} onClose={() => setRaceOpen(false)} />
         </Suspense>
       ) : null}
       {githubOpen ? <GitHubDialog worktreeId={selectedWorktreeId} onClose={() => setGithubOpen(false)} /> : null}

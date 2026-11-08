@@ -1575,3 +1575,70 @@ describe('agent CLI kustom', () => {
     expect(blocked.status).toBe(403);
   });
 });
+
+describe('agent races', () => {
+  const raceRepo = fs.mkdtempSync('/tmp/dorado-race-repo-');
+  let raceProjectId = '';
+  const raceAgentArgs = ['-e', 'setInterval(()=>{},1000)'];
+
+  beforeAll(() => {
+    execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: raceRepo });
+    execFileSync('git', ['config', 'user.email', 'race@dorado.local'], { cwd: raceRepo });
+    execFileSync('git', ['config', 'user.name', 'Race'], { cwd: raceRepo });
+    fs.writeFileSync(path.join(raceRepo, 'README.md'), '# race\n');
+    execFileSync('git', ['add', '-A'], { cwd: raceRepo });
+    execFileSync('git', ['commit', '-qm', 'init'], { cwd: raceRepo });
+  });
+
+  afterAll(() => {
+    fs.rmSync(raceRepo, { recursive: true, force: true });
+  });
+
+  it('membuat race, membaca detail, lalu menerapkan pemenang dan membersihkan yang kalah', async () => {
+    await api
+      .post('/api/agents')
+      .send({ id: 'race-a', name: 'Race A', command: 'node', args: raceAgentArgs, interactiveArgs: [] });
+    await api
+      .post('/api/agents')
+      .send({ id: 'race-b', name: 'Race B', command: 'node', args: raceAgentArgs, interactiveArgs: [] });
+
+    const project = await api.post('/api/projects').send({ name: 'Race Project', path: raceRepo });
+    expect(project.status).toBe(201);
+    raceProjectId = project.body.data.id;
+
+    const created = await api
+      .post(`/api/projects/${raceProjectId}/races`)
+      .send({ prompt: 'Perbaiki bug race', agentIds: ['race-a', 'race-b'] });
+    expect(created.status).toBe(201);
+    expect(created.body.data.entries).toHaveLength(2);
+    const race = created.body.data;
+
+    const detail = await api.get(`/api/races/${race.id}`);
+    expect(detail.status).toBe(200);
+    expect(detail.body.data.entries).toHaveLength(2);
+    expect(detail.body.data.entries[0].branch).toContain('race-');
+
+    const winnerWorktreeId = race.entries[0].worktreeId;
+    const applied = await api
+      .post(`/api/races/${race.id}/apply-winner`)
+      .send({ worktreeId: winnerWorktreeId, cleanupLosers: true });
+    expect(applied.status).toBe(200);
+    expect(applied.body.data.status).toBe('completed');
+    expect(applied.body.data.winnerWorktreeId).toBe(winnerWorktreeId);
+    const winner = applied.body.data.entries.find(
+      (entry: { worktreeId: string }) => entry.worktreeId === winnerWorktreeId
+    );
+    const loser = applied.body.data.entries.find(
+      (entry: { worktreeId: string }) => entry.worktreeId !== winnerWorktreeId
+    );
+    expect(winner.status).toBe('won');
+    expect(loser.status).toBe('lost');
+
+    await api.post(`/api/sessions/${winner.sessionId}/stop`);
+  });
+
+  it('menolak race dengan kurang dari dua agent', async () => {
+    const res = await api.post(`/api/projects/${raceProjectId}/races`).send({ prompt: 'x', agentIds: ['race-a'] });
+    expect(res.status).toBe(422);
+  });
+});

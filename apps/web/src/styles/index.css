@@ -2143,6 +2143,19 @@ button:disabled {
   white-space: nowrap;
 }
 
+.race-agents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.race-agent {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
 .node-card {
   display: flex;
   justify-content: space-between;

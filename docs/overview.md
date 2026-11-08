@@ -61,6 +61,7 @@ dorado/
 - **Project & Worktree**: tambah project dengan pemindaian repo otomatis, daftar branch, buat worktree, checkpoint (Todo/In progress/In review/Completed).
 - **Terminal**: PTY per worktree (xterm.js), multi-pane (≤4), pencarian, tema/font, persistensi tmux.
 - **Agent CLI**: 13 preset (OpenCode, Claude Code, Codex, Gemini, Qwen, Aider, Cursor, Crush, Droid, Goose, Amp, Copilot, Kilo) + dialog Kelola Agent (agent kustom di DB). Mode run/resume/interactive.
+- **Worktree Racing**: satu prompt di 2–4 agent pada worktree terisolasi, bandingkan diff, merge pemenang, bersihkan yang kalah.
 - **File & Editor**: file explorer, editor CodeMirror 5 (lazy), Markdown preview (Mermaid), Quick Open, pencarian kode (ripgrep/`git grep`).
 - **Git**: status/diff, stage/unstage, commit, pull/push, Git Graph, Annotate Diff.
 - **GitHub**: info repo, PR, issue, review, komentar, merge, tutup issue/PR, label.
@@ -79,6 +80,7 @@ projects ──< worktrees ──< terminals
 users ──< auth_sessions ──< audit_logs
       ──< inbox_reads / notification_reads / pairing_tokens
 providers ──< agents(orchestrator) ──< tasks ──< task_logs ──< task_code_sequences
+agent_races ──< agent_race_entries
 remote_nodes · settings · admin_credentials · cli_agents · agent_profiles
 ```
 
@@ -170,7 +172,7 @@ push (branch apa pun) → GitHub Actions
 | Phase | Fitur | Status |
 |---|---|---|
 | 0 | Bundle slimming (lazy xterm, limit total 350 KB) + docs | selesai |
-| 1 | Worktree Racing (multi-agent, pilih pemenang, merge) | rencana |
+| 1 | Worktree Racing (multi-agent, pilih pemenang, merge) | selesai |
 | 2 | Sub-agent CLI `dorado-ctl` | rencana |
 | 3 | Live Web Preview + Design Mode DOM inspector | rencana |
 | 4 | CI auto-fix, Issue→Worktree, Linear triage | rencana |

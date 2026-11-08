@@ -14,6 +14,7 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - Daftar branch dan pembuatan **git worktree** paralel.
 - **Terminal PTY** per worktree dengan xterm.js, resize, replay buffer, dan reconnect.
 - **Sesi agent** dengan adapter CLI multi-agent: preset bawaan untuk OpenCode, Claude Code, OpenAI Codex, Gemini CLI, Qwen Code, Aider, Cursor Agent, Crush, Factory Droid, Goose, Amp, GitHub Copilot CLI, dan Kilo Code — plus dialog **Kelola Agent** untuk menambah/mengubah agent kustom (command, args, resume args).
+- **Worktree Racing**: jalankan satu prompt di 2–4 agent pada worktree terisolasi, bandingkan diff (file/+/-), lalu merge pemenang ke base branch dalam satu klik dan bersihkan worktree yang kalah.
 - **File explorer** dengan buat/rename/hapus, plus editor CodeMirror 5: line numbers, syntax highlighting, lazy-loaded (maksimal 1 MB, proteksi path/symlink).
 - Tab terpadu untuk terminal, file, dan diff; indikator file belum disimpan dan Ctrl+S.
 - **Multi-pane terminal** hingga empat pane, dengan pemilih terminal per pane.

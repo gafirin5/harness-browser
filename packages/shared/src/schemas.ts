@@ -221,3 +221,18 @@ export const cliAgentUpdateSchema = z
     enabled: z.boolean().optional()
   })
   .refine((data) => Object.keys(data).length > 0, 'Tidak ada perubahan yang dikirim.');
+
+export const raceCreateSchema = z.object({
+  prompt: z.string().trim().min(1, 'Prompt wajib diisi.').max(20000),
+  baseBranch: z.string().trim().min(1).max(200).optional(),
+  agentIds: z
+    .array(z.string().min(1).max(60))
+    .min(2, 'Pilih minimal 2 agent.')
+    .max(4, 'Maksimal 4 agent.')
+    .refine((ids) => new Set(ids).size === ids.length, 'Agent tidak boleh duplikat.')
+});
+
+export const raceApplySchema = z.object({
+  worktreeId: z.string().min(1),
+  cleanupLosers: z.boolean().default(true)
+});

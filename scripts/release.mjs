@@ -21,7 +21,12 @@ const PKG_FILES = [
 ];
 
 function git(cmdArgs, opts = {}) {
-  return execFileSync('git', cmdArgs, { cwd: root, encoding: 'utf8', ...opts }).trim();
+  return execFileSync('git', cmdArgs, {
+    cwd: root,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+    ...opts
+  }).trim();
 }
 
 function bumpVersion(version, release) {

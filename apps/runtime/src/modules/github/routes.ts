@@ -89,7 +89,7 @@ interface CacheEntry {
 }
 const cache = new Map<string, CacheEntry>();
 
-async function github<T>(path: string): Promise<T> {
+export async function github<T>(path: string): Promise<T> {
   const key = path;
   const cached = cache.get(key);
   if (cached && cached.expiresAt > Date.now()) return cached.data as T;
@@ -181,6 +181,35 @@ async function resolveRepo(worktreeId: string): Promise<GitHubRepoRef> {
   const ref = remote ? parseGitHubRemote(remote) : null;
   if (!ref) throw new AppError(422, 'NOT_GITHUB', 'Remote bukan repository GitHub.');
   return ref;
+}
+
+export { resolveRepo as resolveGitHubRepo };
+
+/** GET GitHub API yang mengembalikan teks mentah (mis. log Actions). */
+export async function githubText(path: string): Promise<string> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15_000);
+  try {
+    const response = await fetch(`https://api.github.com${path}`, {
+      headers: {
+        accept: 'application/vnd.github+json',
+        'user-agent': 'dorado-orchestrator',
+        ...(config.githubToken ? { authorization: `Bearer ${config.githubToken}` } : {})
+      },
+      signal: controller.signal
+    });
+    const text = await response.text();
+    if (!response.ok) {
+      throw new AppError(502, 'GITHUB_ERROR', `GitHub API mengembalikan HTTP ${response.status}.`);
+    }
+    return text;
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    if ((error as Error).name === 'AbortError') throw new AppError(504, 'GITHUB_TIMEOUT', 'GitHub API timeout.');
+    throw new AppError(502, 'GITHUB_ERROR', `Gagal menghubungi GitHub: ${(error as Error).message.slice(0, 300)}`);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 interface RepoResponse {

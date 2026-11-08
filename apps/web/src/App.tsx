@@ -60,6 +60,9 @@ const TerminalPane = lazy(() =>
   import('./components/TerminalPane').then((module) => ({ default: module.TerminalPane }))
 );
 const RaceDialog = lazy(() => import('./components/RaceDialog').then((module) => ({ default: module.RaceDialog })));
+const TriageDialog = lazy(() =>
+  import('./components/TriageDialog').then((module) => ({ default: module.TriageDialog }))
+);
 
 type DialogState =
   | { type: 'project' }
@@ -116,6 +119,7 @@ export function App(): JSX.Element {
   const [nodesOpen, setNodesOpen] = useState(false);
   const [agentsOpen, setAgentsOpen] = useState(false);
   const [raceOpen, setRaceOpen] = useState(false);
+  const [triageOpen, setTriageOpen] = useState(false);
   const [remoteNodes, setRemoteNodes] = useState<RemoteNodeInfo[]>([]);
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
   const shortcutRef = useRef({
@@ -1009,6 +1013,12 @@ export function App(): JSX.Element {
       run: () => setRaceOpen(true)
     },
     {
+      id: 'triage',
+      label: 'Triage CI & Issue',
+      hint: 'Perbaiki CI GitHub & buat worktree dari issue',
+      run: () => setTriageOpen(true)
+    },
+    {
       id: 'git-graph',
       label: 'Git Graph',
       hint: 'Riwayat commit project dan detail per commit (Alt+Shift+G)',
@@ -1769,6 +1779,25 @@ export function App(): JSX.Element {
           }
         >
           <RaceDialog projects={projects} agents={agents} onClose={() => setRaceOpen(false)} />
+        </Suspense>
+      ) : null}
+      {triageOpen ? (
+        <Suspense
+          fallback={
+            <div className="orch-overlay">
+              <div className="empty">Memuat triage...</div>
+            </div>
+          }
+        >
+          <TriageDialog
+            projects={projects}
+            worktrees={worktrees}
+            selectedProjectId={selectedProjectId}
+            selectedWorktreeId={selectedWorktreeId}
+            agents={agents}
+            isAdmin={user?.role === 'ADMIN'}
+            onClose={() => setTriageOpen(false)}
+          />
         </Suspense>
       ) : null}
       {githubOpen ? <GitHubDialog worktreeId={selectedWorktreeId} onClose={() => setGithubOpen(false)} /> : null}

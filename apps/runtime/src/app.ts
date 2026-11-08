@@ -28,6 +28,8 @@ import { nodesRouter } from './modules/nodes/routes.js';
 import { remoteNodeHttpProxy } from './modules/nodes/dispatch.js';
 import { automationsRouter } from './modules/automations/routes.js';
 import { racesRouter } from './modules/races/routes.js';
+import { triageRouter } from './modules/triage/routes.js';
+import { settingsRouter } from './modules/settings/routes.js';
 
 export function createApp(): express.Express {
   const app = express();
@@ -165,7 +167,9 @@ export function createApp(): express.Express {
   app.use('/api/automations', automationsRouter);
   app.use('/api/orchestrator/agent', orchestratorAgentRouter);
   app.use('/api/orchestrator', orchestratorRouter);
+  app.use('/api/settings', settingsRouter);
   app.use('/api', racesRouter);
+  app.use('/api', triageRouter);
 
   app.use('/api', (_req, res) => {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Endpoint tidak ditemukan.' } });

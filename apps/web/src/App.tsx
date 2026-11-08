@@ -66,6 +66,9 @@ const TriageDialog = lazy(() =>
 const PreviewDialog = lazy(() =>
   import('./components/PreviewDialog').then((module) => ({ default: module.PreviewDialog }))
 );
+const UpdateDialog = lazy(() =>
+  import('./components/UpdateDialog').then((module) => ({ default: module.UpdateDialog }))
+);
 
 type DialogState =
   | { type: 'project' }
@@ -124,6 +127,7 @@ export function App(): JSX.Element {
   const [raceOpen, setRaceOpen] = useState(false);
   const [triageOpen, setTriageOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [updateOpen, setUpdateOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [remoteNodes, setRemoteNodes] = useState<RemoteNodeInfo[]>([]);
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
@@ -1030,6 +1034,12 @@ export function App(): JSX.Element {
       run: () => setPreviewOpen(true)
     },
     {
+      id: 'update',
+      label: 'Pembaruan Sistem',
+      hint: 'Cek & terapkan pembaruan Dorado',
+      run: () => setUpdateOpen(true)
+    },
+    {
       id: 'git-graph',
       label: 'Git Graph',
       hint: 'Riwayat commit project dan detail per commit (Alt+Shift+G)',
@@ -1769,6 +1779,7 @@ export function App(): JSX.Element {
         <InfoDialog
           onClose={() => setInfoOpen(false)}
           onManageAgents={() => (setInfoOpen(false), setAgentsOpen(true))}
+          onCheckUpdates={() => (setInfoOpen(false), setUpdateOpen(true))}
         />
       ) : null}
       {agentsOpen ? (
@@ -1826,6 +1837,17 @@ export function App(): JSX.Element {
             activeTerminalId={activeTerminalId}
             onClose={() => setPreviewOpen(false)}
           />
+        </Suspense>
+      ) : null}
+      {updateOpen ? (
+        <Suspense
+          fallback={
+            <div className="orch-overlay">
+              <div className="empty">Memuat pembaruan...</div>
+            </div>
+          }
+        >
+          <UpdateDialog isAdmin={user?.role === 'ADMIN'} onClose={() => setUpdateOpen(false)} />
         </Suspense>
       ) : null}
       {githubOpen ? <GitHubDialog worktreeId={selectedWorktreeId} onClose={() => setGithubOpen(false)} /> : null}

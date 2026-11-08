@@ -489,6 +489,31 @@ try {
   await page.waitForFunction(() => !document.body.innerText.includes('Pilih Elemen'), { timeout: 10000 });
   console.log('[chrome93] preview dialog OK');
 
+  await page.keyboard.down('Control');
+  await page.keyboard.down('Shift');
+  await page.keyboard.press('p');
+  await page.keyboard.up('Shift');
+  await page.keyboard.up('Control');
+  await page.waitForSelector('.palette', { timeout: 10000 });
+  await page.type('.palette-input', 'Pembaruan Sistem');
+  await page.waitForFunction(
+    () =>
+      Array.from(document.querySelectorAll('.palette-item')).some((item) =>
+        (item.textContent || '').includes('Pembaruan Sistem')
+      ),
+    { timeout: 10000 }
+  );
+  await page.evaluate(() => {
+    const item = Array.from(document.querySelectorAll('.palette-item')).find((el) =>
+      (el.textContent || '').includes('Pembaruan Sistem')
+    );
+    item?.click();
+  });
+  await waitText('Cek Pembaruan');
+  await page.click('.modal button[aria-label="Tutup"]');
+  await page.waitForFunction(() => !document.body.innerText.includes('Cek Pembaruan'), { timeout: 10000 });
+  console.log('[chrome93] update dialog OK');
+
   await clickText('button', 'GitHub');
   await waitText('Remote bukan repository GitHub');
   await page.click('button[aria-label="Tutup"]');

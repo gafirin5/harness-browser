@@ -23,7 +23,7 @@ function tmuxVersion(): string | null {
 infoRouter.get('/', requireAuth, (_req, res) => {
   res.json({
     data: {
-      version: '0.1.0',
+      version: config.version,
       node: process.version,
       uptimeSeconds: Math.round(process.uptime()),
       dataDir: config.dataDir,

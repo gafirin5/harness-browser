@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import { db } from './db/index.js';
+import { config } from './config.js';
 import { AppError, errorHandler } from './lib/errors.js';
 import { rateLimit } from './modules/auth/middleware.js';
 import { authRouter, pairingRouter } from './modules/auth/routes.js';
@@ -33,6 +34,7 @@ import { settingsRouter } from './modules/settings/routes.js';
 import { attachmentsRouter } from './modules/attachments/routes.js';
 import { profilesRouter } from './modules/profiles/routes.js';
 import { previewRouter } from './modules/preview/routes.js';
+import { updateRouter } from './modules/update/routes.js';
 
 export function createApp(): express.Express {
   const app = express();
@@ -73,9 +75,9 @@ export function createApp(): express.Express {
   app.get('/api/health', (_req, res) => {
     try {
       db.prepare('SELECT 1 AS ok').get();
-      res.json({ status: 'ok', time: new Date().toISOString(), version: '0.1.0' });
+      res.json({ status: 'ok', time: new Date().toISOString(), version: config.version });
     } catch {
-      res.status(503).json({ status: 'unavailable', time: new Date().toISOString(), version: '0.1.0' });
+      res.status(503).json({ status: 'unavailable', time: new Date().toISOString(), version: config.version });
     }
   });
 
@@ -172,6 +174,7 @@ export function createApp(): express.Express {
   app.use('/api/orchestrator', orchestratorRouter);
   app.use('/api/settings', settingsRouter);
   app.use('/api/profiles', profilesRouter);
+  app.use('/api/update', updateRouter);
   app.use('/api', attachmentsRouter);
   app.use('/api', racesRouter);
   app.use('/api', triageRouter);

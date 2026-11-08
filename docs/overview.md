@@ -72,6 +72,7 @@ dorado/
 - **GitHub**: info repo, PR, issue, review, komentar, merge, tutup issue/PR, label.
 - **Orchestrator**: dashboard realtime (SSE), provider LLM (key terenkripsi), worker agent, task queue berprioritas, dispatcher, biaya.
 - **Remote Nodes Federation**: kendalikan mesin Dorado lain via reverse WebSocket. Node (sisi yang dikendalikan) melihat identitas controller (nama/URL/versi/id instance) di console + `npm run node:status`.
+- **Pembaruan in-place**: `npm run update` / tombol admin "Pembaruan Sistem" → git fetch+ff-merge → `npm ci` → build → restart otomatis (systemd/re-exec). Versi tersentralisasi dari package.json.
 - **Produktivitas**: command palette, jump palette, shortcut remap, quick commands, scheduled automations, Agent Dashboard/Inbox, notifikasi, session history, Info Runtime.
 - **Infra**: quick tunnel Cloudflare, backup/restore, gate Chrome 93.
 

@@ -202,6 +202,24 @@ npm run node:status
 
 Identitas controller (nama + URL + versi + id instance) dikirim controller pada saat handshake `node.hello`; id instance disimpan stabil di tabel `settings`. Nama controller diatur lewat env `CONTROLLER_NAME` (default: hostname).
 
+## Pembaruan
+
+Dorado bisa memperbarui dirinya **in-place** dari checkout git (tanpa clone ulang):
+
+```bash
+npm run update
+```
+
+Perintah ini: `git fetch` → `git merge --ff-only origin/<branch>` → `npm ci` → `npm run build`, lalu **restart otomatis** (lihat di bawah). Setelah update, versi baru langsung aktif.
+
+Dari UI: **Setelan**-dari-Info Runtime atau command palette **Pembaruan Sistem** (admin) — cek commit baru dan tombol **Update Sekarang**, lengkap dengan log.
+
+Restart setelah update:
+- Bila `UPDATE_RESTART_CMD` di-set (mis. `systemctl restart dorado`) → menjalankan perintah itu.
+- Bila kosong → runtime **re-exec prosesnya sendiri** (detached), sesi tmux/terminal tetap hidup.
+
+Konfigurasi: `UPDATE_ENABLED`, `UPDATE_MODE=git`, `UPDATE_BRANCH` (default `dorado`), `UPDATE_REMOTE` (default `origin`), `UPDATE_RESTART_CMD`. Update ditolak bila working tree kotor; `npm run update` dan endpoint `/api/update` hanya untuk **admin**.
+
 ## Arsitektur
 
 ```text

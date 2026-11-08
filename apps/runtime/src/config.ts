@@ -31,6 +31,20 @@ const envSchema = z.object({
   PROJECT_SCAN_ROOTS: z.string().default(''),
   ALLOWED_ORIGINS: z.string().default(''),
   CONTROLLER_NAME: z.string().default(''),
+  UPDATE_ENABLED: z
+    .union([z.string(), z.boolean()])
+    .optional()
+    .transform((value) =>
+      value === undefined
+        ? true
+        : typeof value === 'boolean'
+          ? value
+          : ['1', 'true', 'yes', 'on'].includes(value.toLowerCase())
+    ),
+  UPDATE_MODE: z.enum(['git', 'release']).default('git'),
+  UPDATE_BRANCH: z.string().default('dorado'),
+  UPDATE_REMOTE: z.string().default('origin'),
+  UPDATE_RESTART_CMD: z.string().default(''),
   GITHUB_TOKEN: z.string().default(''),
   APP_TIMEZONE: z.string().min(1).default('Asia/Jakarta'),
   APP_ENCRYPTION_KEY: z.string().default('MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY='),
@@ -117,6 +131,29 @@ function findCliBinDir(): string | null {
   return null;
 }
 
+function readVersion(): string {
+  try {
+    const pkg = JSON.parse(
+      fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../package.json'), 'utf8')
+    ) as { version?: string };
+    return pkg.version ?? '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
+}
+
+/** Cari root repo git (folder ber-.git) dengan menelusuri ke atas dari runtime. */
+function findRepoRoot(): string | null {
+  let dir = path.dirname(fileURLToPath(import.meta.url));
+  for (let i = 0; i < 8; i += 1) {
+    if (fs.existsSync(path.join(dir, '.git'))) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
+
 export const config = {
   env: env.NODE_ENV,
   isProduction: env.NODE_ENV === 'production',
@@ -149,6 +186,13 @@ export const config = {
   encryptionKey,
   cliBinDir: findCliBinDir(),
   controllerName: env.CONTROLLER_NAME.trim() || os.hostname(),
+  version: readVersion(),
+  repoRoot: findRepoRoot(),
+  updateEnabled: env.UPDATE_ENABLED,
+  updateMode: env.UPDATE_MODE,
+  updateBranch: env.UPDATE_BRANCH,
+  updateRemote: env.UPDATE_REMOTE,
+  updateRestartCmd: env.UPDATE_RESTART_CMD.trim(),
   dispatchTimeoutMs: env.AGENT_DISPATCH_TIMEOUT_MS,
   healthTimeoutMs: env.AGENT_HEALTH_TIMEOUT_MS,
   heartbeatIntervalMs: env.HEARTBEAT_INTERVAL_MS,

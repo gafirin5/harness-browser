@@ -16,6 +16,7 @@
     "start": "npm run start -w @dorado/runtime",
     "node": "node apps/runtime/dist/node-client.js",
     "node:status": "node scripts/node-status.mjs",
+    "update": "node apps/runtime/dist/update-cli.js",
     "typecheck": "npm run typecheck -w @dorado/shared && npm run typecheck -w @dorado/runtime && npm run typecheck -w @dorado/web",
     "test": "npm run test -w @dorado/runtime && npm run test -w @dorado/web",
     "test:web": "npm run test -w @dorado/web",

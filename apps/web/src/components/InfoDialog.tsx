@@ -56,10 +56,12 @@ export function buildRuntimeSummary(info: Info): string {
 
 export function InfoDialog({
   onClose,
-  onManageAgents
+  onManageAgents,
+  onCheckUpdates
 }: {
   onClose: () => void;
   onManageAgents?: () => void;
+  onCheckUpdates?: () => void;
 }): JSX.Element {
   const [info, setInfo] = useState<Info | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -87,6 +89,11 @@ export function InfoDialog({
           {onManageAgents ? (
             <button className="btn" onClick={onManageAgents}>
               Kelola Agent
+            </button>
+          ) : null}
+          {onCheckUpdates ? (
+            <button className="btn" onClick={onCheckUpdates}>
+              Pembaruan
             </button>
           ) : null}
           <button className="btn" onClick={copySummary} disabled={!info}>

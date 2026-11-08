@@ -38,6 +38,11 @@ Salin `.env.example` menjadi `.env` dan sesuaikan.
 | `PUBLIC_BASE_URL` | `http://localhost:7788` | Origin publik; dipakai callback worker dan CSRF |
 | `ALLOWED_ORIGINS` | kosong | Origin tambahan yang diizinkan (pisah koma), mis. URL tunnel; `PUBLIC_BASE_URL` otomatis diizinkan |
 | `CONTROLLER_NAME` | hostname | Nama controller yang dikirim ke node (tampil di console node & `npm run node:status`) |
+| `UPDATE_ENABLED` | `true` | Aktifkan pembaruan in-place |
+| `UPDATE_MODE` | `git` | Mode pembaruan (`git`) |
+| `UPDATE_BRANCH` | `dorado` | Branch sumber pembaruan |
+| `UPDATE_REMOTE` | `origin` | Remote git sumber pembaruan |
+| `UPDATE_RESTART_CMD` | kosong | Perintah restart setelah update (mis. `systemctl restart dorado`); kosong = re-exec otomatis |
 | `DATA_DIR` | `./data` | SQLite, log terminal, worktree |
 | `ADMIN_PASSWORD` | `dorado` | Seed awal password admin (`admin`); wajib diganti di production |
 | `SESSION_SECRET` | dev | Minimal 32 karakter; wajib diganti |
@@ -114,6 +119,24 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now dorado
 sudo systemctl status dorado
 ```
+
+## Pembaruan
+
+Dorado dapat memperbarui dirinya in-place dari checkout git:
+
+```bash
+cd /opt/dorado
+npm run update
+```
+
+Langkahnya: `git fetch` → `git merge --ff-only origin/dorado` → `npm ci` → `npm run build`, lalu restart otomatis. Agar restart bersih di systemd, set `UPDATE_RESTART_CMD="systemctl restart dorado"` (butuh sudo tanpa password untuk unit ini) — atau biarkan kosong dan runtime akan re-exec prosesnya sendiri.
+
+Atau lewat UI (admin): **Pembaruan Sistem** di command palette / Info Runtime.
+
+Catatan:
+- Update ditolak bila working tree kotor.
+- Backup DB otomatis disarankan sebelum update (`npm run backup`).
+- Migrasi database bersifat idempotent sehingga aman saat restart.
 
 ## Nginx Reverse Proxy
 

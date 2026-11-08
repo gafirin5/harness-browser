@@ -155,6 +155,41 @@ export interface NodeHelloResponse {
   controller?: ControllerIdentity;
 }
 
+export interface UpdateCommitInfo {
+  hash: string;
+  subject: string;
+}
+
+export interface UpdateStatusInfo {
+  enabled: boolean;
+  mode: string;
+  repoRoot: string | null;
+  branch: string;
+  remote: string;
+  currentVersion: string;
+  currentCommit: string | null;
+  currentSubject: string | null;
+  upToDate: boolean;
+  behindCount: number;
+  commits: UpdateCommitInfo[];
+  dirty: boolean;
+  restartCommand: string | null;
+  error: string | null;
+}
+
+export interface UpdateStepInfo {
+  step: string;
+  ok: boolean;
+  output: string;
+}
+
+export interface UpdateResultInfo {
+  ok: boolean;
+  steps: UpdateStepInfo[];
+  newCommit: string | null;
+  restartRequired: boolean;
+}
+
 export interface NodeRpcRequest<T = unknown> {
   id: string;
   method: string;

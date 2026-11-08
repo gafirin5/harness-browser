@@ -615,14 +615,18 @@ try {
   );
   await clickText('button', 'Commit');
   await page.waitForSelector('.modal textarea', { timeout: 10000 });
-  await page.$eval(
-    '.modal textarea',
-    (element, value) => {
-      const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set;
-      setter?.call(element, value);
-      element.dispatchEvent(new Event('input', { bubbles: true }));
+  await page.evaluate(() => {
+    const button = Array.from(document.querySelectorAll('.modal button')).find((item) =>
+      (item.textContent || '').includes('Draft AI')
+    );
+    button?.click();
+  });
+  await page.waitForFunction(
+    () => {
+      const area = document.querySelector('.modal textarea');
+      return Boolean(area && area.value.trim().length >= 3);
     },
-    'chrome93: edit readme'
+    { timeout: 10000 }
   );
   await page.waitForFunction(
     () => {

@@ -9,6 +9,7 @@ import { csrfGuard, requireAuth } from '../auth/middleware.js';
 import { getProject } from '../projects/routes.js';
 import { getWorktreeRow } from '../worktrees/routes.js';
 import { readCommitDetail, readGitGraph } from './graph.js';
+import { buildCommitDraft, buildPrDraft } from './ai-draft.js';
 
 const statusQuery = z.object({ worktreeId: z.string().min(1) });
 const diffQuery = z.object({
@@ -216,6 +217,26 @@ gitRouter.post(
     }
     if (result.code !== 0) throw new AppError(422, 'GIT_ERROR', result.stderr.trim().slice(0, 800) || 'Gagal unstage.');
     res.json({ data: { ok: true } });
+  })
+);
+
+gitRouter.post(
+  '/ai-draft',
+  asyncHandler(async (req, res) => {
+    const body = parseWith(
+      z.object({ worktreeId: z.string().min(1), target: z.enum(['commit', 'pr']).default('commit') }),
+      req.body
+    );
+    const cwd = resolveWorktree(body.worktreeId);
+    const worktree = getWorktreeRow(body.worktreeId);
+    const status = (await gitRaw(cwd, ['status', '--short'])).stdout;
+    const stat = (await gitRaw(cwd, ['diff', '--shortstat'])).stdout;
+    const log = (await gitRaw(cwd, ['log', '-n', '5', '--oneline'])).stdout;
+    const result =
+      body.target === 'pr'
+        ? buildPrDraft(worktree?.branch ?? 'branch', status, stat, log)
+        : buildCommitDraft(status, stat, log);
+    res.json({ data: result });
   })
 );
 

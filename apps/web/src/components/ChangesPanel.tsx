@@ -33,6 +33,7 @@ export function ChangesPanel({
   const [commitOpen, setCommitOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [commitError, setCommitError] = useState<string | null>(null);
+  const [drafting, setDrafting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -106,6 +107,22 @@ export function ChangesPanel({
       setCommitError(caught instanceof ApiError ? caught.message : 'Commit gagal.');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const draftAi = async (): Promise<void> => {
+    setDrafting(true);
+    setCommitError(null);
+    try {
+      const response = await apiPost<{ data: { title: string; body: string } }>('/git/ai-draft', {
+        worktreeId,
+        target: 'commit'
+      });
+      setMessage(`${response.data.title}\n\n${response.data.body}`.trim());
+    } catch (caught) {
+      setCommitError(caught instanceof ApiError ? caught.message : 'Gagal membuat draft commit.');
+    } finally {
+      setDrafting(false);
     }
   };
 
@@ -239,7 +256,12 @@ export function ChangesPanel({
           >
             {commitError ? <div className="error-banner">{commitError}</div> : null}
             <div className="field">
-              <label>Pesan commit</label>
+              <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                <label>Pesan commit</label>
+                <button className="btn tiny" type="button" onClick={() => void draftAi()} disabled={drafting}>
+                  {drafting ? 'Menyusun...' : '✨ Draft AI'}
+                </button>
+              </div>
               <textarea
                 className="textarea"
                 rows={4}

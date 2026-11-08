@@ -63,6 +63,9 @@ const RaceDialog = lazy(() => import('./components/RaceDialog').then((module) =>
 const TriageDialog = lazy(() =>
   import('./components/TriageDialog').then((module) => ({ default: module.TriageDialog }))
 );
+const PreviewDialog = lazy(() =>
+  import('./components/PreviewDialog').then((module) => ({ default: module.PreviewDialog }))
+);
 
 type DialogState =
   | { type: 'project' }
@@ -120,6 +123,7 @@ export function App(): JSX.Element {
   const [agentsOpen, setAgentsOpen] = useState(false);
   const [raceOpen, setRaceOpen] = useState(false);
   const [triageOpen, setTriageOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [remoteNodes, setRemoteNodes] = useState<RemoteNodeInfo[]>([]);
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
   const shortcutRef = useRef({
@@ -1019,6 +1023,12 @@ export function App(): JSX.Element {
       run: () => setTriageOpen(true)
     },
     {
+      id: 'preview',
+      label: 'Live Preview',
+      hint: 'Pratinjau app worktree + Design Mode DOM picker',
+      run: () => setPreviewOpen(true)
+    },
+    {
       id: 'git-graph',
       label: 'Git Graph',
       hint: 'Riwayat commit project dan detail per commit (Alt+Shift+G)',
@@ -1798,6 +1808,22 @@ export function App(): JSX.Element {
             agents={agents}
             isAdmin={user?.role === 'ADMIN'}
             onClose={() => setTriageOpen(false)}
+          />
+        </Suspense>
+      ) : null}
+      {previewOpen ? (
+        <Suspense
+          fallback={
+            <div className="orch-overlay">
+              <div className="empty">Memuat preview...</div>
+            </div>
+          }
+        >
+          <PreviewDialog
+            worktrees={worktrees}
+            selectedWorktreeId={selectedWorktreeId}
+            activeTerminalId={activeTerminalId}
+            onClose={() => setPreviewOpen(false)}
           />
         </Suspense>
       ) : null}

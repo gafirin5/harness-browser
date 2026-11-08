@@ -32,6 +32,7 @@ import { triageRouter } from './modules/triage/routes.js';
 import { settingsRouter } from './modules/settings/routes.js';
 import { attachmentsRouter } from './modules/attachments/routes.js';
 import { profilesRouter } from './modules/profiles/routes.js';
+import { previewRouter } from './modules/preview/routes.js';
 
 export function createApp(): express.Express {
   const app = express();
@@ -174,6 +175,7 @@ export function createApp(): express.Express {
   app.use('/api', attachmentsRouter);
   app.use('/api', racesRouter);
   app.use('/api', triageRouter);
+  app.use('/api', previewRouter);
 
   app.use('/api', (_req, res) => {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Endpoint tidak ditemukan.' } });

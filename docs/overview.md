@@ -65,6 +65,7 @@ dorado/
 - **Sub-agent CLI `dorado-ctl`**: agent memunculkan sub-agent di worktree terisolasi (env `DORADO_*` + `PATH` otomatis, cap 4/sesi).
 - **Triage CI & Issue**: `GET /api/worktrees/:id/checks`, `POST /api/worktrees/:id/fix-ci` (log Actions + review → prompt), `POST /api/projects/:id/from-issue` (GitHub/Linear). Linear key di `settings` (terenkripsi).
 - **Multimodal & Profil**: `POST /api/worktrees/:id/attachments` (raw ≤5 MB, `.dorado-attachments/` di-exclude), dikte suara di terminal (Web Speech API), dan `agent_profiles` (env terenkripsi per agent, aktifkan/cooldown otomatis saat rate-limit).
+- **Live Preview & Design Mode**: reverse-proxy `ALL /api/preview/:worktreeId/:port/*` (127.0.0.1, GET/HEAD, tolak port runtime), deteksi port `/worktrees/:id/ports`, skrip inspector `/api/preview/inspector.js`.
 - **File & Editor**: file explorer, editor CodeMirror 5 (lazy), Markdown preview (Mermaid), Quick Open, pencarian kode (ripgrep/`git grep`).
 - **Git**: status/diff, stage/unstage, commit, pull/push, Git Graph, Annotate Diff.
 - **GitHub**: info repo, PR, issue, review, komentar, merge, tutup issue/PR, label.
@@ -177,7 +178,7 @@ push (branch apa pun) → GitHub Actions
 | 0 | Bundle slimming (lazy xterm, limit total 350 KB) + docs | selesai |
 | 1 | Worktree Racing (multi-agent, pilih pemenang, merge) | selesai |
 | 2 | Sub-agent CLI `dorado-ctl` | selesai |
-| 3 | Live Web Preview + Design Mode DOM inspector | rencana |
+| 3 | Live Web Preview + Design Mode DOM inspector | selesai |
 | 4 | CI auto-fix, Issue→Worktree, Linear triage | selesai |
 | 5 | Multimodal (image drop, voice) + agent profiles/quota | selesai |
 | 6 | Mobile companion (responsif ≤768px) | rencana |

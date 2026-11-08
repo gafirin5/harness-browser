@@ -464,6 +464,31 @@ try {
   await page.waitForFunction(() => !document.body.innerText.includes('Periksa CI'), { timeout: 10000 });
   console.log('[chrome93] triage dialog OK');
 
+  await page.keyboard.down('Control');
+  await page.keyboard.down('Shift');
+  await page.keyboard.press('p');
+  await page.keyboard.up('Shift');
+  await page.keyboard.up('Control');
+  await page.waitForSelector('.palette', { timeout: 10000 });
+  await page.type('.palette-input', 'Live Preview');
+  await page.waitForFunction(
+    () =>
+      Array.from(document.querySelectorAll('.palette-item')).some((item) =>
+        (item.textContent || '').includes('Live Preview')
+      ),
+    { timeout: 10000 }
+  );
+  await page.evaluate(() => {
+    const item = Array.from(document.querySelectorAll('.palette-item')).find((el) =>
+      (el.textContent || '').includes('Live Preview')
+    );
+    item?.click();
+  });
+  await waitText('Pilih Elemen');
+  await page.click('.modal button[aria-label="Tutup"]');
+  await page.waitForFunction(() => !document.body.innerText.includes('Pilih Elemen'), { timeout: 10000 });
+  console.log('[chrome93] preview dialog OK');
+
   await clickText('button', 'GitHub');
   await waitText('Remote bukan repository GitHub');
   await page.click('button[aria-label="Tutup"]');

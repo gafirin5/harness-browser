@@ -177,6 +177,7 @@ export function App(): JSX.Element {
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [appearance, setAppearance] = useState<Appearance>(DEFAULT_APPEARANCE);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [zenPanelOpen, setZenPanelOpen] = useState(false);
   const [remoteNodes, setRemoteNodes] = useState<RemoteNodeInfo[]>([]);
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
   const shortcutRef = useRef({
@@ -1210,10 +1211,15 @@ export function App(): JSX.Element {
   ];
 
   return (
-    <div className={`app ${mobileSidebarOpen ? 'sidebar-open' : ''}`}>
+    <div className={`app ${mobileSidebarOpen ? 'sidebar-open' : ''} ${zenPanelOpen ? 'zen-panel-open' : ''}`}>
       <header className="topbar">
         <span className="brand-mark">D</span>
         <span className="topbar-title">Dorado</span>
+        {appearance.layout === 'zen-focus' ? (
+          <button className="btn tiny" onClick={() => setZenPanelOpen((value) => !value)} title="Buka/tutup panel">
+            ☰ Panel
+          </button>
+        ) : null}
         {selectedProject ? (
           <span className="muted" style={{ fontSize: 12 }}>
             / {selectedProject.name}
@@ -2135,6 +2141,7 @@ export function App(): JSX.Element {
 
       {dialog?.type === 'share' ? <ShareDialog onClose={() => setDialog(null)} /> : null}
 
+      <div className="zen-scrim" onClick={() => setZenPanelOpen(false)} />
       <div className="mobile-scrim" onClick={() => setMobileSidebarOpen(false)} />
       <nav className="mobile-bar" aria-label="Navigasi mobile">
         <button className={mobileSidebarOpen ? 'active' : ''} onClick={() => setMobileSidebarOpen((value) => !value)}>

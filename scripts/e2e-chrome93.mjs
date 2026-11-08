@@ -550,6 +550,24 @@ try {
     );
     card?.click();
   });
+  await page.evaluate(() => {
+    const card = Array.from(document.querySelectorAll('.skin-card')).find((el) =>
+      (el.textContent || '').includes('Zen Focus')
+    );
+    card?.click();
+  });
+  await page.waitForFunction(() => document.documentElement.getAttribute('data-layout') === 'zen-focus', {
+    timeout: 5000
+  });
+  await page.evaluate(() => {
+    const card = Array.from(document.querySelectorAll('.skin-card')).find((el) =>
+      (el.textContent || '').includes('Orca Studio')
+    );
+    card?.click();
+  });
+  await page.waitForFunction(() => document.documentElement.getAttribute('data-layout') === 'orca-studio', {
+    timeout: 5000
+  });
   await page.click('.modal button[aria-label="Tutup"]');
   await page.waitForFunction(() => !document.body.innerText.includes('Dorado Gold'), { timeout: 10000 });
   console.log('[chrome93] appearance studio OK');

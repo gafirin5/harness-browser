@@ -26,4 +26,15 @@ describe('AppearanceDialog', () => {
       expect(screen.getByText(name)).toBeTruthy();
     }
   });
+
+  it('memanggil onChange saat memilih layout', () => {
+    const onChange = vi.fn();
+    render(
+      <ToastProvider>
+        <AppearanceDialog appearance={DEFAULT_APPEARANCE} onChange={onChange} onClose={() => undefined} />
+      </ToastProvider>
+    );
+    fireEvent.click(screen.getByText('Zen Focus'));
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ layout: 'zen-focus' }));
+  });
 });

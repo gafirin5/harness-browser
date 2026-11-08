@@ -51,7 +51,7 @@ export function setupTerminalWebSocket(server: Server): WebSocketServer {
       reject(socket, 404, 'Not Found');
       return;
     }
-    if (!checkWsOrigin(req.headers.origin)) {
+    if (!checkWsOrigin(req.headers.origin, req)) {
       reject(socket, 403, 'Forbidden');
       return;
     }

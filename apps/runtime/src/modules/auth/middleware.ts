@@ -41,6 +41,35 @@ export function rateLimit(key: string, max: number, windowMs: number): void {
   if (bucket.count > max) throw new AppError(429, 'RATE_LIMITED', 'Terlalu banyak percobaan. Coba lagi nanti.');
 }
 
+function firstHeaderValue(value: string | undefined): string | undefined {
+  return value?.split(',')[0]?.trim() || undefined;
+}
+
+interface OriginContext {
+  protocol?: string;
+  headers?: Record<string, string | string[] | undefined>;
+  get?: (name: string) => string | undefined;
+}
+
+function readHeader(req: OriginContext, name: string): string | undefined {
+  const fromGet = req.get?.(name);
+  if (fromGet) return fromGet;
+  const raw = req.headers?.[name] ?? req.headers?.[name.toLowerCase()];
+  return Array.isArray(raw) ? raw[0] : raw;
+}
+
+/**
+ * Origin dari request itu sendiri (Host + proto), menghormati X-Forwarded-Proto
+ * dari reverse proxy (Nginx/cloudflared). Dipakai agar pemeriksaan CSRF menerima
+ * same-origin apa pun (tunnel/domain/IP) tanpa mengubah daftar allowedOrigins.
+ */
+export function requestOrigin(req: OriginContext): string | null {
+  const host = firstHeaderValue(readHeader(req, 'host'));
+  if (!host) return null;
+  const proto = firstHeaderValue(readHeader(req, 'x-forwarded-proto')) ?? req.protocol ?? 'http';
+  return `${proto}://${host}`;
+}
+
 export function csrfGuard(req: Request, _res: Response, next: NextFunction): void {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
     next();
@@ -62,16 +91,19 @@ export function csrfGuard(req: Request, _res: Response, next: NextFunction): voi
       }
     }
   }
-  if (candidate && !config.allowedOrigins.includes(candidate)) {
+  const selfOrigin = requestOrigin(req);
+  if (candidate && !config.allowedOrigins.includes(candidate) && candidate !== selfOrigin) {
     next(new AppError(403, 'FORBIDDEN', 'Origin tidak diizinkan.'));
     return;
   }
   next();
 }
 
-export function checkWsOrigin(origin: string | undefined): boolean {
+export function checkWsOrigin(origin: string | undefined, req: OriginContext): boolean {
   if (!origin) return true;
-  return config.allowedOrigins.includes(origin);
+  if (config.allowedOrigins.includes(origin)) return true;
+  const selfOrigin = requestOrigin(req);
+  return Boolean(selfOrigin && origin === selfOrigin);
 }
 
 export function clearRateLimits(): void {

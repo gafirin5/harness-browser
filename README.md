@@ -139,6 +139,10 @@ PUBLIC_BASE_URL=https://<acak>.trycloudflare.com node apps/runtime/dist/server.j
 
 Pairing URL yang dibuat setelah restart akan memakai domain tunnel. WebSocket juga berjalan melalui tunnel, sehingga terminal tetap interaktif.
 
+> URL quick tunnel **berubah tiap `cloudflared` di-restart** (tapi tetap selama prosesnya hidup). Untuk hostname permanen, pakai **named tunnel** (butuh domain Cloudflare): lihat [`docs/tunnel.md`](docs/tunnel.md) — `npm run tunnel:setup -- dorado.domainku.com` + `npm run tunnel:named`, lalu set `PUBLIC_BASE_URL=https://dorado.domainku.com`.
+
+Runtime menerima request tulis dari **origin apa pun yang sama dengan Host request** (Host + `X-Forwarded-Proto`), jadi pergantian URL tunnel/domain tidak memutus akses tulis. Cross-site tetap ditolak (403). Origin tambahan bisa didaftarkan via `ALLOWED_ORIGINS`.
+
 > Tunnel publik memberi akses shell ke host ini. Gunakan pairing token, jangan bagikan URL sembarangan, dan hentikan tunnel setelah selesai.
 
 ## Orchestrator

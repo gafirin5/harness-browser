@@ -65,6 +65,8 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"   # 
 node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))" # SESSION_SECRET
 ```
 
+> Akses publik via tunnel Cloudflare (quick vs **named permanen**) & ketahanan origin/CSRF: lihat [`tunnel.md`](tunnel.md).
+
 ## Menjalankan
 
 ```bash

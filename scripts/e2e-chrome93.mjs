@@ -127,6 +127,13 @@ const clickText = async (selector, text) => {
   );
   if (!ok) throw new Error(`Tidak menemukan ${selector} dengan teks ${text}`);
 };
+const closeModal = async () => {
+  await page.evaluate(() => {
+    const button = document.querySelector('.modal button[aria-label="Tutup"]');
+    button?.click();
+  });
+  await page.waitForFunction(() => !document.querySelector('.modal'), { timeout: 15000 });
+};
 
 let createdProject = project.body.data;
 let createdWorktree = worktree.body.data;
@@ -399,8 +406,7 @@ try {
 
   await clickText('button', 'Info');
   await waitText('Info Runtime');
-  await page.click('button[aria-label="Tutup"]');
-  await page.waitForFunction(() => !document.body.innerText.includes('Info Runtime'), { timeout: 10000 });
+  await closeModal();
   console.log('[chrome93] info runtime OK');
 
   await clickText('button', 'Info');
@@ -408,10 +414,7 @@ try {
   await clickText('button', 'Kelola Agent');
   await waitText('Preset bawaan siap dipakai');
   await page.waitForFunction(() => document.body.innerText.includes('OpenCode'), { timeout: 10000 });
-  await page.click('.modal button[aria-label="Tutup"]');
-  await page.waitForFunction(() => !document.body.innerText.includes('Preset bawaan siap dipakai'), {
-    timeout: 10000
-  });
+  await closeModal();
   console.log('[chrome93] agents dialog OK');
 
   await page.keyboard.down('Control');

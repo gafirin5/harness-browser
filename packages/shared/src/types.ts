@@ -169,12 +169,30 @@ export interface UpdateStatusInfo {
   currentVersion: string;
   currentCommit: string | null;
   currentSubject: string | null;
+  currentTag: string | null;
+  latestTag: string | null;
   upToDate: boolean;
   behindCount: number;
   commits: UpdateCommitInfo[];
   dirty: boolean;
   restartCommand: string | null;
   error: string | null;
+}
+
+export interface BuildInfoInfo {
+  version: string;
+  commit: string | null;
+  subject: string | null;
+  branch: string | null;
+  tag: string | null;
+  builtAt: string | null;
+}
+
+export interface UpdateHistoryEntry {
+  at: string;
+  from: { version: string; commit: string | null };
+  to: { version: string; commit: string | null };
+  ok: boolean;
 }
 
 export interface UpdateStepInfo {

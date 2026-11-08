@@ -143,7 +143,7 @@ describe('remote nodes federation', () => {
     expect(captured.controller?.id).toMatch(/^ctrl_/);
     expect(captured.controller?.name).toBeTruthy();
     expect(captured.controller?.url).toBeTruthy();
-    expect(captured.controller?.version).toBe('0.1.0');
+    expect(captured.controller?.version).toBe(config.version);
     const statePath = process.env.DORADO_NODE_STATE_FILE as string;
     expect(fs.existsSync(statePath)).toBe(true);
     const state = JSON.parse(fs.readFileSync(statePath, 'utf8')) as {

@@ -1,15 +1,25 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { UpdateResultInfo, UpdateStatusInfo } from '@dorado/shared';
+import type { UpdateHistoryEntry, UpdateResultInfo, UpdateStatusInfo } from '@dorado/shared';
 import { ApiError, apiGet, apiPost } from '../lib/api';
 import { Modal, useToast } from './ui';
 
 export function UpdateDialog({ isAdmin, onClose }: { isAdmin: boolean; onClose: () => void }): JSX.Element {
   const { push } = useToast();
   const [status, setStatus] = useState<UpdateStatusInfo | null>(null);
+  const [history, setHistory] = useState<UpdateHistoryEntry[]>([]);
   const [result, setResult] = useState<UpdateResultInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
+
+  const loadHistory = useCallback(async (): Promise<void> => {
+    try {
+      const response = await apiGet<{ data: UpdateHistoryEntry[] }>('/update/history');
+      setHistory(response.data);
+    } catch {
+      // abaikan
+    }
+  }, []);
 
   const load = useCallback(async (): Promise<void> => {
     setLoading(true);
@@ -26,7 +36,8 @@ export function UpdateDialog({ isAdmin, onClose }: { isAdmin: boolean; onClose: 
 
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadHistory();
+  }, [load, loadHistory]);
 
   const apply = async (): Promise<void> => {
     if (!window.confirm('Terapkan pembaruan sekarang? Runtime akan dibangun ulang lalu di-restart.')) return;
@@ -96,6 +107,14 @@ export function UpdateDialog({ isAdmin, onClose }: { isAdmin: boolean; onClose: 
             <span className="k">Restart</span>
             <span className="v mono">{status.restartCommand ?? 're-exec otomatis'}</span>
           </div>
+          <div className="kv">
+            <span className="k">Tag saat ini</span>
+            <span className="v mono">{status.currentTag ?? '(belum ada tag)'}</span>
+          </div>
+          <div className="kv">
+            <span className="k">Tag terbaru</span>
+            <span className="v mono">{status.latestTag ?? '(belum ada tag)'}</span>
+          </div>
 
           {status.error ? <div className="error-banner">{status.error}</div> : null}
           {status.dirty ? (
@@ -122,6 +141,27 @@ export function UpdateDialog({ isAdmin, onClose }: { isAdmin: boolean; onClose: 
           ) : null}
         </>
       ) : null}
+
+      <div className="section-label">Riwayat Pembaruan</div>
+      <div className="quick-command-list">
+        {history.length === 0 ? <div className="empty">Belum ada riwayat pembaruan.</div> : null}
+        {history.map((entry, index) => (
+          <div className="quick-command-row" key={`${entry.at}-${index}`}>
+            <div className="quick-command-info">
+              <div className="quick-command-label">
+                <span className={`badge ${entry.ok ? 'completed' : 'failed'}`}>{entry.ok ? 'OK' : 'GAGAL'}</span>
+                <span className="mono">
+                  v{entry.from.version} → v{entry.to.version}
+                </span>
+              </div>
+              <code className="quick-command-code">
+                {entry.at}
+                {entry.to.commit ? ` · ${entry.to.commit}` : ''}
+              </code>
+            </div>
+          </div>
+        ))}
+      </div>
 
       {result ? (
         <>

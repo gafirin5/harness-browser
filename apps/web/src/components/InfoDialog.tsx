@@ -5,6 +5,9 @@ import { Modal, StatusBadge, useToast } from './ui';
 
 export interface Info {
   version: string;
+  commit?: string | null;
+  tag?: string | null;
+  builtAt?: string | null;
   node: string;
   uptimeSeconds: number;
   dataDir: string;
@@ -35,7 +38,7 @@ export function buildRuntimeSummary(info: Info): string {
       : ['- Tidak ada agent.'];
   return [
     'Info Runtime Dorado',
-    `Versi: ${info.version}`,
+    `Versi: ${info.version}${info.commit ? ` (${info.commit})` : ''}${info.tag ? ` ${info.tag}` : ''}`,
     `Node.js: ${info.node}`,
     `Uptime: ${formatUptime(info.uptimeSeconds)}`,
     `Timezone: ${info.timezone}`,
@@ -111,7 +114,11 @@ export function InfoDialog({
         <>
           <div className="kv">
             <span className="k">Versi Dorado</span>
-            <span className="v">{info.version}</span>
+            <span className="v">
+              {info.version}
+              {info.commit ? <span className="mono"> ({info.commit})</span> : null}
+              {info.tag ? <span className="mono"> · {info.tag}</span> : null}
+            </span>
           </div>
           <div className="kv">
             <span className="k">Node.js</span>

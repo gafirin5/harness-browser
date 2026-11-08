@@ -10,6 +10,7 @@ import {
   updateAvailable,
   type UpdateStatus
 } from '../src/modules/update/service.js';
+import { appendUpdateHistory, readUpdateHistory } from '../src/modules/update/history.js';
 
 function git(cwd: string, args: string[]): string {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
@@ -60,6 +61,18 @@ describe('update helper', () => {
     expect(updateAvailable(fakeStatus({ behindCount: 2, error: 'gagal' }))).toBe(false);
     expect(updateAvailable(fakeStatus({ behindCount: 2, enabled: false }))).toBe(false);
   });
+
+  it('mencatat dan membaca riwayat pembaruan (JSONL)', () => {
+    const entry = {
+      at: new Date().toISOString(),
+      from: { version: '0.1.0', commit: 'aaa1111' },
+      to: { version: '0.2.0', commit: 'bbb2222' },
+      ok: true
+    };
+    appendUpdateHistory(entry);
+    const list = readUpdateHistory(5);
+    expect(list[0]).toEqual(entry);
+  });
 });
 
 describe('update git flow', () => {
@@ -99,6 +112,8 @@ describe('update git flow', () => {
     expect(status.upToDate).toBe(false);
     expect(status.behindCount).toBe(1);
     expect(status.commits[0]?.subject).toBe('tambah fitur');
+    expect(status.currentTag).toBeNull();
+    expect(status.latestTag).toBeNull();
     expect(updateAvailable(status)).toBe(true);
 
     const pull = await pullLatest(repoDir);

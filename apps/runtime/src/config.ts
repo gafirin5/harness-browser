@@ -134,11 +134,39 @@ function findCliBinDir(): string | null {
 function readVersion(): string {
   try {
     const pkg = JSON.parse(
-      fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../package.json'), 'utf8')
+      fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../package.json'), 'utf8')
     ) as { version?: string };
     return pkg.version ?? '0.0.0';
   } catch {
     return '0.0.0';
+  }
+}
+
+export interface BuildInfo {
+  version: string;
+  commit: string | null;
+  subject: string | null;
+  branch: string | null;
+  tag: string | null;
+  builtAt: string | null;
+}
+
+/** Baca build-info.json yang ditulis scripts/stamp.mjs saat build (bila ada). */
+export function readBuildInfo(): BuildInfo | null {
+  try {
+    const raw = JSON.parse(
+      fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'build-info.json'), 'utf8')
+    ) as Partial<BuildInfo>;
+    return {
+      version: raw.version ?? readVersion(),
+      commit: raw.commit ?? null,
+      subject: raw.subject ?? null,
+      branch: raw.branch ?? null,
+      tag: raw.tag ?? null,
+      builtAt: raw.builtAt ?? null
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -187,6 +215,7 @@ export const config = {
   cliBinDir: findCliBinDir(),
   controllerName: env.CONTROLLER_NAME.trim() || os.hostname(),
   version: readVersion(),
+  buildInfo: readBuildInfo(),
   repoRoot: findRepoRoot(),
   updateEnabled: env.UPDATE_ENABLED,
   updateMode: env.UPDATE_MODE,

@@ -1,8 +1,9 @@
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
-import { config } from '../../config.js';
+import { config, readBuildInfo } from '../../config.js';
 import { AppError } from '../../lib/errors.js';
 import { gitRaw } from '../../lib/git-raw.js';
+import { appendUpdateHistory } from './history.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -20,6 +21,8 @@ export interface UpdateStatus {
   currentVersion: string;
   currentCommit: string | null;
   currentSubject: string | null;
+  currentTag: string | null;
+  latestTag: string | null;
   upToDate: boolean;
   behindCount: number;
   commits: UpdateCommit[];
@@ -93,6 +96,8 @@ export async function getUpdateStatus(repoOverride?: string): Promise<UpdateStat
     currentVersion: config.version,
     currentCommit: null,
     currentSubject: null,
+    currentTag: null,
+    latestTag: null,
     upToDate: false,
     behindCount: 0,
     commits: [],
@@ -118,6 +123,16 @@ export async function getUpdateStatus(repoOverride?: string): Promise<UpdateStat
   status.currentCommit = head.code === 0 ? head.stdout.trim().slice(0, 12) : null;
   const subject = await gitRaw(repo, ['log', '-1', '--pretty=%s']);
   status.currentSubject = subject.code === 0 ? subject.stdout.trim() : null;
+  const tag = await gitRaw(repo, ['describe', '--tags', '--abbrev=0']);
+  status.currentTag = tag.code === 0 ? tag.stdout.trim() : null;
+  const tags = await gitRaw(repo, ['tag', '--sort=-v:refname']);
+  status.latestTag =
+    tags.code === 0
+      ? (tags.stdout
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean)[0] ?? null)
+      : null;
   const dirty = await gitRaw(repo, ['status', '--porcelain']);
   status.dirty = dirty.code === 0 && dirty.stdout.trim().length > 0;
 
@@ -171,11 +186,27 @@ export async function applyUpdate(): Promise<UpdateResult> {
     throw new AppError(422, 'REPO_DIRTY', 'Working tree kotor. Commit/stash dulu sebelum update.');
   }
   const steps: UpdateStep[] = [];
+  const from = { version: config.version, commit: status.currentCommit };
   const pull = await pullLatest();
   steps.push({ step: 'git merge --ff-only', ok: pull.ok, output: pull.output.slice(-4000) });
-  if (!pull.ok) return { ok: false, steps, newCommit: pull.newCommit, restartRequired: false };
+  if (!pull.ok) {
+    appendUpdateHistory({
+      at: new Date().toISOString(),
+      from,
+      to: { version: from.version, commit: pull.newCommit },
+      ok: false
+    });
+    return { ok: false, steps, newCommit: pull.newCommit, restartRequired: false };
+  }
   const build = await installAndBuild();
   steps.push(...build.steps);
+  const toVersion = readBuildInfo()?.version ?? from.version;
+  appendUpdateHistory({
+    at: new Date().toISOString(),
+    from,
+    to: { version: toVersion, commit: pull.newCommit },
+    ok: build.ok
+  });
   return { ok: build.ok, steps, newCommit: pull.newCommit, restartRequired: build.ok };
 }
 

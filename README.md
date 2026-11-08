@@ -220,6 +220,28 @@ Restart setelah update:
 
 Konfigurasi: `UPDATE_ENABLED`, `UPDATE_MODE=git`, `UPDATE_BRANCH` (default `dorado`), `UPDATE_REMOTE` (default `origin`), `UPDATE_RESTART_CMD`. Update ditolak bila working tree kotor; `npm run update` dan endpoint `/api/update` hanya untuk **admin**.
 
+## Penanda Versi & Rilis
+
+Setiap build meninggalkan **penanda versi** (`apps/runtime/dist/build-info.json`): versi, commit, tag, dan waktu build.
+
+```bash
+npm run version:show   # tampilkan penanda versi terpasang
+npm run update         # git fetch + ff-merge + build + restart
+```
+
+Saat memakai git tag (semver), rilis baru dibuat dengan:
+
+```bash
+npm run release -- patch     # atau minor | major | 0.2.0 [--push]
+```
+
+Perintah ini: bump versi (root + workspace), perbarui `CHANGELOG.md`, commit
+`chore(release): vX.Y.Z`, lalu tag `vX.Y.Z` (dan push bila `--push`).
+
+Versi terpasang ditampilkan di **Info Runtime** dan dialog **Pembaruan Sistem**,
+termasuk **Riwayat Pembaruan** (`DATA_DIR/update-history.jsonl`). Rollback darurat:
+`git checkout vX.Y.Z && npm ci && npm run build`.
+
 ## Arsitektur
 
 ```text

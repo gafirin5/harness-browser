@@ -75,7 +75,13 @@ export function createApp(): express.Express {
   app.get('/api/health', (_req, res) => {
     try {
       db.prepare('SELECT 1 AS ok').get();
-      res.json({ status: 'ok', time: new Date().toISOString(), version: config.version });
+      res.json({
+        status: 'ok',
+        time: new Date().toISOString(),
+        version: config.version,
+        commit: config.buildInfo?.commit ?? null,
+        tag: config.buildInfo?.tag ?? null
+      });
     } catch {
       res.status(503).json({ status: 'unavailable', time: new Date().toISOString(), version: config.version });
     }

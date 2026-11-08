@@ -138,6 +138,24 @@ Catatan:
 - Backup DB otomatis disarankan sebelum update (`npm run backup`).
 - Migrasi database bersifat idempotent sehingga aman saat restart.
 
+### Penanda versi & rilis
+
+Setiap build menulis `apps/runtime/dist/build-info.json` (versi, commit, tag, waktu build) dan tiap update dicatat di `DATA_DIR/update-history.jsonl` (tampil di dialog Pembaruan).
+
+```bash
+npm run version:show                       # versi terpasang
+npm run release -- minor --push            # bump + CHANGELOG + commit + tag vX.Y.Z + push
+```
+
+Rollback ke versi/tag tertentu:
+
+```bash
+git fetch --tags
+git checkout vX.Y.Z
+npm ci && npm run build
+sudo systemctl restart dorado
+```
+
 ## Nginx Reverse Proxy
 
 ```nginx

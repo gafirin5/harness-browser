@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { WebSocket } from 'ws';
 import type { ControllerIdentity, NodeHelloParams, NodeHelloResponse, NodeRpcRequest } from '@dorado/shared';
+import { config } from '../../config.js';
 import { listAgents } from '../sessions/agents.js';
 import { createNodeRpcHandlers } from './rpc-handlers.js';
 
@@ -142,7 +143,7 @@ export class DoradoNodeClient {
     const params: NodeHelloParams = {
       hostname: os.hostname(),
       platform: `${os.platform()} (${os.arch()})`,
-      version: '0.1.0',
+      version: config.version,
       agents: listAgents()
     };
     this.helloId = `hello_${Date.now()}`;

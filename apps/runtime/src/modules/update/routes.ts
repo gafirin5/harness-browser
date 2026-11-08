@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { asyncHandler } from '../../lib/errors.js';
 import { csrfGuard, requireAdmin, requireAuth } from '../auth/middleware.js';
 import { applyUpdate, getUpdateStatus, restartRuntime } from './service.js';
+import { readUpdateHistory } from './history.js';
 
 export const updateRouter = Router();
 updateRouter.use(csrfGuard, requireAuth);
@@ -13,6 +14,10 @@ updateRouter.get(
     res.json({ data: await getUpdateStatus() });
   })
 );
+
+updateRouter.get('/history', requireAdmin, (_req, res) => {
+  res.json({ data: readUpdateHistory(30) });
+});
 
 updateRouter.post(
   '/',

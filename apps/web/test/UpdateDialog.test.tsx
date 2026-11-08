@@ -17,9 +17,11 @@ const status = {
   repoRoot: '/opt/dorado',
   branch: 'dorado',
   remote: 'origin',
-  currentVersion: '0.1.0',
+  currentVersion: '0.2.0',
   currentCommit: 'abc1234',
   currentSubject: 'init',
+  currentTag: 'v0.2.0',
+  latestTag: 'v0.2.0',
   upToDate: false,
   behindCount: 2,
   commits: [
@@ -30,6 +32,20 @@ const status = {
   restartCommand: null,
   error: null
 };
+
+const history = [
+  {
+    at: '2026-11-09T08:12:00.000Z',
+    from: { version: '0.1.0', commit: 'abc1234' },
+    to: { version: '0.2.0', commit: 'abc1234' },
+    ok: true
+  }
+];
+
+function mockApi(s: unknown, h: unknown[] = []): void {
+  mockedGet.mockImplementation(((path: string) =>
+    Promise.resolve(path === '/update/history' ? { data: h } : { data: s })) as never);
+}
 
 function renderDialog(isAdmin: boolean): void {
   render(
@@ -44,18 +60,26 @@ describe('UpdateDialog', () => {
     vi.clearAllMocks();
   });
 
-  it('menampilkan versi saat ini dan daftar commit baru', async () => {
-    mockedGet.mockResolvedValue({ data: status } as never);
+  it('menampilkan versi/tag saat ini dan daftar commit baru', async () => {
+    mockApi(status, history);
     renderDialog(true);
 
-    await waitFor(() => expect(screen.getByText(/0\.1\.0/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Tag terbaru')).toBeTruthy());
     expect(screen.getByText('tambah fitur A')).toBeTruthy();
     expect(screen.getByText('perbaiki bug B')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Update Sekarang' })).toBeTruthy();
   });
 
+  it('menampilkan riwayat pembaruan', async () => {
+    mockApi(status, history);
+    renderDialog(true);
+
+    await waitFor(() => expect(screen.getByText('Riwayat Pembaruan')).toBeTruthy());
+    expect(screen.getByText(/v0\.1\.0 → v0\.2\.0/)).toBeTruthy();
+  });
+
   it('menonaktifkan update saat working tree kotor', async () => {
-    mockedGet.mockResolvedValue({ data: { ...status, dirty: true } } as never);
+    mockApi({ ...status, dirty: true });
     renderDialog(true);
 
     await waitFor(() =>
@@ -65,7 +89,7 @@ describe('UpdateDialog', () => {
   });
 
   it('menampilkan peringatan untuk viewer', async () => {
-    mockedGet.mockResolvedValue({ data: status } as never);
+    mockApi(status);
     renderDialog(false);
 
     await waitFor(() => expect(screen.getByText('Hanya admin yang dapat memperbarui sistem.')).toBeTruthy());

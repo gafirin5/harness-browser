@@ -52,7 +52,7 @@ export function controllerIdentity(): ControllerIdentity {
     id: instanceId,
     name: config.controllerName,
     url: config.publicBaseUrl,
-    version: '0.1.0',
+    version: config.version,
     hostname: os.hostname()
   };
 }

@@ -24,6 +24,9 @@ infoRouter.get('/', requireAuth, (_req, res) => {
   res.json({
     data: {
       version: config.version,
+      commit: config.buildInfo?.commit ?? null,
+      tag: config.buildInfo?.tag ?? null,
+      builtAt: config.buildInfo?.builtAt ?? null,
       node: process.version,
       uptimeSeconds: Math.round(process.uptime()),
       dataDir: config.dataDir,

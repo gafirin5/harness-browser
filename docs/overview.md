@@ -192,3 +192,8 @@ push (branch apa pun) → GitHub Actions
 | 4 | CI auto-fix, Issue→Worktree, Linear triage | selesai |
 | 5 | Multimodal (image drop, voice) + agent profiles/quota | selesai |
 | 6 | Mobile companion (responsif ≤768px) | selesai |
+| 7 | Tema/skin (6) + layout (orca-studio/zen-focus) + plugin registry | selesai |
+| 8 | Dual-view Chat/CLI (transkrip best-effort + approval y/n) | selesai |
+| 9 | AI Draft pesan commit/PR (deterministik) | selesai |
+| 10 | Pratijau file (CSV/JSON/gambar/PDF) + anotasi gambar | selesai |
+| 11 | `dorado-browser` (inspect/screenshot) + SSH port-forwarding | selesai |

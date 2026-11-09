@@ -13,3 +13,7 @@ Rilis dibuat dengan `npm run release -- patch|minor|major|X.Y.Z`.
 - Remote Nodes Federation: node melihat identitas controller-nya.
 - Pembaruan in-place (`npm run update`) + sistem penanda versi (build-info,
   riwayat pembaruan, `npm run release`).
+- Gelombang 2 (Orca-parity 100%): 6 skin + 2 layout + plugin registry,
+  dual-view Chat/CLI, AI Draft pesan commit, pratinjau file + anotasi gambar,
+  `dorado-browser` (inspect/screenshot) + SSH port-forwarding,
+  named tunnel + origin tahan perubahan URL.

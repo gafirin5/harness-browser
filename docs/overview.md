@@ -70,6 +70,7 @@ dorado/
 - **Tema & Tampilan**: 6 skin via `[data-skin]` (override token CSS) + Appearance Studio; preferensi per-user di `/api/user/preferences`.
 - **Plugin/Tema Kustom**: `DATA_DIR/plugins` + `GET /api/plugins`, `GET /api/plugins/styles.css` (tersanitasi), POST/DELETE admin — 0 KB bundle web.
 - **AI Draft commit**: `POST /api/git/ai-draft` (deterministik dari status/diff/log) + tombol ✨ di dialog Commit.
+- **Dual-View Chat/CLI**: `parseChatBlocks` + `GET /api/terminals/:id/chat-blocks` + toggle Chat|CLI di TerminalPane (best-effort transcript + approval y/n).
 - **File & Editor**: file explorer, editor CodeMirror 5 (lazy), Markdown preview (Mermaid), Quick Open, pencarian kode (ripgrep/`git grep`).
 - **Git**: status/diff, stage/unstage, commit, pull/push, Git Graph, Annotate Diff.
 - **GitHub**: info repo, PR, issue, review, komentar, merge, tutup issue/PR, label.

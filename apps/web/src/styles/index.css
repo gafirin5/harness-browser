@@ -2172,6 +2172,73 @@ button:disabled {
   opacity: 0.85;
 }
 
+.terminal-chat {
+  position: absolute;
+  top: 6px;
+  right: 78px;
+  z-index: 5;
+  opacity: 0.85;
+}
+
+.chat-view {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--terminal);
+  color: var(--text);
+}
+
+.chat-blocks {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.chat-block {
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+.chat-block.prompt_wait {
+  border-color: var(--accent);
+}
+
+.chat-block pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+
+.chat-approve {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.chat-composer {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.chat-composer .input {
+  flex: 1;
+  min-width: 0;
+}
+
 .preview-frame {
   width: 100%;
   height: 420px;

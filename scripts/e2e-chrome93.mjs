@@ -404,6 +404,17 @@ try {
   await page.waitForFunction(() => !document.querySelector('.terminal-search'), { timeout: 10000 });
   console.log('[chrome93] terminal search OK');
 
+  await page.evaluate(() => {
+    document.querySelector('.terminal-chat')?.click();
+  });
+  await page.waitForSelector('.chat-view', { timeout: 10000 });
+  await page.waitForSelector('.chat-view .chat-composer input', { timeout: 10000 });
+  await page.evaluate(() => {
+    document.querySelector('.terminal-chat')?.click();
+  });
+  await page.waitForFunction(() => !document.querySelector('.chat-view'), { timeout: 10000 });
+  console.log('[chrome93] chat/cli toggle OK');
+
   await clickText('button', 'Info');
   await waitText('Info Runtime');
   await closeModal();

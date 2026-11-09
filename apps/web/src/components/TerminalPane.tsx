@@ -3,6 +3,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { SearchAddon } from '@xterm/addon-search';
 import { copyText, terminalWsUrl, uploadAttachment } from '../lib/api';
+import { ChatView } from './ChatView';
 import { FONT_FAMILIES, TERMINAL_THEMES, matchesCombo, type TerminalPrefs } from '../lib/terminal-prefs';
 
 export function TerminalPane({
@@ -31,6 +32,7 @@ export function TerminalPane({
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [listening, setListening] = useState(false);
+  const [mode, setMode] = useState<'cli' | 'chat'>('cli');
 
   useEffect(() => {
     const host = hostRef.current;
@@ -251,6 +253,18 @@ export function TerminalPane({
   }, [resetNonce]);
 
   useEffect(() => {
+    if (mode !== 'cli') return undefined;
+    const timer = window.setTimeout(() => {
+      try {
+        fitRef.current?.fit();
+      } catch {
+        // abaikan saat layout transisi
+      }
+    }, 30);
+    return () => window.clearTimeout(timer);
+  }, [mode]);
+
+  useEffect(() => {
     if (searchOpen) {
       const timer = window.setTimeout(() => searchInputRef.current?.focus(), 20);
       return () => window.clearTimeout(timer);
@@ -354,76 +368,89 @@ export function TerminalPane({
 
   return (
     <>
-      <div className="terminal-host" ref={hostRef} />
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        accept=".png,.jpg,.jpeg,.webp,.gif,.txt,.md,.json,.pdf"
-        style={{ display: 'none' }}
-        onChange={(event) => {
-          void uploadFiles(event.target.files);
-          event.target.value = '';
-        }}
-      />
+      <div className="terminal-host" ref={hostRef} style={mode === 'chat' ? { display: 'none' } : undefined} />
+      {mode === 'chat' ? <ChatView terminalId={terminalId} /> : null}
       <button
-        className="terminal-attach btn tiny"
-        onClick={() => fileInputRef.current?.click()}
-        title="Lampirkan file/gambar (atau tempel/drop)"
-        aria-label="Lampirkan file"
+        className="terminal-chat btn tiny"
+        onClick={() => setMode((current) => (current === 'chat' ? 'cli' : 'chat'))}
+        title="Beralih Chat / CLI"
+        aria-label="Mode tampilan"
       >
-        📎
+        {mode === 'chat' ? 'CLI' : 'Chat'}
       </button>
-      {speechCtor ? (
-        <button
-          className={`terminal-mic btn tiny ${listening ? 'active' : ''}`}
-          onClick={toggleVoice}
-          title={listening ? 'Hentikan dikte' : 'Dikte suara ke terminal'}
-          aria-label="Dikte suara"
-        >
-          {listening ? '⏹' : '🎤'}
-        </button>
-      ) : null}
-      {searchOpen ? (
-        <div className="terminal-search">
+      {mode === 'cli' ? (
+        <>
           <input
-            ref={searchInputRef}
-            className="input"
-            value={query}
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept=".png,.jpg,.jpeg,.webp,.gif,.txt,.md,.json,.pdf"
+            style={{ display: 'none' }}
             onChange={(event) => {
-              setQuery(event.target.value);
-              window.setTimeout(() => find('next', true), 0);
+              void uploadFiles(event.target.files);
+              event.target.value = '';
             }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                find(event.shiftKey ? 'previous' : 'next');
-              } else if (event.key === 'Escape') {
-                event.preventDefault();
-                setSearchOpen(false);
-                searchRef.current?.clearDecorations();
-              }
-            }}
-            placeholder="Cari di terminal..."
-            aria-label="Cari di terminal"
           />
-          <button className="btn tiny" onClick={() => find('previous')} title="Sebelumnya">
-            ↑
-          </button>
-          <button className="btn tiny" onClick={() => find('next')} title="Berikutnya">
-            ↓
-          </button>
           <button
-            className="btn tiny ghost"
-            onClick={() => {
-              setSearchOpen(false);
-              searchRef.current?.clearDecorations();
-            }}
-            title="Tutup pencarian"
+            className="terminal-attach btn tiny"
+            onClick={() => fileInputRef.current?.click()}
+            title="Lampirkan file/gambar (atau tempel/drop)"
+            aria-label="Lampirkan file"
           >
-            ×
+            📎
           </button>
-        </div>
+          {speechCtor ? (
+            <button
+              className={`terminal-mic btn tiny ${listening ? 'active' : ''}`}
+              onClick={toggleVoice}
+              title={listening ? 'Hentikan dikte' : 'Dikte suara ke terminal'}
+              aria-label="Dikte suara"
+            >
+              {listening ? '⏹' : '🎤'}
+            </button>
+          ) : null}
+          {searchOpen ? (
+            <div className="terminal-search">
+              <input
+                ref={searchInputRef}
+                className="input"
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  window.setTimeout(() => find('next', true), 0);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    find(event.shiftKey ? 'previous' : 'next');
+                  } else if (event.key === 'Escape') {
+                    event.preventDefault();
+                    setSearchOpen(false);
+                    searchRef.current?.clearDecorations();
+                  }
+                }}
+                placeholder="Cari di terminal..."
+                aria-label="Cari di terminal"
+              />
+              <button className="btn tiny" onClick={() => find('previous')} title="Sebelumnya">
+                ↑
+              </button>
+              <button className="btn tiny" onClick={() => find('next')} title="Berikutnya">
+                ↓
+              </button>
+              <button
+                className="btn tiny ghost"
+                onClick={() => {
+                  setSearchOpen(false);
+                  searchRef.current?.clearDecorations();
+                }}
+                title="Tutup pencarian"
+              >
+                ×
+              </button>
+            </div>
+          ) : null}
+        </>
       ) : null}
     </>
   );

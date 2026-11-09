@@ -204,6 +204,12 @@ export interface PluginInfo {
   hasCss: boolean;
 }
 
+export interface ChatBlock {
+  id: number;
+  type: 'text' | 'prompt_wait';
+  content: string;
+}
+
 export interface UpdateStepInfo {
   step: string;
   ok: boolean;

@@ -1,9 +1,13 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { Router } from 'express';
 import { terminalCreateSchema, terminalInputSchema } from '@dorado/shared';
+import { config } from '../../config.js';
 import { asyncHandler, notFound } from '../../lib/errors.js';
 import { parseWith } from '../../lib/validation.js';
 import { csrfGuard, requireAuth } from '../auth/middleware.js';
 import { getNodeTarget } from '../nodes/dispatch.js';
+import { parseChatBlocks } from '../sessions/chat.js';
 import { terminalManager } from './manager.js';
 
 export const terminalsRouter = Router();
@@ -20,6 +24,16 @@ terminalsRouter.get(
     }
     const worktreeId = typeof req.query.worktreeId === 'string' ? req.query.worktreeId : undefined;
     res.json({ data: terminalManager.list(worktreeId) });
+  })
+);
+
+terminalsRouter.get(
+  '/:id/chat-blocks',
+  asyncHandler(async (req, res) => {
+    const id = String(req.params.id ?? '');
+    const logPath = path.join(config.logsDir, `${id}.log`);
+    const raw = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8') : '';
+    res.json({ data: parseChatBlocks(raw.slice(-200000)) });
   })
 );
 

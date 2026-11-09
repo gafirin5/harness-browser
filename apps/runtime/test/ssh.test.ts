@@ -66,4 +66,35 @@ describe('ssh tunnels', () => {
     });
     expect(res.status).toBe(422);
   });
+
+  it('mendukung start/stop/restart tunnel', async () => {
+    const created = await api.post('/api/ssh-tunnels').send({
+      projectId,
+      name: 'Dev server 2',
+      host: '127.0.0.1',
+      port: 1,
+      user: 'deploy',
+      localPort: 13001,
+      remotePort: 3001
+    });
+    expect(created.status).toBe(201);
+    const id = created.body.data.id;
+
+    const stop = await api.post(`/api/ssh-tunnels/${id}/stop`);
+    expect(stop.status).toBe(200);
+    expect(stop.body.data.status).toBe('stopped');
+
+    const start = await api.post(`/api/ssh-tunnels/${id}/start`);
+    expect(start.status).toBe(200);
+
+    const restart = await api.post(`/api/ssh-tunnels/${id}/restart`);
+    expect(restart.status).toBe(200);
+
+    await api.delete(`/api/ssh-tunnels/${id}`);
+  });
+
+  it('menolak aksi tunnel yang tidak ditemukan', async () => {
+    const res = await api.post('/api/ssh-tunnels/nope/start');
+    expect(res.status).toBe(404);
+  });
 });

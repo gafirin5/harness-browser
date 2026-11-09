@@ -16,4 +16,5 @@ Rilis dibuat dengan `npm run release -- patch|minor|major|X.Y.Z`.
 - Gelombang 2 (Orca-parity 100%): 6 skin + 2 layout + plugin registry,
   dual-view Chat/CLI, AI Draft pesan commit, pratinjau file + anotasi gambar,
   `dorado-browser` (inspect/screenshot) + SSH port-forwarding,
+  dialog UI SSH Tunnel + recursive delete file explorer,
   named tunnel + origin tahan perubahan URL.

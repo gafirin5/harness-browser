@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { notFound } from '../../lib/errors.js';
 import { parseWith } from '../../lib/validation.js';
 import { csrfGuard, requireAdmin, requireAuth } from '../auth/middleware.js';
-import { createTunnel, getTunnel, listTunnels, removeTunnel, startTunnel } from './service.js';
+import { createTunnel, getTunnel, listTunnels, removeTunnel, startTunnel, stopTunnel } from './service.js';
 
 const createSchema = z.object({
   projectId: z.string().min(1),
@@ -27,12 +27,30 @@ sshRouter.post('/', requireAdmin, (req, res) => {
   res.status(201).json({ data: createTunnel(body) });
 });
 
+function requireTunnel(id: string): void {
+  if (!getTunnel(id)) throw notFound('Tunnel tidak ditemukan.');
+}
+
+sshRouter.post('/:id/start', requireAdmin, (req, res) => {
+  const id = String(req.params.id ?? '');
+  requireTunnel(id);
+  startTunnel(id);
+  res.json({ data: getTunnel(id) });
+});
+
+sshRouter.post('/:id/stop', requireAdmin, (req, res) => {
+  const id = String(req.params.id ?? '');
+  requireTunnel(id);
+  stopTunnel(id);
+  res.json({ data: getTunnel(id) });
+});
+
 sshRouter.post('/:id/restart', requireAdmin, (req, res) => {
   const id = String(req.params.id ?? '');
+  requireTunnel(id);
+  stopTunnel(id);
   startTunnel(id);
-  const tunnel = getTunnel(id);
-  if (!tunnel) throw notFound('Tunnel tidak ditemukan.');
-  res.json({ data: tunnel });
+  res.json({ data: getTunnel(id) });
 });
 
 sshRouter.delete('/:id', requireAdmin, (req, res) => {

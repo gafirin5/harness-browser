@@ -16,6 +16,12 @@ const querySchema = z.object({
   path: z.string().max(1000).default('')
 });
 
+const deleteQuerySchema = z.object({
+  worktreeId: z.string().min(1),
+  path: z.string().max(1000).default(''),
+  recursive: z.string().optional().default('false')
+});
+
 const findQuerySchema = z.object({
   worktreeId: z.string().min(1),
   q: z.string().trim().max(200).optional().default('')
@@ -399,8 +405,9 @@ filesRouter.post(
 filesRouter.delete(
   '/',
   asyncHandler(async (req, res) => {
-    const query = parseWith(querySchema, req.query);
+    const query = parseWith(deleteQuerySchema, req.query);
     if (!query.path) throw new AppError(422, 'INVALID_PATH', 'Path wajib diisi.');
+    const recursive = query.recursive === 'true' || query.recursive === '1';
     const { root, target } = await safeTarget(query.worktreeId, query.path);
     try {
       assertWithin(root, await fs.realpath(target));
@@ -409,9 +416,13 @@ filesRouter.delete(
     }
     const stat = await fs.stat(target);
     if (stat.isDirectory()) {
-      const entries = await fs.readdir(target);
-      if (entries.length > 0) throw new AppError(422, 'DIRECTORY_NOT_EMPTY', 'Folder tidak kosong.');
-      await fs.rmdir(target);
+      if (recursive) {
+        await fs.rm(target, { recursive: true, force: false });
+      } else {
+        const entries = await fs.readdir(target);
+        if (entries.length > 0) throw new AppError(422, 'DIRECTORY_NOT_EMPTY', 'Folder tidak kosong.');
+        await fs.rmdir(target);
+      }
     } else {
       await fs.unlink(target);
     }

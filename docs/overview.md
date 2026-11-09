@@ -72,8 +72,8 @@ dorado/
 - **AI Draft commit**: `POST /api/git/ai-draft` (deterministik dari status/diff/log) + tombol ✨ di dialog Commit.
 - **Dual-View Chat/CLI**: `parseChatBlocks` + `GET /api/terminals/:id/chat-blocks` + toggle Chat|CLI di TerminalPane (best-effort transcript + approval y/n).
 - **Pratinjau File & Anotasi**: `GET /api/files/preview` (csv/json/gambar/PDF, CSP override) + dialog pratinjau + anotasi canvas (zero-dep) → kirim ke agent.
-- **Browser & SSH**: CLI `dorado-browser` (`inspect` fetch + `screenshot` Chrome headless → unggah via `/api/agent/attachments`); `ssh_tunnels` table + `/api/ssh-tunnels` (CRUD admin, spawn `ssh -L`) → port lokal ikut muncul di Live Preview.
-- **File & Editor**: file explorer, editor CodeMirror 5 (lazy), Markdown preview (Mermaid), Quick Open, pencarian kode (ripgrep/`git grep`).
+- **Browser & SSH**: CLI `dorado-browser` (`inspect` fetch + `screenshot` Chrome headless → unggah via `/api/agent/attachments`); `ssh_tunnels` table + `/api/ssh-tunnels` (CRUD + start/stop/restart, admin) + dialog **SSH Tunnel** → port lokal ikut muncul di Live Preview.
+- **File & Editor**: file explorer (buat/rename/hapus, **recursive delete** dengan konfirmasi), editor CodeMirror 5 (lazy), Markdown preview (Mermaid), Quick Open, pencarian kode (ripgrep/`git grep`).
 - **Git**: status/diff, stage/unstage, commit, pull/push, Git Graph, Annotate Diff.
 - **GitHub**: info repo, PR, issue, review, komentar, merge, tutup issue/PR, label.
 - **Orchestrator**: dashboard realtime (SSE), provider LLM (key terenkripsi), worker agent, task queue berprioritas, dispatcher, biaya.
@@ -197,3 +197,4 @@ push (branch apa pun) → GitHub Actions
 | 9 | AI Draft pesan commit/PR (deterministik) | selesai |
 | 10 | Pratijau file (CSV/JSON/gambar/PDF) + anotasi gambar | selesai |
 | 11 | `dorado-browser` (inspect/screenshot) + SSH port-forwarding | selesai |
+| 12 | UI SSH Tunnel + recursive delete file explorer | selesai |

@@ -128,6 +128,9 @@ const clickText = async (selector, text) => {
   if (!ok) throw new Error(`Tidak menemukan ${selector} dengan teks ${text}`);
 };
 const closeModal = async () => {
+  // Tunggu modal benar-benar muncul dulu (hindari balapan saat dialog dibuka
+  // dari command palette yang teksnya juga memuat nama perintah).
+  await page.waitForSelector('.modal', { timeout: 15000 });
   await page.evaluate(() => {
     const button = document.querySelector('.modal button[aria-label="Tutup"]');
     button?.click();
@@ -609,6 +612,33 @@ try {
   await waitText('Path file');
   await closeModal();
   console.log('[chrome93] file preview dialog OK');
+
+  await page.keyboard.down('Control');
+  await page.keyboard.down('Shift');
+  await page.keyboard.press('p');
+  await page.keyboard.up('Shift');
+  await page.keyboard.up('Control');
+  await page.waitForSelector('.palette', { timeout: 10000 });
+  await page.type('.palette-input', 'SSH Tunnel');
+  await page.waitForFunction(
+    () =>
+      Array.from(document.querySelectorAll('.palette-item')).some((item) =>
+        (item.textContent || '').includes('SSH Tunnel')
+      ),
+    { timeout: 10000 }
+  );
+  await page.evaluate(() => {
+    const item = Array.from(document.querySelectorAll('.palette-item')).find((el) =>
+      (el.textContent || '').includes('SSH Tunnel')
+    );
+    item?.click();
+  });
+  await page.waitForSelector('.modal', { timeout: 15000 });
+  await page.waitForFunction(() => (document.querySelector('.modal h2')?.textContent ?? '').includes('SSH Tunnel'), {
+    timeout: 10000
+  });
+  await closeModal();
+  console.log('[chrome93] ssh tunnel dialog OK');
 
   await clickText('button', 'GitHub');
   await waitText('Remote bukan repository GitHub');

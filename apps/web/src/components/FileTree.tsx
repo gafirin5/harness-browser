@@ -110,12 +110,25 @@ export function FileTree({
 
   const deleteEntry = async (entry: Entry): Promise<void> => {
     if (!window.confirm(`Hapus ${entry.path}?`)) return;
+    await performDelete(entry.path, false);
+  };
+
+  const performDelete = async (targetPath: string, recursive: boolean): Promise<void> => {
     try {
-      await apiDelete(`/files?worktreeId=${encodeURIComponent(worktreeId)}&path=${encodeURIComponent(entry.path)}`);
+      const query = `worktreeId=${encodeURIComponent(worktreeId)}&path=${encodeURIComponent(
+        targetPath
+      )}${recursive ? '&recursive=1' : ''}`;
+      await apiDelete(`/files?${query}`);
       await refresh();
-      onDeleted(entry.path);
+      onDeleted(targetPath);
       push('success', 'File/folder dihapus.');
     } catch (caught) {
+      if (!recursive && caught instanceof ApiError && caught.code === 'DIRECTORY_NOT_EMPTY') {
+        if (window.confirm(`Folder "${targetPath}" tidak kosong. Hapus seluruh isinya secara rekursif?`)) {
+          await performDelete(targetPath, true);
+        }
+        return;
+      }
       push('error', caught instanceof ApiError ? caught.message : 'Gagal menghapus.');
     }
   };

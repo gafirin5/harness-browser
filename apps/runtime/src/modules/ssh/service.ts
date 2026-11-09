@@ -115,7 +115,11 @@ export function startTunnel(id: string): void {
   running.set(id, child);
   const clear = (): void => {
     running.delete(id);
-    db.prepare("UPDATE ssh_tunnels SET status = 'stopped' WHERE id = ?").run(id);
+    try {
+      db.prepare("UPDATE ssh_tunnels SET status = 'stopped' WHERE id = ?").run(id);
+    } catch {
+      // db mungkin sudah ditutup saat shutdown runtime
+    }
   };
   child.on('exit', clear);
   child.on('error', clear);

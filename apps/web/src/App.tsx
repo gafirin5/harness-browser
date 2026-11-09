@@ -85,6 +85,9 @@ const AppearanceDialog = lazy(() =>
 const FilePreviewDialog = lazy(() =>
   import('./components/FilePreviewDialog').then((module) => ({ default: module.FilePreviewDialog }))
 );
+const SshTunnelsDialog = lazy(() =>
+  import('./components/SshTunnelsDialog').then((module) => ({ default: module.SshTunnelsDialog }))
+);
 
 type DialogState =
   | { type: 'project' }
@@ -181,6 +184,7 @@ export function App(): JSX.Element {
   const [updateOpen, setUpdateOpen] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [previewFileOpen, setPreviewFileOpen] = useState(false);
+  const [sshTunnelsOpen, setSshTunnelsOpen] = useState(false);
   const [appearance, setAppearance] = useState<Appearance>(DEFAULT_APPEARANCE);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [zenPanelOpen, setZenPanelOpen] = useState(false);
@@ -1107,6 +1111,12 @@ export function App(): JSX.Element {
       run: () => setPreviewFileOpen(true)
     },
     {
+      id: 'ssh-tunnels',
+      label: 'SSH Tunnel (Port Forwarding)',
+      hint: 'Forward port remote server ke localhost via SSH',
+      run: () => setSshTunnelsOpen(true)
+    },
+    {
       id: 'git-graph',
       label: 'Git Graph',
       hint: 'Riwayat commit project dan detail per commit (Alt+Shift+G)',
@@ -1952,6 +1962,21 @@ export function App(): JSX.Element {
             selectedWorktreeId={selectedWorktreeId}
             activeTerminalId={activeTerminalId}
             onClose={() => setPreviewFileOpen(false)}
+          />
+        </Suspense>
+      ) : null}
+      {sshTunnelsOpen ? (
+        <Suspense
+          fallback={
+            <div className="orch-overlay">
+              <div className="empty">Memuat SSH tunnel...</div>
+            </div>
+          }
+        >
+          <SshTunnelsDialog
+            projects={projects}
+            isAdmin={user?.role === 'ADMIN'}
+            onClose={() => setSshTunnelsOpen(false)}
           />
         </Suspense>
       ) : null}

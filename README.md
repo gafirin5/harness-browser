@@ -25,7 +25,7 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **AI Draft commit**: tombol **✨ Draft AI** di dialog Commit menyusun judul + isi commit dari perubahan (tipe/scope terdeteksi otomatis; deterministik, tanpa perlu LLM).
 - **Dual-View Chat/CLI**: tombol **Chat | CLI** di terminal agent — tampilan transkrip rapi (`parseChatBlocks`, buang ANSI) + tombol persetujuan **y/n** saat terdeteksi prompt; xterm tetap ter-mount sehingga kembali ke CLI tanpa kehilangan scrollback.
 - **Pratinjau File & Anotasi**: pratinjau **CSV/TSV** (tabel sticky-header), **JSON**, **gambar**, dan **PDF** (`GET /api/files/preview`); **anotasi gambar** (kotak/pena/panah/teks + undo) di HTML5 canvas → unggah PNG & kirim `@path` ke agent.
-- **Browser & SSH Forwarding (`dorado-browser`)**: CLI di dalam terminal agent untuk `inspect` (fetch struktur halaman) dan `screenshot` (Chrome headless sistem) — PNG diunggah ke worktree via `/api/agent/attachments`. **Tunnel SSH** (`/api/ssh-tunnels`, admin) memforward port remote ke `127.0.0.1` lokal dan otomatis tampil di daftar port Live Preview.
+- **Browser & SSH Forwarding (`dorado-browser`)**: CLI di dalam terminal agent untuk `inspect` (fetch struktur halaman) dan `screenshot` (Chrome headless sistem) — PNG diunggah ke worktree via `/api/agent/attachments`. **Tunnel SSH** (dialog **SSH Tunnel**, admin) memforward port remote ke `127.0.0.1` lokal (start/stop/restart) dan otomatis tampil di daftar port Live Preview.
 - **File explorer** dengan buat/rename/hapus, plus editor CodeMirror 5: line numbers, syntax highlighting, lazy-loaded (maksimal 1 MB, proteksi path/symlink).
 - Tab terpadu untuk terminal, file, dan diff; indikator file belum disimpan dan Ctrl+S.
 - **Multi-pane terminal** hingga empat pane, dengan pemilih terminal per pane.
@@ -325,7 +325,7 @@ Test mencakup login, project/worktree, terminal PTY via WebSocket (mengetik `ech
 - Path worktree divalidasi agar tidak keluar dari data directory.
 - File explorer dibatasi pada worktree, menolak path traversal/symlink ke luar worktree, dan mengabaikan `.git`, `node_modules`, `dist`, dan folder build.
 - Commit/push dari UI memakai remote pertama (utamakan `origin`); pull memakai `--ff-only`. Pastikan user.name/user.email dan kredensial Git host sudah benar.
-- Hapus folder hanya diizinkan untuk folder kosong; belum ada recursive delete.
+- Hapus folder kosong langsung; folder tidak kosong memerlukan konfirmasi **hapus rekursif** (`?recursive=1`). Path yang diabaikan (`.git`, `node_modules`, `dist`, dll.) tetap ditolak.
 - Pencarian kode dijalankan tanpa shell, memakai `rg`/`git grep` dengan argumen terpisah, mengikuti `.gitignore`, dan membatasi hasil agar payload tetap kecil.
 - Terminal adalah shell penuh; hanya berikan akses ke pengguna tepercaya.
 
@@ -358,7 +358,7 @@ Dokumentasi lengkap:
 
 ## Batasan M1
 
-Belum termasuk: Electron desktop, mobile, cloud relay, Linear, browser/design mode, SSH worktree, multi-tenant, dan recursive delete. Pencarian kode mengikuti `.gitignore`; file ignored/untracked tidak ikut dicari saat memakai fallback `git grep`.
+Belum termasuk: Electron desktop, mobile, cloud relay, Linear, browser/design mode, SSH worktree, dan multi-tenant. Pencarian kode mengikuti `.gitignore`; file ignored/untracked tidak ikut dicari saat memakai fallback `git grep`.
 
 Orchestrator memakai satu admin, worker agent harus dapat dijangkau dari runtime, dan `AGENT_KEY_DELIVERY=payload` mengirim API key provider ke worker (gunakan HTTPS/trusted network atau ubah ke `none`). Arsip otomatis setelah satu tahun belum termasuk MVP.
 

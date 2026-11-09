@@ -25,6 +25,7 @@ Ini adalah implementasi clean-room. Tidak ada kode/aset dari `stablyai/orca` yan
 - **AI Draft commit**: tombol **✨ Draft AI** di dialog Commit menyusun judul + isi commit dari perubahan (tipe/scope terdeteksi otomatis; deterministik, tanpa perlu LLM).
 - **Dual-View Chat/CLI**: tombol **Chat | CLI** di terminal agent — tampilan transkrip rapi (`parseChatBlocks`, buang ANSI) + tombol persetujuan **y/n** saat terdeteksi prompt; xterm tetap ter-mount sehingga kembali ke CLI tanpa kehilangan scrollback.
 - **Pratinjau File & Anotasi**: pratinjau **CSV/TSV** (tabel sticky-header), **JSON**, **gambar**, dan **PDF** (`GET /api/files/preview`); **anotasi gambar** (kotak/pena/panah/teks + undo) di HTML5 canvas → unggah PNG & kirim `@path` ke agent.
+- **Browser & SSH Forwarding (`dorado-browser`)**: CLI di dalam terminal agent untuk `inspect` (fetch struktur halaman) dan `screenshot` (Chrome headless sistem) — PNG diunggah ke worktree via `/api/agent/attachments`. **Tunnel SSH** (`/api/ssh-tunnels`, admin) memforward port remote ke `127.0.0.1` lokal dan otomatis tampil di daftar port Live Preview.
 - **File explorer** dengan buat/rename/hapus, plus editor CodeMirror 5: line numbers, syntax highlighting, lazy-loaded (maksimal 1 MB, proteksi path/symlink).
 - Tab terpadu untuk terminal, file, dan diff; indikator file belum disimpan dan Ctrl+S.
 - **Multi-pane terminal** hingga empat pane, dengan pemilih terminal per pane.

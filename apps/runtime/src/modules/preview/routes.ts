@@ -4,6 +4,7 @@ import { config } from '../../config.js';
 import { AppError, notFound } from '../../lib/errors.js';
 import { csrfGuard, requireAuth } from '../auth/middleware.js';
 import { getWorktreeRow } from '../worktrees/routes.js';
+import { localPortsForProject } from '../ssh/service.js';
 import { INSPECTOR_SCRIPT } from './inspector.js';
 import { detectWorktreePorts } from './ports.js';
 
@@ -103,7 +104,10 @@ previewRouter.use(csrfGuard, requireAuth);
 previewRouter.get('/worktrees/:id/ports', (req, res) => {
   const worktree = getWorktreeRow(String(req.params.id ?? ''));
   if (!worktree) throw notFound('Worktree tidak ditemukan.');
-  res.json({ data: { ports: detectWorktreePorts(worktree.path) } });
+  const detected = detectWorktreePorts(worktree.path);
+  const sshPorts = localPortsForProject(worktree.project_id);
+  const ports = Array.from(new Set([...detected, ...sshPorts])).sort((a, b) => a - b);
+  res.json({ data: { ports } });
 });
 
 previewRouter.get('/preview/inspector.js', (_req, res) => {

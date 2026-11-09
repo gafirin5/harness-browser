@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { Router } from 'express';
+import express, { Router } from 'express';
 import { z } from 'zod';
 import { worktreeUpdateSchema } from '@dorado/shared';
 import { config } from '../../config.js';
@@ -11,6 +11,7 @@ import { AppError, asyncHandler, notFound } from '../../lib/errors.js';
 import { createWorktree, git, slugifyBranch } from '../../lib/git.js';
 import { parseWith } from '../../lib/validation.js';
 import { getProject } from '../projects/routes.js';
+import { sanitizeAttachmentName, writeAttachment } from '../attachments/service.js';
 import { getAgent, listAgents } from '../sessions/agents.js';
 import { startAgentSession } from '../sessions/service.js';
 import { getWorktreeRow } from '../worktrees/routes.js';
@@ -134,6 +135,19 @@ agentApiRouter.get(
   asyncHandler(async (req, res) => {
     resolveSession(req);
     res.json({ data: listAgents() });
+  })
+);
+
+agentApiRouter.post(
+  '/attachments',
+  express.raw({ type: 'application/octet-stream', limit: '6mb' }),
+  asyncHandler(async (req, res) => {
+    const session = resolveSession(req);
+    const worktree = getWorktreeRow(session.worktreeId);
+    if (!worktree) throw notFound('Worktree tidak ditemukan.');
+    const name = sanitizeAttachmentName(String(req.query.name ?? ''));
+    const result = await writeAttachment(worktree.path, name, req.body as Buffer);
+    res.status(201).json({ data: result });
   })
 );
 

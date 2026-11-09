@@ -72,6 +72,7 @@ dorado/
 - **AI Draft commit**: `POST /api/git/ai-draft` (deterministik dari status/diff/log) + tombol ✨ di dialog Commit.
 - **Dual-View Chat/CLI**: `parseChatBlocks` + `GET /api/terminals/:id/chat-blocks` + toggle Chat|CLI di TerminalPane (best-effort transcript + approval y/n).
 - **Pratinjau File & Anotasi**: `GET /api/files/preview` (csv/json/gambar/PDF, CSP override) + dialog pratinjau + anotasi canvas (zero-dep) → kirim ke agent.
+- **Browser & SSH**: CLI `dorado-browser` (`inspect` fetch + `screenshot` Chrome headless → unggah via `/api/agent/attachments`); `ssh_tunnels` table + `/api/ssh-tunnels` (CRUD admin, spawn `ssh -L`) → port lokal ikut muncul di Live Preview.
 - **File & Editor**: file explorer, editor CodeMirror 5 (lazy), Markdown preview (Mermaid), Quick Open, pencarian kode (ripgrep/`git grep`).
 - **Git**: status/diff, stage/unstage, commit, pull/push, Git Graph, Annotate Diff.
 - **GitHub**: info repo, PR, issue, review, komentar, merge, tutup issue/PR, label.

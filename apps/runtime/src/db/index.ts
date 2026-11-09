@@ -169,6 +169,21 @@ db.exec(`
     updated_at TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS ssh_tunnels (
+    id          TEXT PRIMARY KEY,
+    project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    name        TEXT NOT NULL,
+    ssh_host    TEXT NOT NULL,
+    ssh_port    INTEGER NOT NULL DEFAULT 22,
+    ssh_user    TEXT NOT NULL,
+    local_port  INTEGER NOT NULL,
+    remote_port INTEGER NOT NULL,
+    status      TEXT NOT NULL DEFAULT 'stopped',
+    created_at  TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS ssh_tunnels_project_ix ON ssh_tunnels(project_id);
+
   CREATE TABLE IF NOT EXISTS users (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     username      TEXT NOT NULL,

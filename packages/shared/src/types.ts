@@ -210,6 +210,19 @@ export interface ChatBlock {
   content: string;
 }
 
+export interface SshTunnelInfo {
+  id: string;
+  projectId: string;
+  name: string;
+  host: string;
+  port: number;
+  user: string;
+  localPort: number;
+  remotePort: number;
+  status: 'running' | 'stopped';
+  createdAt: string;
+}
+
 export interface UpdateStepInfo {
   step: string;
   ok: boolean;

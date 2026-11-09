@@ -37,6 +37,7 @@ import { previewRouter } from './modules/preview/routes.js';
 import { updateRouter } from './modules/update/routes.js';
 import { userRouter } from './modules/preferences/routes.js';
 import { pluginsRouter } from './modules/plugins/routes.js';
+import { sshRouter } from './modules/ssh/routes.js';
 
 export function createApp(): express.Express {
   const app = express();
@@ -193,6 +194,7 @@ export function createApp(): express.Express {
   app.use('/api/update', updateRouter);
   app.use('/api/user', userRouter);
   app.use('/api/plugins', pluginsRouter);
+  app.use('/api/ssh-tunnels', sshRouter);
   app.use('/api', attachmentsRouter);
   app.use('/api', racesRouter);
   app.use('/api', triageRouter);

@@ -1,0 +1,110 @@
+#!/usr/bin/env node
+/**
+ * dorado-browser — inspeksi & screenshot halaman web dari dalam agent Dorado.
+ *
+ * Variabel lingkungan (otomatis tersedia di PTY agent):
+ *   DORADO_API_URL, DORADO_SESSION_TOKEN
+ *
+ * Perintah:
+ *   dorado-browser inspect <url>
+ *   dorado-browser screenshot <url> [--name snap.png]
+ *
+ * `inspect` memakai fetch (tanpa browser). `screenshot` memakai Chrome headless
+ * (chrome sistem / CHROME_BIN) lalu mengunggah PNG ke worktree via runtime.
+ */
+import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+const apiUrl = (process.env.DORADO_API_URL || '').replace(/\/+$/, '');
+const token = process.env.DORADO_SESSION_TOKEN || '';
+
+function usage() {
+  console.error(
+    ['Pemakaian:', '  dorado-browser inspect <url>', '  dorado-browser screenshot <url> [--name snap.png]'].join('\n')
+  );
+  process.exit(2);
+}
+
+async function inspect(url) {
+  if (!url) usage();
+  const response = await fetch(url, { redirect: 'follow' });
+  const html = await response.text();
+  const title = (/<title[^>]*>([^<]*)<\/title>/i.exec(html)?.[1] ?? '').trim();
+  const interactive = [];
+  const pattern = /<(a|button|input|select|textarea)\b([^>]*)>/gi;
+  let match = pattern.exec(html);
+  while (match && interactive.length < 50) {
+    const attributes = match[2] || '';
+    interactive.push({
+      tag: match[1].toLowerCase(),
+      id: /id="([^"]*)"/i.exec(attributes)?.[1] ?? null,
+      name: /name="([^"]*)"/i.exec(attributes)?.[1] ?? null,
+      type: /type="([^"]*)"/i.exec(attributes)?.[1] ?? null
+    });
+    match = pattern.exec(html);
+  }
+  const text = html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 2000);
+  console.log(JSON.stringify({ url, status: response.status, title, text, interactive }, null, 2));
+}
+
+async function screenshot(url, name) {
+  if (!url) usage();
+  const chrome = process.env.CHROME_BIN || process.env.DORADO_CHROME || 'google-chrome-stable';
+  const output = path.join(os.tmpdir(), `dorado-snap-${Date.now()}.png`);
+  const flags = [
+    '--disable-gpu',
+    '--no-sandbox',
+    '--hide-scrollbars',
+    '--window-size=1280,800',
+    `--screenshot=${output}`,
+    url
+  ];
+  try {
+    execFileSync(chrome, ['--headless=new', ...flags], { stdio: 'ignore' });
+  } catch {
+    execFileSync(chrome, ['--headless', ...flags], { stdio: 'ignore' });
+  }
+  const bytes = fs.readFileSync(output);
+  fs.rmSync(output, { force: true });
+
+  const fileName = (name || `snap-${Date.now()}.png`).replace(/[^A-Za-z0-9._-]/g, '_');
+  if (!apiUrl || !token) {
+    const dir = path.join(process.cwd(), '.dorado-attachments');
+    fs.mkdirSync(dir, { recursive: true });
+    const file = path.join(dir, fileName);
+    fs.writeFileSync(file, bytes);
+    console.log(file);
+    return;
+  }
+  const response = await fetch(`${apiUrl}/api/agent/attachments?name=${encodeURIComponent(fileName)}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/octet-stream', 'x-dorado-session-token': `Bearer ${token}` },
+    body: bytes
+  });
+  const text = await response.text();
+  if (!response.ok) {
+    console.error(`Gagal mengunggah screenshot (HTTP ${response.status}): ${text}`);
+    process.exit(1);
+  }
+  const payload = JSON.parse(text);
+  console.log(JSON.stringify({ path: payload.data.path, mention: payload.data.mention }));
+}
+
+const [command, target, ...rest] = process.argv.slice(2);
+const nameFlag = rest.includes('--name') ? rest[rest.indexOf('--name') + 1] : undefined;
+
+if (command === 'inspect') {
+  await inspect(target);
+} else if (command === 'screenshot') {
+  await screenshot(target, nameFlag);
+} else {
+  usage();
+}

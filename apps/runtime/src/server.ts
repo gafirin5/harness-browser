@@ -8,6 +8,7 @@ import { startReconcile, stopReconcile } from './modules/orchestrator/reconcile.
 import { startAutomations, stopAutomations } from './modules/automations/service.js';
 import { nodeManager } from './modules/nodes/manager.js';
 import { startRateLimitDetector } from './modules/profiles/detector.js';
+import { sshTunnelShutdown } from './modules/ssh/service.js';
 import { setupTerminalWebSocket } from './ws.js';
 
 terminalManager.reconcileOnStartup();
@@ -36,6 +37,7 @@ function shutdown(signal: string): void {
   stopReconcile();
   stopAutomations();
   stopRateLimitDetector();
+  sshTunnelShutdown();
   nodeManager.shutdown();
   terminalManager.shutdown();
   server.close(() => process.exit(0));

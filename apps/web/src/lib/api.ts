@@ -85,13 +85,21 @@ export function terminalWsUrl(terminalId: string): string {
 }
 
 export async function uploadAttachment(worktreeId: string, file: File): Promise<{ path: string; mention: string }> {
+  return uploadAttachmentBlob(worktreeId, file.name, file);
+}
+
+export async function uploadAttachmentBlob(
+  worktreeId: string,
+  name: string,
+  blob: Blob
+): Promise<{ path: string; mention: string }> {
   const headers: Record<string, string> = { 'content-type': 'application/octet-stream' };
   if (activeNodeId) headers['x-dorado-node-id'] = activeNodeId;
-  const response = await fetch(`/api/worktrees/${worktreeId}/attachments?name=${encodeURIComponent(file.name)}`, {
+  const response = await fetch(`/api/worktrees/${worktreeId}/attachments?name=${encodeURIComponent(name)}`, {
     method: 'POST',
     credentials: 'same-origin',
     headers,
-    body: file
+    body: blob
   });
   const text = await response.text();
   let payload: { data?: { path: string; mention: string }; error?: { message?: string } } | null = null;

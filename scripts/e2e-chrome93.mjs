@@ -586,6 +586,30 @@ try {
   await page.waitForFunction(() => !document.body.innerText.includes('Dorado Gold'), { timeout: 10000 });
   console.log('[chrome93] appearance studio OK');
 
+  await page.keyboard.down('Control');
+  await page.keyboard.down('Shift');
+  await page.keyboard.press('p');
+  await page.keyboard.up('Shift');
+  await page.keyboard.up('Control');
+  await page.waitForSelector('.palette', { timeout: 10000 });
+  await page.type('.palette-input', 'Pratinjau File');
+  await page.waitForFunction(
+    () =>
+      Array.from(document.querySelectorAll('.palette-item')).some((item) =>
+        (item.textContent || '').includes('Pratinjau File')
+      ),
+    { timeout: 10000 }
+  );
+  await page.evaluate(() => {
+    const item = Array.from(document.querySelectorAll('.palette-item')).find((el) =>
+      (el.textContent || '').includes('Pratinjau File')
+    );
+    item?.click();
+  });
+  await waitText('Path file');
+  await closeModal();
+  console.log('[chrome93] file preview dialog OK');
+
   await clickText('button', 'GitHub');
   await waitText('Remote bukan repository GitHub');
   await page.click('button[aria-label="Tutup"]');

@@ -212,6 +212,16 @@ const IMAGE_MIME: Record<string, string> = {
   '.avif': 'image/avif'
 };
 
+const PREVIEW_MIME: Record<string, string> = {
+  ...IMAGE_MIME,
+  '.pdf': 'application/pdf',
+  '.csv': 'text/csv',
+  '.tsv': 'text/tab-separated-values',
+  '.json': 'application/json',
+  '.txt': 'text/plain',
+  '.md': 'text/plain'
+};
+
 filesRouter.get(
   '/raw',
   asyncHandler(async (req, res) => {
@@ -235,6 +245,40 @@ filesRouter.get(
     res.setHeader('Content-Type', mime);
     res.setHeader('Cache-Control', 'private, max-age=60');
     res.setHeader('Content-Length', String(buffer.length));
+    res.end(buffer);
+  })
+);
+
+filesRouter.get(
+  '/preview',
+  asyncHandler(async (req, res) => {
+    const query = parseWith(querySchema, req.query);
+    if (!query.path) throw new AppError(422, 'INVALID_PATH', 'Path file wajib diisi.');
+    const { root, target } = await safeTarget(query.worktreeId, query.path);
+    const ext = path.extname(target).toLowerCase();
+    const mime = PREVIEW_MIME[ext];
+    if (!mime) throw new AppError(422, 'UNSUPPORTED', 'Tipe file ini tidak dapat dipratinjau.');
+    let stat;
+    try {
+      assertWithin(root, await fs.realpath(target));
+      stat = await fs.stat(target);
+    } catch {
+      throw notFound('File tidak ditemukan.');
+    }
+    if (!stat.isFile()) throw new AppError(422, 'NOT_FILE', 'Path bukan file.');
+    if (stat.size > 20 * 1024 * 1024) throw new AppError(422, 'FILE_TOO_LARGE', 'File lebih besar dari 20 MB.');
+    const buffer = await fs.readFile(target);
+    res.setHeader('Content-Type', mime);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Disposition', 'inline');
+    res.setHeader('Cache-Control', 'private, max-age=60');
+    res.setHeader('Content-Length', String(buffer.length));
+    // Izinkan halaman Dorado menempelkan PDF/gambar; sandbox untuk SVG.
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader(
+      'Content-Security-Policy',
+      ext === '.svg' ? "sandbox; frame-ancestors 'self'" : "frame-ancestors 'self'"
+    );
     res.end(buffer);
   })
 );

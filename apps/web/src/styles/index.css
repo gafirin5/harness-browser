@@ -2239,6 +2239,79 @@ button:disabled {
   min-width: 0;
 }
 
+/* ---------- file preview & annotator ---------- */
+
+.preview-image {
+  max-width: 100%;
+  max-height: 60vh;
+  display: block;
+  margin-top: 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+}
+
+.preview-text {
+  max-height: 60vh;
+  overflow: auto;
+  margin-top: 8px;
+  padding: 10px;
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.preview-table-wrap {
+  max-height: 60vh;
+  overflow: auto;
+  margin-top: 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+}
+
+.preview-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 11.5px;
+}
+
+.preview-table th,
+.preview-table td {
+  border-bottom: 1px solid var(--border-soft);
+  padding: 4px 8px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.preview-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--panel-2);
+}
+
+.annotator {
+  margin-top: 8px;
+}
+
+.annotator-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.annotator-canvas {
+  max-width: 100%;
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  cursor: crosshair;
+  background: var(--panel);
+}
+
 .preview-frame {
   width: 100%;
   height: 420px;

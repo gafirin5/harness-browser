@@ -82,6 +82,9 @@ const UpdateDialog = lazy(() =>
 const AppearanceDialog = lazy(() =>
   import('./components/AppearanceDialog').then((module) => ({ default: module.AppearanceDialog }))
 );
+const FilePreviewDialog = lazy(() =>
+  import('./components/FilePreviewDialog').then((module) => ({ default: module.FilePreviewDialog }))
+);
 
 type DialogState =
   | { type: 'project' }
@@ -177,6 +180,7 @@ export function App(): JSX.Element {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [updateOpen, setUpdateOpen] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [previewFileOpen, setPreviewFileOpen] = useState(false);
   const [appearance, setAppearance] = useState<Appearance>(DEFAULT_APPEARANCE);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [zenPanelOpen, setZenPanelOpen] = useState(false);
@@ -1097,6 +1101,12 @@ export function App(): JSX.Element {
       run: () => setAppearanceOpen(true)
     },
     {
+      id: 'file-preview',
+      label: 'Pratinjau File',
+      hint: 'Lihat CSV/JSON/gambar/PDF + anotasi gambar',
+      run: () => setPreviewFileOpen(true)
+    },
+    {
       id: 'git-graph',
       label: 'Git Graph',
       hint: 'Riwayat commit project dan detail per commit (Alt+Shift+G)',
@@ -1926,6 +1936,22 @@ export function App(): JSX.Element {
             onChange={changeAppearance}
             onPluginsChanged={refreshPluginStyles}
             onClose={() => setAppearanceOpen(false)}
+          />
+        </Suspense>
+      ) : null}
+      {previewFileOpen ? (
+        <Suspense
+          fallback={
+            <div className="orch-overlay">
+              <div className="empty">Memuat pratinjau...</div>
+            </div>
+          }
+        >
+          <FilePreviewDialog
+            worktrees={worktrees}
+            selectedWorktreeId={selectedWorktreeId}
+            activeTerminalId={activeTerminalId}
+            onClose={() => setPreviewFileOpen(false)}
           />
         </Suspense>
       ) : null}
